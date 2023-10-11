@@ -43,8 +43,9 @@ static int ett_wirego  = -1;
 static void * plugin_h = NULL;
 static int (*wirego_version_major_cb)(void) = NULL;
 static int (*wirego_version_minor_cb)(void) = NULL;
-static char* (*wirego_name_cb)(void) = NULL;
-static char* (*wirego_filter_cb)(void) = NULL;
+static char* (*wirego_plugin_name_cb)(void) = NULL;
+static char* (*wirego_plugin_filter_cb)(void) = NULL;
+static char* (*wirego_detect_int_cb)(int*) = NULL;
 
 
 
@@ -72,17 +73,24 @@ int wirego_load_plugin(char *plugin_path) {
     return -1;
   }
 
-  wirego_name_cb = (char* (*) (void)) dlsym(plugin_h, "wirego_name");
-  if (wirego_name_cb == NULL) {
+  wirego_plugin_name_cb = (char* (*) (void)) dlsym(plugin_h, "wirego_plugin_name");
+  if (wirego_plugin_name_cb == NULL) {
     printf("Failed to load plugin %s (missing symbol)\n", plugin_path);
     return -1;
   }
 
-  wirego_filter_cb = (char* (*) (void)) dlsym(plugin_h, "wirego_filter");
-  if (wirego_filter_cb == NULL) {
+  wirego_plugin_filter_cb = (char* (*) (void)) dlsym(plugin_h, "wirego_plugin_filter");
+  if (wirego_plugin_filter_cb == NULL) {
     printf("Failed to load plugin %s (missing symbol)\n", plugin_path);
     return -1;
   }
+
+  wirego_detect_int_cb = (char* (*) (int*)) dlsym(plugin_h, "wirego_detect_int");
+  if (wirego_detect_int_cb == NULL) {
+    printf("Failed to load plugin %s (missing symbol)\n", plugin_path);
+    return -1;
+  }
+
   return 0;
 }
 
@@ -139,9 +147,12 @@ void proto_register_wirego(void) {
 
   //Register the plugin (long name, short name, filter)
   static char long_name[255];
+  char * name = wirego_plugin_name_cb();
+  
   memset(long_name, 0x00, 255);
-  snprintf(long_name, 255, "%s (Wirego v%d.%d)", wirego_name_cb(), wirego_version_major_cb(), wirego_version_minor_cb());
-  proto_wirego = proto_register_protocol(long_name, wirego_name_cb(), wirego_filter_cb());
+  snprintf(long_name, 255, "%s (Wirego v%d.%d)", name, wirego_version_major_cb(), wirego_version_minor_cb());
+  proto_wirego = proto_register_protocol(long_name, name, wirego_plugin_filter_cb());
+  //Don't release name and filter, since those are used by wireshark's internals
 
   //Register our custom fields
   proto_register_field_array(proto_wirego, hf, array_length(hf));
@@ -156,13 +167,19 @@ void proto_reg_handoff_wirego(void) {
   if (plugin_h == NULL) 
     return;
     
-  printf("proto_reg_handoff_wirego\n");
-
   //Register dissector
   wirego_handle = create_dissector_handle(dissect_wirego, proto_wirego);
 
-  //Register dissector to appropriate flux
-  dissector_add_uint("udp.port", 17, wirego_handle);
+  //Set dissector filter (int)
+  int filter_value;
+  char *filter_name;
+  filter_name = wirego_detect_int_cb(&filter_value);
+  if (filter_name != NULL) {
+    dissector_add_uint(filter_name, filter_value, wirego_handle);
+    printf("Registered dissector: %s = %d\n", filter_name, filter_value);
+    free(filter_name);
+  }
+
 }
 
 static int
