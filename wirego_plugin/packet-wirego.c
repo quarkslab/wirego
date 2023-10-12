@@ -32,23 +32,27 @@ static int dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree _U
 //static dissector_handle_t wirego_handle;
 static int proto_wirego = -1;
 
-//Fields names
-static int hf_wirego_pdu_type = -1;
-static int hf_wirego_field2_type = -1;
-
 //WireGo's subtree
 static int ett_wirego  = -1;
 
 //Golang wrapper
 static void * plugin_h = NULL;
+static int (*wirego_setup_cb)(void) = NULL;
 static int (*wirego_version_major_cb)(void) = NULL;
 static int (*wirego_version_minor_cb)(void) = NULL;
 static char* (*wirego_plugin_name_cb)(void) = NULL;
 static char* (*wirego_plugin_filter_cb)(void) = NULL;
 static char* (*wirego_detect_int_cb)(int*) = NULL;
+static int (*wirego_get_fields_count_cb)(void) = NULL;
+static int (*wirego_get_field_cb)(int, int*, char**, char**, int *, int*) = NULL;
 
 
-
+int wirego_load_failure_helper(const char *str) {
+  printf("%s", str);
+  dlclose(plugin_h);
+  plugin_h = NULL;
+  return -1;
+}
 int wirego_load_plugin(char *plugin_path) {
   if (plugin_h != NULL)
     return -1;
@@ -56,43 +60,64 @@ int wirego_load_plugin(char *plugin_path) {
   //Open shared library
   plugin_h = dlopen(plugin_path, RTLD_LAZY);
   if (plugin_h == NULL) {
-    printf("Failed to load plugin %s\n", plugin_path);
-    return -1;
+    return wirego_load_failure_helper("Failed to open plugin");
   }
 
   //Setup callbacks to the golang plugin
   wirego_version_major_cb = (int (*) (void)) dlsym(plugin_h, "wirego_version_major");
   if (wirego_version_major_cb == NULL) {
-    printf("Failed to load plugin %s (missing symbol)\n", plugin_path);
-    return -1;
+    return wirego_load_failure_helper("Failed to find symbol wirego_version_major");
   }
 
   wirego_version_minor_cb = (int (*) (void)) dlsym(plugin_h, "wirego_version_minor");
   if (wirego_version_minor_cb == NULL) {
-    printf("Failed to load plugin %s (missing symbol)\n", plugin_path);
-    return -1;
+    return wirego_load_failure_helper("Failed to find symbol wirego_version_minor");
+  }
+
+  wirego_setup_cb = (int (*) (void)) dlsym(plugin_h, "wirego_setup");
+  if (wirego_setup_cb == NULL) {
+    return wirego_load_failure_helper("Failed to find symbol wirego_setup");
   }
 
   wirego_plugin_name_cb = (char* (*) (void)) dlsym(plugin_h, "wirego_plugin_name");
   if (wirego_plugin_name_cb == NULL) {
-    printf("Failed to load plugin %s (missing symbol)\n", plugin_path);
-    return -1;
+    return wirego_load_failure_helper("Failed to find symbol wirego_plugin_name");
   }
 
   wirego_plugin_filter_cb = (char* (*) (void)) dlsym(plugin_h, "wirego_plugin_filter");
   if (wirego_plugin_filter_cb == NULL) {
-    printf("Failed to load plugin %s (missing symbol)\n", plugin_path);
-    return -1;
+    return wirego_load_failure_helper("Failed to find symbol wirego_plugin_filter");
   }
 
   wirego_detect_int_cb = (char* (*) (int*)) dlsym(plugin_h, "wirego_detect_int");
   if (wirego_detect_int_cb == NULL) {
-    printf("Failed to load plugin %s (missing symbol)\n", plugin_path);
-    return -1;
+    return wirego_load_failure_helper("Failed to find symbol wirego_detect_int");
   }
 
+  wirego_get_fields_count_cb = (int (*) (void)) dlsym(plugin_h, "wirego_get_fields_count");
+  if (wirego_get_fields_count_cb == NULL) {
+    return wirego_load_failure_helper("Failed to find symbol wirego_get_fields_count");
+  }
+
+  wirego_get_field_cb = (int (*) (int, int*, char**, char**, int*, int*)) dlsym(plugin_h, "wirego_get_field");
+  if (wirego_get_field_cb == NULL) {
+    return wirego_load_failure_helper("Failed to find symbol wirego_get_field");
+  }
+
+
+  //Init plugin
+  if (wirego_setup_cb() == -1) {
+    return wirego_load_failure_helper("Plugin setup failed");
+  }
   return 0;
 }
+
+//Map our go plugin internal field identifiers to the ones provided by Wireshark
+typedef struct {
+  int internal_id;
+  int external_id;
+} field_id_to_plugin_field_id_t;
+field_id_to_plugin_field_id_t * fields_mapping = NULL;
 
 //Register protocol when plugin is loaded.
 void proto_register_wirego(void) {
@@ -113,7 +138,43 @@ void proto_register_wirego(void) {
   printf("Wirego version: %d.%d\n", wirego_version_major_cb(), wirego_version_minor_cb());
 
   //Setup a list of "header fields" (hf)
-  static hf_register_info hf[] = {
+  static hf_register_info *hfx;
+  int fields_count = wirego_get_fields_count_cb();
+  hfx = (hf_register_info*) malloc(fields_count * sizeof(hf_register_info));
+  fields_mapping = (field_id_to_plugin_field_id_t *) malloc(fields_count * sizeof(field_id_to_plugin_field_id_t));
+
+  for (int i = 0; i < fields_count; i++) {
+    int internal_id;
+    char *name;
+    char *filter;
+    int value_type;
+    int display;
+  
+
+    wirego_get_field_cb(i, &internal_id, &name, &filter, &value_type, &display);
+
+    fields_mapping[i].internal_id = internal_id;
+    fields_mapping[i].external_id = -1;
+    hfx[i].p_id = &(fields_mapping[i].external_id);
+    hfx[i].hfinfo.name = name;
+    hfx[i].hfinfo.abbrev = filter;
+    hfx[i].hfinfo.type = value_type;
+    hfx[i].hfinfo.display = display;
+    hfx[i].hfinfo.strings = NULL;
+    hfx[i].hfinfo.bitmask = 0x00;
+    hfx[i].hfinfo.blurb = NULL;
+
+  //HFILL
+    hfx[i].hfinfo.id = -1;
+    hfx[i].hfinfo.parent = 0;
+    hfx[i].hfinfo.ref_type = HF_REF_TYPE_NONE;
+    hfx[i].hfinfo.same_name_prev_id = -1;
+    hfx[i].hfinfo.same_name_next = NULL;
+  }
+
+
+/*
+  static hf_register_info hfx[] = {
         { &hf_wirego_pdu_type,  //Field id that will be set on register
             { 
               "WireGo PDU Type", // Field name
@@ -139,7 +200,7 @@ void proto_register_wirego(void) {
             }
         }
     };
-
+*/
     /* Setup protocol subtree array */
     static int *ett[] = {
         &ett_wirego
@@ -155,7 +216,7 @@ void proto_register_wirego(void) {
   //Don't release name and filter, since those are used by wireshark's internals
 
   //Register our custom fields
-  proto_register_field_array(proto_wirego, hf, array_length(hf));
+  proto_register_field_array(proto_wirego, hfx, fields_count);
 
   //Register the protocol subtree
   proto_register_subtree_array(ett, array_length(ett));
@@ -200,9 +261,9 @@ dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _
 
   //proto_tree_add_item(proto_tree *tree, int hfindex, tvbuff_t *tvb, const gint start, gint length, const guint encoding)
   
-  proto_tree_add_item(wirego_tree, hf_wirego_pdu_type, tvb, start_offset, 1, ENC_BIG_ENDIAN);
+  proto_tree_add_item(wirego_tree, fields_mapping[0].external_id, tvb, start_offset, 1, ENC_BIG_ENDIAN);
   start_offset += 1;
-  proto_tree_add_item(wirego_tree, hf_wirego_field2_type, tvb, start_offset, 4, ENC_BIG_ENDIAN);
+  proto_tree_add_item(wirego_tree, fields_mapping[1].external_id, tvb, start_offset, 4, ENC_BIG_ENDIAN);
   start_offset += 4;
   return tvb_captured_length(tvb);
 }
