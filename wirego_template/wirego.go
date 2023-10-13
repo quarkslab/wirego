@@ -45,8 +45,9 @@ const (
 type DisplayMode int
 
 const (
-	DisplayModeDecimal     DisplayMode = 0x01
-	DisplayModeHexadecimal DisplayMode = 0x02
+	DisplayModeNone        DisplayMode = 0x01
+	DisplayModeDecimal     DisplayMode = 0x02
+	DisplayModeHexadecimal DisplayMode = 0x03
 )
 
 type FieldId int
@@ -118,8 +119,8 @@ func wirego_get_field(index int, internalId *C.int, name **C.char, filter **C.ch
 	*internalId = C.int(f.InternalId)
 	*name = C.CString(f.Name)
 	*filter = C.CString(f.Filter)
-	*valueType = f.valueType
-	*display = f.display
+	*valueType = C.int(f.ValueType)
+	*display = C.int(f.DisplayMode)
 
 	return 0
 }

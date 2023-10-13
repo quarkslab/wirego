@@ -161,35 +161,51 @@ void proto_register_wirego(void) {
     switch (value_type) {
       case 0x01:
         hfx[i].hfinfo.type = FT_NONE;
+      break;
       case 0x02:
         hfx[i].hfinfo.type = FT_BOOLEAN;
+      break;
       case 0x03:
         hfx[i].hfinfo.type = FT_UINT8;
+      break;
       case 0x04:
         hfx[i].hfinfo.type = FT_INT8;
+      break;
       case 0x05:
         hfx[i].hfinfo.type = FT_UINT16;
+      break;
       case 0x06:
         hfx[i].hfinfo.type = FT_INT16;
+      break;
       case 0x07:
         hfx[i].hfinfo.type = FT_UINT32;
+      break;
       case 0x08:
         hfx[i].hfinfo.type = FT_INT32;
+      break;
       case 0x09:
         hfx[i].hfinfo.type = FT_STRINGZ;
+      break;
       case 0x10:
-        hfx[i].hfinfo.type = FT_STRING;                
+        hfx[i].hfinfo.type = FT_STRING;   
+      break;             
       default:
       printf("Invalid type: %02x\n", value_type);
         hfx[i].hfinfo.type = FT_NONE;
     };
     switch (display) {
       case 0x01:
-        hfx[i].hfinfo.display = BASE_DEC;
+        hfx[i].hfinfo.display = BASE_NONE;
+      break;
       case 0x02:
+        hfx[i].hfinfo.display = BASE_DEC;
+      break;
+      case 0x03:
         hfx[i].hfinfo.display = BASE_HEX;
+      break;
       default:
         hfx[i].hfinfo.display = BASE_HEX;
+      break;
     }
     hfx[i].hfinfo.strings = NULL;
     hfx[i].hfinfo.bitmask = 0x00;
