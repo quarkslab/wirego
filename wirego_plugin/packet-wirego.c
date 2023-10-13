@@ -65,6 +65,8 @@ void proto_register_wirego(void) {
 
   //Setup a list of "header fields" (hf)
   static hf_register_info *hfx;
+
+  //Ask plugin how many custom fields are declared
   int fields_count = wirego_get_fields_count_cb();
   hfx = (hf_register_info*) malloc(fields_count * sizeof(hf_register_info));
   fields_mapping = (field_id_to_plugin_field_id_t *) malloc(fields_count * sizeof(field_id_to_plugin_field_id_t));
@@ -75,10 +77,11 @@ void proto_register_wirego(void) {
     char *filter;
     int value_type;
     int display;
-  
 
+    //Fetch field
     wirego_get_field_cb(i, &internal_id, &name, &filter, &value_type, &display);
 
+    //Convert field to wireshark
     fields_mapping[i].internal_id = internal_id;
     fields_mapping[i].external_id = -1;
     hfx[i].p_id = &(fields_mapping[i].external_id);
@@ -116,7 +119,6 @@ void proto_register_wirego(void) {
         hfx[i].hfinfo.type = FT_STRING;   
       break;             
       default:
-      printf("Invalid type: %02x\n", value_type);
         hfx[i].hfinfo.type = FT_NONE;
     };
     switch (display) {
@@ -145,39 +147,10 @@ void proto_register_wirego(void) {
     hfx[i].hfinfo.same_name_next = NULL;
   }
 
-
-/*
-  static hf_register_info hfx[] = {
-        { &hf_wirego_pdu_type,  //Field id that will be set on register
-            { 
-              "WireGo PDU Type", // Field name
-              "wirego.type", // Filter name
-              FT_UINT8, // Value type
-              BASE_DEC, // Display mode
-              NULL, // Strings
-              0x0, // Bitmask
-              NULL, // Description
-              HFILL  // (macro to fill all remaining fields)
-            }
-        },
-        { &hf_wirego_field2_type,  //Field id that will be set on register
-            { 
-              "WireGo field 2", // Field name
-              "wirego.field2", // Filter name
-              FT_UINT32, // Value type
-              BASE_HEX, // Display mode
-              NULL, // Strings
-              0x0, // Bitmask
-              NULL, // Description
-              HFILL  // (macro to fill all remaining fields)
-            }
-        }
-    };
-*/
-    /* Setup protocol subtree array */
-    static int *ett[] = {
-        &ett_wirego
-    };
+  /* Setup protocol subtree array */
+  static int *ett[] = {
+      &ett_wirego
+  };
 
   //Register the plugin (long name, short name, filter)
   static char long_name[255];
@@ -210,7 +183,6 @@ void proto_reg_handoff_wirego(void) {
   filter_name = wirego_detect_int_cb(&filter_value);
   if (filter_name != NULL) {
     dissector_add_uint(filter_name, filter_value, wirego_handle);
-    printf("Registered dissector: %s = %d\n", filter_name, filter_value);
     free(filter_name);
   }
 
