@@ -13,6 +13,7 @@ include(WiresharkPlugin)
 set_module_info(wirego 0 1 0 0)
 
 set(DISSECTOR_SRC
+	plugin-loader.c
 	packet-wirego.c
 )
 

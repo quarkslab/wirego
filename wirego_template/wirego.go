@@ -61,7 +61,11 @@ type WiresharkField struct {
 
 //export wirego_setup
 func wirego_setup() C.int {
-	return C.int(setup())
+	err := setup()
+	if err != nil {
+		return C.int(-1)
+	}
+	return C.int(0)
 }
 
 //export wirego_version_major

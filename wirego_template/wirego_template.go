@@ -18,13 +18,13 @@ const (
 )
 
 // This function is called when the plugin is loaded.
-func setup() int {
+func setup() error {
 
 	//Setup our wireshark custom fields
 	fields = append(fields, WiresharkField{InternalId: FieldIdCustom1, Name: "Custom1", Filter: "wirego.custom01", ValueType: ValueTypeUInt8, DisplayMode: DisplayModeHexadecimal})
 	fields = append(fields, WiresharkField{InternalId: FieldIdCustom2, Name: "Custom2", Filter: "wirego.custom02", ValueType: ValueTypeUInt16, DisplayMode: DisplayModeDecimal})
 
-	return 0
+	return nil
 }
 
 // getDetectFilterInteger returns a wireshark filter with an integer value,
