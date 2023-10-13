@@ -4,15 +4,16 @@
 #include <stdio.h>
 #include <dlfcn.h>
 
- void * plugin_h = NULL;
- int (*wirego_setup_cb)(void) = NULL;
- int (*wirego_version_major_cb)(void) = NULL;
- int (*wirego_version_minor_cb)(void) = NULL;
- char* (*wirego_plugin_name_cb)(void) = NULL;
- char* (*wirego_plugin_filter_cb)(void) = NULL;
- char* (*wirego_detect_int_cb)(int*) = NULL;
- int (*wirego_get_fields_count_cb)(void) = NULL;
- int (*wirego_get_field_cb)(int, int*, char**, char**, int *, int*) = NULL;
+void * plugin_h = NULL;
+int (*wirego_setup_cb)(void) = NULL;
+int (*wirego_version_major_cb)(void) = NULL;
+int (*wirego_version_minor_cb)(void) = NULL;
+char* (*wirego_plugin_name_cb)(void) = NULL;
+char* (*wirego_plugin_filter_cb)(void) = NULL;
+char* (*wirego_detect_int_cb)(int*) = NULL;
+int (*wirego_get_fields_count_cb)(void) = NULL;
+int (*wirego_get_field_cb)(int, int*, char**, char**, int *, int*) = NULL;
+int (*wirego_dissect_packet_cb)(char*, int) = NULL;
 
 int wirego_plugin_loaded() {
   return plugin_h?1:0;
@@ -76,13 +77,16 @@ int wirego_load_plugin(char *plugin_path) {
     return wirego_load_failure_helper("Failed to find symbol wirego_get_field");
   }
 
+  wirego_dissect_packet_cb = (int (*) (char*, int)) dlsym(plugin_h, "wirego_dissect_packet");
+  if (wirego_dissect_packet_cb == NULL) {
+    return wirego_load_failure_helper("Failed to find symbol wirego_dissect_packet");
+  }
 
   //Init plugin
   if (wirego_setup_cb() == -1) {
     return wirego_load_failure_helper("Plugin setup failed");
   }
 
-printf("load ok %p\n", plugin_h);
   return 0;
 }
 

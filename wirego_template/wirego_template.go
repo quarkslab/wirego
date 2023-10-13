@@ -1,5 +1,10 @@
 package main
 
+import (
+	"encoding/hex"
+	"fmt"
+)
+
 /*
 	Do your stuff here.
 */
@@ -36,4 +41,8 @@ func getDetectFilterInteger() (string, int) {
 
 func getFields() []WiresharkField {
 	return fields
+}
+
+func dissectPacket(packet []byte) {
+	fmt.Println(hex.Dump(packet))
 }

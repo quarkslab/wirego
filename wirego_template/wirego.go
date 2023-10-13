@@ -16,8 +16,10 @@ package main
 // extern char* wirego_plugin_name();
 // extern char* wirego_plugin_filter();
 // extern int wirego_detect_int(char *);
+// extern int wirego_dissect_packet(char *, int);
 
 import "C"
+import "unsafe"
 
 const (
 	WIREGO_VERSION_MAJOR = 1
@@ -126,6 +128,12 @@ func wirego_get_field(index int, internalId *C.int, name **C.char, filter **C.ch
 	*valueType = C.int(f.ValueType)
 	*display = C.int(f.DisplayMode)
 
+	return 0
+}
+
+//export wirego_dissect_packet
+func wirego_dissect_packet(packet *C.char, packetSize C.int) int {
+	dissectPacket(C.GoBytes(unsafe.Pointer(packet), packetSize))
 	return 0
 }
 
