@@ -48,6 +48,9 @@ func dissectPacket(packet []byte) *DissectResult {
 
 	res.Protocol = "Wirego sample"
 	res.Info = "wiresgo pkt info"
+
+	res.Fields = append(res.Fields, DissectField{InternalId: FieldIdCustom1, Offset: 0, Length: 2})
+	res.Fields = append(res.Fields, DissectField{InternalId: FieldIdCustom2, Offset: 2, Length: 4})
 	fmt.Println(hex.Dump(packet))
 	return &res
 }

@@ -41,6 +41,8 @@ typedef struct {
   int internal_id;
   int external_id;
 } field_id_to_plugin_field_id_t;
+
+int fields_count = -1;
 field_id_to_plugin_field_id_t * fields_mapping = NULL;
 
 //Register protocol when plugin is loaded.
@@ -65,7 +67,7 @@ void proto_register_wirego(void) {
   static hf_register_info *hfx;
 
   //Ask plugin how many custom fields are declared
-  int fields_count = wirego_get_fields_count_cb();
+  fields_count = wirego_get_fields_count_cb();
   hfx = (hf_register_info*) malloc(fields_count * sizeof(hf_register_info));
   fields_mapping = (field_id_to_plugin_field_id_t *) malloc(fields_count * sizeof(field_id_to_plugin_field_id_t));
 
@@ -221,11 +223,34 @@ dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _
   col_set_str(pinfo->cinfo, COL_PROTOCOL, wirego_result_get_protocol_cb(handle));
 
   //Fill "info" column
-  //col_clear(pinfo->cinfo,COL_INFO);
   col_set_str(pinfo->cinfo, COL_INFO, wirego_result_get_info_cb(handle));
 
+  int result_fields_count = wirego_result_get_fields_count_cb(handle);
+  if (result_fields_count != 0) {
+    //Add a subtree on this packet
+    proto_item *ti = proto_tree_add_item(tree, proto_wirego, tvb, 0, -1, ENC_BIG_ENDIAN);
+    proto_tree *wirego_tree = proto_item_add_subtree(ti, ett_wirego);
+
+    for (int i = 0; i < result_fields_count; i++) {
+      int external_id = -1;
+      int internal_id;
+      int offset;
+      int length;
+      wirego_result_get_field_cb(handle, i, &internal_id, &offset, &length);
+      for (int j = 0; j < fields_count; j++) {
+        if (fields_mapping[i].internal_id == internal_id) {
+          external_id = fields_mapping[i].external_id;
+          break;
+        }
+      }
+      if (external_id != -1) {
+        proto_tree_add_item(wirego_tree, external_id, tvb, offset, length, ENC_BIG_ENDIAN);
+      }
+    }
+
+  }
   wirego_result_release_cb(handle);
-  
+/*
   //Add a subtree on this packet
   proto_item *ti = proto_tree_add_item(tree, proto_wirego, tvb, 0, -1, ENC_BIG_ENDIAN);
 
@@ -238,6 +263,7 @@ dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _
   start_offset += 1;
   proto_tree_add_item(wirego_tree, fields_mapping[1].external_id, tvb, start_offset, 4, ENC_BIG_ENDIAN);
   start_offset += 4;
+  */
   return tvb_captured_length(tvb);
 }
 

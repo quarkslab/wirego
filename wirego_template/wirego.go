@@ -57,9 +57,15 @@ type WiresharkField struct {
 	DisplayMode DisplayMode
 }
 
+type DissectField struct {
+	InternalId FieldId
+	Offset     int
+	Length     int
+}
 type DissectResult struct {
 	Protocol string
 	Info     string
+	Fields   []DissectField
 }
 
 var resultsCache map[int]*DissectResult
@@ -163,6 +169,37 @@ func wirego_result_get_info(h int) *C.char {
 	}
 
 	return C.CString(desc.Info)
+}
+
+//export wirego_result_get_fields_count
+func wirego_result_get_fields_count(h int) C.int {
+	desc, found := resultsCache[h]
+	if found == false {
+		return C.int(0)
+	}
+
+	return C.int(len(desc.Fields))
+}
+
+//export wirego_result_get_field
+func wirego_result_get_field(h int, idx int, internalId *C.int, offset *C.int, length *C.int) {
+	*internalId = -1
+	*offset = -1
+	*length = -1
+
+	desc, found := resultsCache[h]
+	if found == false {
+		return
+	}
+
+	if idx >= len(desc.Fields) {
+		return
+	}
+	*internalId = C.int(desc.Fields[idx].InternalId)
+	*offset = C.int(desc.Fields[idx].Offset)
+	*length = C.int(desc.Fields[idx].Length)
+
+	return
 }
 
 //export wirego_result_release
