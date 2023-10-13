@@ -158,8 +158,39 @@ void proto_register_wirego(void) {
     hfx[i].p_id = &(fields_mapping[i].external_id);
     hfx[i].hfinfo.name = name;
     hfx[i].hfinfo.abbrev = filter;
-    hfx[i].hfinfo.type = value_type;
-    hfx[i].hfinfo.display = display;
+    switch (value_type) {
+      case 0x01:
+        hfx[i].hfinfo.type = FT_NONE;
+      case 0x02:
+        hfx[i].hfinfo.type = FT_BOOLEAN;
+      case 0x03:
+        hfx[i].hfinfo.type = FT_UINT8;
+      case 0x04:
+        hfx[i].hfinfo.type = FT_INT8;
+      case 0x05:
+        hfx[i].hfinfo.type = FT_UINT16;
+      case 0x06:
+        hfx[i].hfinfo.type = FT_INT16;
+      case 0x07:
+        hfx[i].hfinfo.type = FT_UINT32;
+      case 0x08:
+        hfx[i].hfinfo.type = FT_INT32;
+      case 0x09:
+        hfx[i].hfinfo.type = FT_STRINGZ;
+      case 0x10:
+        hfx[i].hfinfo.type = FT_STRING;                
+      default:
+      printf("Invalid type: %02x\n", value_type);
+        hfx[i].hfinfo.type = FT_NONE;
+    };
+    switch (display) {
+      case 0x01:
+        hfx[i].hfinfo.display = BASE_DEC;
+      case 0x02:
+        hfx[i].hfinfo.display = BASE_HEX;
+      default:
+        hfx[i].hfinfo.display = BASE_HEX;
+    }
     hfx[i].hfinfo.strings = NULL;
     hfx[i].hfinfo.bitmask = 0x00;
     hfx[i].hfinfo.blurb = NULL;

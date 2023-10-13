@@ -30,21 +30,23 @@ func main() {}
 type ValueType int
 
 const (
-	ValueTypeNone   ValueType = iota
-	ValueTypeBool   ValueType = iota
-	ValueTypeUInt8  ValueType = iota
-	ValueTypeInt8   ValueType = iota
-	ValueTypeInt16  ValueType = iota
-	ValueTypeUInt16 ValueType = iota
-	ValueTypeInt32  ValueType = iota
-	ValueTypeUInt32 ValueType = iota
+	ValueTypeNone    ValueType = 0x01
+	ValueTypeBool    ValueType = 0x02
+	ValueTypeUInt8   ValueType = 0x03
+	ValueTypeInt8    ValueType = 0x04
+	ValueTypeInt16   ValueType = 0x05
+	ValueTypeUInt16  ValueType = 0x06
+	ValueTypeInt32   ValueType = 0x07
+	ValueTypeUInt32  ValueType = 0x08
+	ValueTypeCString ValueType = 0x09
+	ValueTypeString  ValueType = 0x10
 )
 
 type DisplayMode int
 
 const (
-	DisplayModeDecimal     DisplayMode = iota
-	DisplayModeHexadecimal DisplayMode = iota
+	DisplayModeDecimal     DisplayMode = 0x01
+	DisplayModeHexadecimal DisplayMode = 0x02
 )
 
 type FieldId int
@@ -116,10 +118,8 @@ func wirego_get_field(index int, internalId *C.int, name **C.char, filter **C.ch
 	*internalId = C.int(f.InternalId)
 	*name = C.CString(f.Name)
 	*filter = C.CString(f.Filter)
-	*valueType = 0
-	*display = 0
-
-	//TODO
+	*valueType = f.valueType
+	*display = f.display
 
 	return 0
 }
