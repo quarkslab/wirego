@@ -169,7 +169,7 @@ void proto_register_wirego(void) {
 void proto_reg_handoff_wirego(void) {
   static dissector_handle_t wirego_handle;
 
-  if (!wirego_plugin_loaded()) 
+  if (!wirego_is_plugin_loaded()) 
     return;
     
   //Register dissector
@@ -205,7 +205,6 @@ dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _
     Thus we're using tvb_memcpy, which will provide us a dedicated buffer to play with.
     That's not optimal at all, but we'll start with this.
   */
-  int pdu_offs = tvb_offset_from_real_beginning(tvb);
   int pdu_len = tvb_reported_length(tvb);
 
   if (pdu_len <= 0)
@@ -214,16 +213,19 @@ dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _
   //Very suboptimal, FIXME.
   char * golang_buff = (char*) malloc(pdu_len);
   tvb_memcpy(tvb, golang_buff, 0, pdu_len);
-  wirego_dissect_packet_cb(golang_buff, pdu_len);
+  int handle = wirego_dissect_packet_cb(golang_buff, pdu_len);
   free(golang_buff);
 
+
   //Flag protocol name
-  col_set_str(pinfo->cinfo, COL_PROTOCOL, "WireGo");
+  col_set_str(pinfo->cinfo, COL_PROTOCOL, wirego_result_get_protocol_cb(handle));
 
   //Fill "info" column
   //col_clear(pinfo->cinfo,COL_INFO);
-  col_set_str(pinfo->cinfo, COL_INFO, "Hello world.");
+  col_set_str(pinfo->cinfo, COL_INFO, wirego_result_get_info_cb(handle));
 
+  wirego_result_release_cb(handle);
+  
   //Add a subtree on this packet
   proto_item *ti = proto_tree_add_item(tree, proto_wirego, tvb, 0, -1, ENC_BIG_ENDIAN);
 

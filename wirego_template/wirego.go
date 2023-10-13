@@ -8,18 +8,14 @@ package main
 	Take your chance with "wirego_template.go".
 
 	You probably don't want to look at this file actually.
-	Thust me.
+	Trust me.
 */
-// extern int wirego_setup();
-// extern int wirego_version_major();
-// extern int wirego_version_minor();
-// extern char* wirego_plugin_name();
-// extern char* wirego_plugin_filter();
-// extern int wirego_detect_int(char *);
-// extern int wirego_dissect_packet(char *, int);
 
 import "C"
-import "unsafe"
+import (
+	"math/rand"
+	"unsafe"
+)
 
 const (
 	WIREGO_VERSION_MAJOR = 1
@@ -61,12 +57,21 @@ type WiresharkField struct {
 	DisplayMode DisplayMode
 }
 
+type DissectResult struct {
+	Protocol string
+	Info     string
+}
+
+var resultsCache map[int]*DissectResult
+
 //export wirego_setup
 func wirego_setup() C.int {
 	err := setup()
 	if err != nil {
 		return C.int(-1)
 	}
+
+	resultsCache = make(map[int]*DissectResult)
 	return C.int(0)
 }
 
@@ -133,8 +138,36 @@ func wirego_get_field(index int, internalId *C.int, name **C.char, filter **C.ch
 
 //export wirego_dissect_packet
 func wirego_dissect_packet(packet *C.char, packetSize C.int) int {
-	dissectPacket(C.GoBytes(unsafe.Pointer(packet), packetSize))
-	return 0
+	h := rand.Int()
+	result := dissectPacket(C.GoBytes(unsafe.Pointer(packet), packetSize))
+
+	resultsCache[h] = result
+	return h
+}
+
+//export wirego_result_get_protocol
+func wirego_result_get_protocol(h int) *C.char {
+	desc, found := resultsCache[h]
+	if found == false {
+		return nil
+	}
+
+	return C.CString(desc.Protocol)
+}
+
+//export wirego_result_get_info
+func wirego_result_get_info(h int) *C.char {
+	desc, found := resultsCache[h]
+	if found == false {
+		return nil
+	}
+
+	return C.CString(desc.Info)
+}
+
+//export wirego_result_release
+func wirego_result_release(h int) {
+	delete(resultsCache, h)
 }
 
 // https://stackoverflow.com/questions/6125683/call-go-functions-from-c

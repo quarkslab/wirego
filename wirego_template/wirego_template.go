@@ -43,6 +43,11 @@ func getFields() []WiresharkField {
 	return fields
 }
 
-func dissectPacket(packet []byte) {
+func dissectPacket(packet []byte) *DissectResult {
+	var res DissectResult
+
+	res.Protocol = "Wirego sample"
+	res.Info = "wiresgo pkt info"
 	fmt.Println(hex.Dump(packet))
+	return &res
 }
