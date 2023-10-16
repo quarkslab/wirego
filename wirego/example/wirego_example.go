@@ -26,12 +26,14 @@ const (
 type WiregoExample struct {
 }
 
-// Unused
+// Unused (but mandatory)
 func main() {}
 
+// Called at golang environment initialization (you should probably not touch this)
 func init() {
 	var wge WiregoExample
-	wirego.Init(wge)
+	//Register to the wirego package
+	wirego.Register(wge)
 }
 
 // This function is called when the plugin is loaded.
@@ -44,31 +46,39 @@ func (WiregoExample) Setup() error {
 	return nil
 }
 
+// This function shall return the plugin name
 func (WiregoExample) GetName() string {
 	return WIREGO_PLUGIN_NAME
 }
 
+// This function shall return the wireshark filter
 func (WiregoExample) GetFilter() string {
 	return WIREGO_PLUGIN_FILTER
 }
 
-// getDetectFilterInteger returns a wireshark filter with an integer value,
+// GetDetectFilterInteger returns a wireshark filter with an integer value,
 // that will select which packets will be sent to your dissector for parsing.
 // If you don't have any, just return ("", 0)
 func (WiregoExample) GetDetectFilterInteger() (string, int) {
 	return "udp.port", 17
 }
 
+// GetFields returns the list of fields descriptor that we may eventually return
+// when dissecting a packet payload
 func (WiregoExample) GetFields() []wirego.WiresharkField {
 	return fields
 }
 
+// DissectPacket provides the packet payload to be parsed.
 func (WiregoExample) DissectPacket(packet []byte) *wirego.DissectResult {
 	var res wirego.DissectResult
 
+	//This string will appear on the packet being parsed
 	res.Protocol = "Wirego sample"
+	//This (optional) string will appear in the info section
 	res.Info = "wiresgo pkt info"
 
+	//Add a few fields and refer to them using our own "internalId"
 	res.Fields = append(res.Fields, wirego.DissectField{InternalId: FieldIdCustom1, Offset: 0, Length: 2})
 	res.Fields = append(res.Fields, wirego.DissectField{InternalId: FieldIdCustom2, Offset: 2, Length: 4})
 	fmt.Println(hex.Dump(packet))

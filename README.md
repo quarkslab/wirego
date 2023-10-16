@@ -26,7 +26,7 @@ Clone Wireshark:
 
     git clone https://github.com/wireshark/wireshark.git
 
-Create a link from the Wireshark plugins folder to the "wirego_plugin"
+Create a symlink from the Wireshark plugins folder to the "wirego_plugin"
 
     ln -s <path_to>/wirego_plugin wireshark/plugins/epan/wirego
 
@@ -43,12 +43,12 @@ Now build Wireshark (see README.xxx), but basically it's just:
 
 ## Building the Golang plugin template
 
-Before going any further, you should build this template and try to load it with the wirego Wireshark plugin.
+Before going any further, you should build the example and try to load it with the wirego Wireshark plugin.
 
-    cd wirego_template
-    go build
+    cd wirego/example/
+    make
 
-The template plugin is a dummy plugin to help you getting started.
+The example plugin is a dummy plugin to help you getting started.
 
 ## Running Wireshark
 
@@ -65,21 +65,18 @@ If your golang plugin fails to load for any reason, the plugin will not appear o
 
 ## Developping a Golang plugin
 
-Now that you've built the "template" plugin, it's probably time to update it with your own code.
+Now that you've built the "example" plugin, it's probably time to update it with your own code.
 
-Everything you need to update is found in "wirego_template.go" (feel free to rename this file).
+Everything you need to update is found in "wirego/example/wirego_example.go" (feel free to rename this file).
 
-The WIREGO_PLUGIN_NAME and WIREGO_PLUGIN_FILTER consts define how your plugin will appear in Wireshark.
+In order to create a plugin, you need to implement the **WiregoInterface** interface (defined in wirego/wirego.go).
 
-You will then have to define "fields", wich are the results of your parsing code.
-During the plugin initialization, behind the hood, we list all the different fields that we may eventually provide, when analyzing packets.
-Each field will then be referred with a simple "enum" value, pointing to the full description of the field previously defined.
 
-So, we first define the list of enum that we will use with the type "FieldId".
+The GetName() and GetFilter() defines how your plugin will appear in Wireshark and how you will be able to filter it using Wireshark.
 
-The **setup()** function is called when the plugin is loaded. Feel free to setup everything you need here.
+The **Setup()** function is called when the plugin is loaded. Feel free to setup everything you need here.
 That's also a nice place to setup the complete detailed list of your custom fields.
-A "field" is defined by the **WiresharkField** structure and contains:
+A "field" is defined by the **wirego.WiresharkField** structure and contains:
 
   - The field enum (InternalId), as defined previously
   - The field name
@@ -87,11 +84,17 @@ A "field" is defined by the **WiresharkField** structure and contains:
   - The type of value for this field
   - How this field should be displayed (**DisplayMode**)
 
-The function **getDetectFilterInteger()** is used to filter the packets that should be sent to your disector. If your protocol happens on TCP port 7122, that's where you define it.
+The **GetFields()** returns the list of fields description (see **Setup()**).
+Those fields are the results of your parsing code.
+During the plugin initialization, behind the hood, we list all the different fields that we may eventually provide, when analyzing packets.
+Each field will then be referred with a simple "enum" value, pointing to the full description of the field previously defined.
 
-The **getFields()** returns the list of fields description (see **setup()**).
 
-**dissectPacket(packet []byte)** is where the magic happens. You receive a packet payload and return a **DissectResult** structure.
+The function **GetDetectFilterInteger()** is used to filter the packets that should be sent to your disector. If your protocol happens on TCP port 7122, that's where you define it.
+
+
+
+**DissectPacket(packet []byte)** is where the magic happens. You receive a packet payload and return a **wirego.DissectResult** structure.
 
 
 ## Next steps

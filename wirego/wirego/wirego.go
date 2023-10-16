@@ -19,9 +19,9 @@ import (
 
 // WiregoInterface is implemented by the actual wirego plugin
 type WiregoInterface interface {
-	Setup() error
 	GetName() string
 	GetFilter() string
+	Setup() error
 	GetDetectFilterInteger() (string, int)
 	GetFields() []WiresharkField
 	DissectPacket(packet []byte) *DissectResult
@@ -33,13 +33,16 @@ type Wirego struct {
 	resultsCache map[int]*DissectResult
 }
 
+// We use a static "object" here
 var wg Wirego
 
+// Wirego version, for API compability issues management
 const (
 	WIREGO_VERSION_MAJOR = 1
 	WIREGO_VERSION_MINOR = 0
 )
 
+// Fields types
 type ValueType int
 
 const (
@@ -55,6 +58,7 @@ const (
 	ValueTypeString  ValueType = 0x10
 )
 
+// Display types
 type DisplayMode int
 
 const (
@@ -63,6 +67,7 @@ const (
 	DisplayModeHexadecimal DisplayMode = 0x03
 )
 
+// A field descriptor, to be provided by the actual plugin
 type FieldId int
 type WiresharkField struct {
 	InternalId  FieldId
@@ -72,18 +77,21 @@ type WiresharkField struct {
 	DisplayMode DisplayMode
 }
 
+// A field, as returned by the dissector
 type DissectField struct {
 	InternalId FieldId
 	Offset     int
 	Length     int
 }
+
+// A dissector result is a protocol name, an info string and a list of extracted fields
 type DissectResult struct {
 	Protocol string
 	Info     string
 	Fields   []DissectField
 }
 
-func Init(listener WiregoInterface) error {
+func Register(listener WiregoInterface) error {
 	wg.listener = listener
 	return nil
 }
@@ -229,5 +237,3 @@ func wirego_result_get_field(h int, idx int, internalId *C.int, offset *C.int, l
 func wirego_result_release(h int) {
 	delete(wg.resultsCache, h)
 }
-
-// https://stackoverflow.com/questions/6125683/call-go-functions-from-c
