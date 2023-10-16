@@ -2,6 +2,9 @@
 
 A Wireshark plugin wrapper for golang
 
+**WIP:** This project is still under development, APIs will evolve a lot!
+ 
+
 ## Introduction
 
 Writing plugins for Wireshark in C/C++ can be opaque: the APIs are quite powerfull, but not really obvious to use. If you just want to develop a quick and dirty plugin you will spend more time trying to understand how things work instead of actually writing the core of your plugin.
