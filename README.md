@@ -3,7 +3,7 @@
 A Wireshark plugin wrapper for golang
 
 **WIP:** This project is still under development, APIs will evolve a lot!
- 
+
 
 ## Introduction
 
@@ -103,4 +103,3 @@ Here's a partial list:
   - The current API only allows one and only one node to be created for a given packet
   - Support payload split into several packets
   - A simple GUI allowing to select the golang plugin to be loaded by wirego would be nice (instead of this environment variable)
-
