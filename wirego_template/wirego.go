@@ -142,6 +142,11 @@ func wirego_get_field(index int, internalId *C.int, name **C.char, filter **C.ch
 	return 0
 }
 
+/*
+  Note: there's probably a way to return the complete DissectResult structure
+	to the C environment. At the end of the day, this would be super opaque so for now
+	let's use some dummy accessors and a result cache.
+*/
 //export wirego_dissect_packet
 func wirego_dissect_packet(packet *C.char, packetSize C.int) int {
 	h := rand.Int()
@@ -154,7 +159,7 @@ func wirego_dissect_packet(packet *C.char, packetSize C.int) int {
 //export wirego_result_get_protocol
 func wirego_result_get_protocol(h int) *C.char {
 	desc, found := resultsCache[h]
-	if found == false {
+	if !found {
 		return nil
 	}
 
@@ -164,7 +169,7 @@ func wirego_result_get_protocol(h int) *C.char {
 //export wirego_result_get_info
 func wirego_result_get_info(h int) *C.char {
 	desc, found := resultsCache[h]
-	if found == false {
+	if !found {
 		return nil
 	}
 
@@ -174,7 +179,7 @@ func wirego_result_get_info(h int) *C.char {
 //export wirego_result_get_fields_count
 func wirego_result_get_fields_count(h int) C.int {
 	desc, found := resultsCache[h]
-	if found == false {
+	if !found {
 		return C.int(0)
 	}
 
@@ -188,7 +193,7 @@ func wirego_result_get_field(h int, idx int, internalId *C.int, offset *C.int, l
 	*length = -1
 
 	desc, found := resultsCache[h]
-	if found == false {
+	if !found {
 		return
 	}
 
