@@ -41,7 +41,7 @@ Now build Wireshark (see README.xxx), but basically it's just:
     make -j
 
 
-## Building the Golang plugin template
+## Building the Golang plugin example
 
 Before going any further, you should build the example and try to load it with the wirego Wireshark plugin.
 
@@ -56,7 +56,7 @@ Now that Wireshark has been built, you can see that the "epan" directory now con
 
 You simply need to set the WIREGO_PLUGIN environment variable to your golang plugin path and then start Wireshark:
 
-  export WIREGO_PLUGIN=/path-to-your-golang-plugin/wirego_template/wirego_template.so
+  export WIREGO_PLUGIN=/path-to-your-golang-plugin/wirego/wirego_example/wirego_example.so
   ./wireshark
 
 To make sure your plugin has been properly loaded, open Analyze>Enabled Protocols and search for "wirego".
@@ -69,7 +69,7 @@ Now that you've built the "example" plugin, it's probably time to update it with
 
 Everything you need to update is found in "wirego/example/wirego_example.go" (feel free to rename this file).
 
-In order to create a plugin, you need to implement the **WiregoInterface** interface (defined in wirego/wirego.go).
+In order to create a plugin, you need to import "wirego" and implement the **wirego.WiregoInterface** interface (defined in wirego/wirego.go).
 
 
 The GetName() and GetFilter() defines how your plugin will appear in Wireshark and how you will be able to filter it using Wireshark.

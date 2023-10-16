@@ -6,15 +6,6 @@ import (
 	"wirego/wirego"
 )
 
-/*
-	Do your stuff here.
-*/
-
-const (
-	WIREGO_PLUGIN_NAME   = "Wirego template" // Your plugin name
-	WIREGO_PLUGIN_FILTER = "wiregotpl"       // You protocol filter
-)
-
 var fields []wirego.WiresharkField
 
 // Define here enum identifiers, used to refer to a specific field
@@ -23,6 +14,7 @@ const (
 	FieldIdCustom2 wirego.FieldId = 2
 )
 
+// Since we implement the wirego.WiregoInterface we need some structure to hold it.
 type WiregoExample struct {
 }
 
@@ -32,6 +24,7 @@ func main() {}
 // Called at golang environment initialization (you should probably not touch this)
 func init() {
 	var wge WiregoExample
+
 	//Register to the wirego package
 	wirego.Register(wge)
 }
@@ -48,12 +41,12 @@ func (WiregoExample) Setup() error {
 
 // This function shall return the plugin name
 func (WiregoExample) GetName() string {
-	return WIREGO_PLUGIN_NAME
+	return "Wirego template"
 }
 
 // This function shall return the wireshark filter
 func (WiregoExample) GetFilter() string {
-	return WIREGO_PLUGIN_FILTER
+	return "wiregotpl"
 }
 
 // GetDetectFilterInteger returns a wireshark filter with an integer value,
