@@ -21,7 +21,7 @@ build:
     - apt update && apt -y install make cmake libgcrypt-dev qt6-base-dev qt6-multimedia-dev qt6-tools-dev qt6-tools-dev-tools qt6-l10n-tools libqt6core5compat6-dev libpcap-dev libgcrypt20-dev libglib2.0-dev flex bison libpcre2-dev libnghttp2-dev libc-ares-dev libspeexdsp-dev
  
   script:
-    - git clone gitlab@gitlab.qb:bgirard/wireshark.git
+    - git clone https://gitlab.qb/bgirard/wireshark.git
     - ln -s $(pwd)/wirego_plugin wireshark/plugins/epan/wirego
     - cd wireshark && mkdir build && cd build && cmake -DCUSTOM_PLUGIN_SRC_DIR=../plugins/epan/wirego .. && make -j
   #artifacts:
