@@ -49,17 +49,17 @@ func (WiregoExample) GetFilter() string {
 	return "wiregotpl"
 }
 
-// GetDetectFilterInteger returns a wireshark filter with an integer value,
-// that will select which packets will be sent to your dissector for parsing.
-// If you don't have any, just return ("", 0)
-func (WiregoExample) GetDetectFilterInteger() (string, int) {
-	return "udp.port", 17
-}
-
 // GetFields returns the list of fields descriptor that we may eventually return
 // when dissecting a packet payload
 func (WiregoExample) GetFields() []wirego.WiresharkField {
 	return fields
+}
+
+// GetDissectorFilterInteger returns a wireshark filter with an integer value,
+// that will select which packets will be sent to your dissector for parsing.
+// If you don't have any, just return ("", 0)
+func (WiregoExample) GetDissectorFilterInteger() (string, int) {
+	return "udp.port", 17
 }
 
 // DissectPacket provides the packet payload to be parsed.

@@ -90,7 +90,7 @@ During the plugin initialization, behind the hood, we list all the different fie
 Each field will then be referred with a simple "enum" value, pointing to the full description of the field previously defined.
 
 
-The function **GetDetectFilterInteger()** is used to filter the packets that should be sent to your disector. If your protocol happens on TCP port 7122, that's where you define it.
+The function **GetDissectorFilterInteger()** is used to filter the packets that should be sent to your disector. If your protocol happens on TCP port 7122, that's where you define it.
 
 
 

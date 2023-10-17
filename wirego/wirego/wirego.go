@@ -22,8 +22,8 @@ type WiregoInterface interface {
 	GetName() string
 	GetFilter() string
 	Setup() error
-	GetDetectFilterInteger() (string, int)
 	GetFields() []WiresharkField
+	GetDissectorFilterInteger() (string, int)
 	DissectPacket(packet []byte) *DissectResult
 }
 
@@ -46,14 +46,18 @@ const (
 type ValueType int
 
 const (
-	ValueTypeNone    ValueType = 0x01
-	ValueTypeBool    ValueType = 0x02
-	ValueTypeUInt8   ValueType = 0x03
-	ValueTypeInt8    ValueType = 0x04
-	ValueTypeInt16   ValueType = 0x05
-	ValueTypeUInt16  ValueType = 0x06
-	ValueTypeInt32   ValueType = 0x07
-	ValueTypeUInt32  ValueType = 0x08
+	ValueTypeNone ValueType = 0x01
+	ValueTypeBool ValueType = 0x02
+
+	ValueTypeUInt8 ValueType = 0x03
+	ValueTypeInt8  ValueType = 0x04
+
+	ValueTypeUInt16 ValueType = 0x05
+	ValueTypeInt16  ValueType = 0x06
+
+	ValueTypeUInt32 ValueType = 0x07
+	ValueTypeInt32  ValueType = 0x08
+
 	ValueTypeCString ValueType = 0x09
 	ValueTypeString  ValueType = 0x10
 )
@@ -129,7 +133,7 @@ func wirego_plugin_filter() *C.char {
 
 //export wirego_detect_int
 func wirego_detect_int(i *C.int) *C.char {
-	filterName, filterValue := wg.listener.GetDetectFilterInteger()
+	filterName, filterValue := wg.listener.GetDissectorFilterInteger()
 
 	if len(filterName) == 0 {
 		*i = 0

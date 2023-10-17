@@ -21,7 +21,7 @@ int (*wirego_result_get_fields_count_cb)(int) = NULL;
 void (*wirego_result_get_field_cb)(int, int, int*, int*, int*) = NULL;
 
 
-int wirego_is_plugin_loaded() {
+int wirego_is_plugin_loaded(void) {
   return plugin_h?1:0;
 }
 
