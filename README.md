@@ -22,6 +22,8 @@ Well, you just set the WIREGO_PLUGIN environment variable, pointing your plugin 
 
 ## Building the Wirego plugin
 
+**Note:** If you're running on Linux, you may just want to download the prebuild plugin here: [https://gitlab.qb/bgirard/wirego/-/artifacts](https://gitlab.qb/bgirard/wirego/-/artifacts)
+
 Clone Wireshark:
 
     git clone https://github.com/wireshark/wireshark.git
