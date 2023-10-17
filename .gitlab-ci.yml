@@ -14,6 +14,10 @@
 image: gcc
 
 build:
+  rules:
+    - changes:
+      - wirego_plugin/packet-wirego.c
+      - wirego_plugin/plugin-loader.c
   stage: build
   # instead of calling g++ directly you can also use some build toolkit like make
   # install the necessary build tools when needed
