@@ -22,7 +22,7 @@ build:
  
   script:
     - git clone https://github.com/wireshark/wireshark.git
-    - ln -s $(PWD)/wirego_plugin wireshark/plugins/epan/wirego
+    - ln -s $PATH/wirego_plugin wireshark/plugins/epan/wirego
     - cd wireshark && mkdir build && cd build && cmake -DCUSTOM_PLUGIN_SRC_DIR=../plugins/epan/wirego .. && make -j
   #artifacts:
   #  paths:
