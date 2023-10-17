@@ -27,9 +27,9 @@ build:
     - ls -l wireshark/plugins/epan/wirego/
     - cd wireshark && mkdir build && cd build && cmake -DCUSTOM_PLUGIN_SRC_DIR=/builds/bgirard/wirego/wireshark/plugins/epan/wirego .. && make plugins
     - ls -R /builds/bgirard/wirego/wireshark/
-  #artifacts:
-  #  paths:
-  #    - $(PWD)/wireshark/
+  artifacts:
+    paths:
+      - /builds/bgirard/wirego/wireshark/build/run/plugins/4.3/epan/wirego.so
       # depending on your build setup it's most likely a good idea to cache outputs to reduce the build time
       # cache:
       #   paths:
