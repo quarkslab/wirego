@@ -25,7 +25,7 @@ build:
     - ln -s $(pwd)/wirego_plugin wireshark/plugins/epan/wirego
     - ls -l wireshark/plugins/epan/
     - ls -l wireshark/plugins/epan/wirego/
-    - cd wireshark && mkdir build && cd build && cmake -DCUSTOM_PLUGIN_SRC_DIR=/builds/bgirard/wirego/wireshark/plugins/epan/wirego .. && make
+    - cd wireshark && mkdir build && cd build && cmake -DCUSTOM_PLUGIN_SRC_DIR=/builds/bgirard/wirego/wireshark/plugins/epan/wirego .. && make plugins
     - ls -R /builds/bgirard/wirego/wireshark/
   #artifacts:
   #  paths:
