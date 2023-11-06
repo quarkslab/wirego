@@ -17,7 +17,7 @@ Wirego is a plugin for Wireshark, written in C that actually loads a plugin writ
 You basically don't have to touch the Wirego plugin and you will be given a dummy empty golang plugin to start with.
 
 Now how does the Wirego plugin where to find your wonderfull quick and dirty Golang plugin?
-Well, you just set the WIREGO_PLUGIN environment variable, pointing your plugin and that's it.
+Well, you just edit a $HOME/.wirego configuration file containing the full path to your plugin and that's it.
 
 
 ## Building the Wirego plugin
@@ -56,14 +56,18 @@ The example plugin is a dummy plugin to help you getting started.
 
 Now that Wireshark has been built, you can see that the "epan" directory now contains a plugin called "wirego.so" (see Wireshark documentation for the exact location).
 
-You simply need to set the WIREGO_PLUGIN environment variable to your golang plugin path and then start Wireshark:
+Edit a file located at $HOME/.wirego and type the full path to your plugin.
+Start Wireshark.
 
-  export WIREGO_PLUGIN=/path-to-your-golang-plugin/wirego/wirego_example/wirego_example.so
+  echo "/home/bob/myplugin/myplugin.so" > $HOME/.wirego
   ./wireshark
 
 To make sure your plugin has been properly loaded, open Analyze>Enabled Protocols and search for "wirego".
 
 If your golang plugin fails to load for any reason, the plugin will not appear on that list.
+
+You may also open Wireshark preferences, select "Protocols" on the left menu and then locate "Wirego". The preferences page for Wirego will actually show the path loaded from your configuration file (if any).
+
 
 ## Developping a Golang plugin
 
@@ -107,4 +111,7 @@ Here's a partial list:
   - The fields type list is incomplete
   - The current API only allows one and only one node to be created for a given packet
   - Support payload split into several packets
-  - A simple GUI allowing to select the golang plugin to be loaded by wirego would be nice (instead of this environment variable)
+
+## Additional notes
+
+"Yes", being able to set the plugin path using the preferences page for Wirego would be nice. Sadly, the preferences for a plugin are loaded once the plugin is fully loaded. Hence, this would be too late to read which plugin should actually be loaded.
