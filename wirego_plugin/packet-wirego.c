@@ -21,12 +21,14 @@
 #include <epan/conversation.h>
 #include <epan/dissectors/packet-tcp.h>
 #include <wsutil/str_util.h>
+#include <arpa/inet.h>
 #include "plugin-loader.h"
 #include "packet-wirego.h"
 
 void proto_register_wirego(void);
 void proto_reg_handoff_wirego(void);
 static int dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree _U_, void *data _U_);
+void register_preferences_menu(void);
 
 //static dissector_handle_t wirego_handle;
 static int proto_wirego = -1;
@@ -44,6 +46,8 @@ typedef struct {
 
 int fields_count = -1;
 field_id_to_plugin_field_id_t * fields_mapping = NULL;
+static char wirego_plugin_path[512];
+
 
 //Register protocol when plugin is loaded.
 void proto_register_wirego(void) {
@@ -51,8 +55,16 @@ void proto_register_wirego(void) {
   //Retrive golang plugin from env variable
   char * golang_plugin_path = NULL;
   golang_plugin_path = getenv("WIREGO_PLUGIN");
+
   if (golang_plugin_path == NULL) {
     printf("WIREGO_PLUGIN not set.\n");
+    
+    //Register a dummy entry
+    proto_wirego = proto_register_protocol("Wirego", "Wirego", "wirego");
+
+    //Register preferences menu
+    register_preferences_menu();
+    printf("%s\n", wirego_plugin_path);
     return;
   }
 
@@ -166,7 +178,21 @@ void proto_register_wirego(void) {
 
   //Register the protocol subtree
   proto_register_subtree_array(ett, array_length(ett));
+
+  //Register preferences menu
+  register_preferences_menu();
 }
+
+void register_preferences_menu(void) {
+  module_t *wirego_module;
+  wirego_module = prefs_register_protocol(proto_wirego, NULL);
+
+  prefs_register_filename_preference(wirego_module, "path",
+        "Golang plugin path",
+        "Fullpath to the golang wirego plugin",
+        (const char**) (&wirego_plugin_path), FALSE);
+}
+
 
 void proto_reg_handoff_wirego(void) {
   static dissector_handle_t wirego_handle;
@@ -183,6 +209,14 @@ void proto_reg_handoff_wirego(void) {
   filter_name = wirego_detect_int_cb(&filter_value);
   if (filter_name != NULL) {
     dissector_add_uint(filter_name, filter_value, wirego_handle);
+    free(filter_name);
+  }
+
+  //Set dissector filter (string)
+  char* filter_value_str;
+  filter_name = wirego_detect_string_cb(&filter_value_str);
+  if (filter_name != NULL) {
+    dissector_add_string(filter_name, filter_value_str, wirego_handle);
     free(filter_name);
   }
 
@@ -212,10 +246,59 @@ dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _
   if (pdu_len <= 0)
     return 0;
 
+/*
+
+  printf("Type: %d ", pinfo->net_src.type);
+  if (pinfo->net_src.len == 4) {
+    unsigned int addr = *((unsigned int*)pinfo->net_src.data);
+    
+    printf("%d.%d.%d.%d", addr &0xFF, (addr>>8)&0xFF, (addr>>16)&0xFF, (addr>>24)&0xFF);
+  }
+  printf("\n");
+*/
+  
   //Very suboptimal, FIXME.
   char * golang_buff = (char*) malloc(pdu_len);
+  char src[255];
+  char dst[255];
+  src[0] = 0x00;
+  dst[0] = 0x00;
+
+  switch (pinfo->net_src.type) {
+    case AT_IPv4:
+      inet_ntop(AF_INET, pinfo->net_src.data, src, 255);
+      break;
+    case AT_IPv6:
+      inet_ntop(AF_INET6, pinfo->net_src.data, src, 255);
+      break;
+    case AT_ETHER:
+    sprintf(src, "%02x:%02x:%02x:%02x:%02x:%02x", ((const char*)pinfo->net_src.data)[0]&0xFF, 
+    ((const char*)pinfo->net_src.data)[1]&0xFF,
+    ((const char*)pinfo->net_src.data)[2]&0xFF,
+    ((const char*)pinfo->net_src.data)[3]&0xFF,
+    ((const char*)pinfo->net_src.data)[4]&0xFF,
+    ((const char*)pinfo->net_src.data)[5]&0xFF);
+    break;
+  }
+  switch (pinfo->net_dst.type) {
+    case AT_IPv4:
+      inet_ntop(AF_INET, pinfo->net_dst.data, dst, 255);
+      break;
+    case AT_IPv6:
+      inet_ntop(AF_INET6, pinfo->net_dst.data, dst, 255);
+      break;
+          case AT_ETHER:
+    sprintf(dst, "%02x:%02x:%02x:%02x:%02x:%02x", ((const char*)pinfo->net_dst.data)[0]&0xFF, 
+    ((const char*)pinfo->net_dst.data)[1]&0xFF,
+    ((const char*)pinfo->net_dst.data)[2]&0xFF,
+    ((const char*)pinfo->net_dst.data)[3]&0xFF,
+    ((const char*)pinfo->net_dst.data)[4]&0xFF,
+    ((const char*)pinfo->net_dst.data)[5]&0xFF);
+    break;
+
+  }
   tvb_memcpy(tvb, golang_buff, 0, pdu_len);
-  int handle = wirego_dissect_packet_cb(golang_buff, pdu_len);
+  int handle = wirego_dissect_packet_cb(src, dst, golang_buff, pdu_len);
   free(golang_buff);
 
 
@@ -250,20 +333,7 @@ dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _
 
   }
   wirego_result_release_cb(handle);
-/*
-  //Add a subtree on this packet
-  proto_item *ti = proto_tree_add_item(tree, proto_wirego, tvb, 0, -1, ENC_BIG_ENDIAN);
 
-  int start_offset = 0;
-  proto_tree *wirego_tree = proto_item_add_subtree(ti, ett_wirego);
-
-  //proto_tree_add_item(proto_tree *tree, int hfindex, tvbuff_t *tvb, const gint start, gint length, const guint encoding)
-  
-  proto_tree_add_item(wirego_tree, fields_mapping[0].external_id, tvb, start_offset, 1, ENC_BIG_ENDIAN);
-  start_offset += 1;
-  proto_tree_add_item(wirego_tree, fields_mapping[1].external_id, tvb, start_offset, 4, ENC_BIG_ENDIAN);
-  start_offset += 4;
-  */
   return tvb_captured_length(tvb);
 }
 

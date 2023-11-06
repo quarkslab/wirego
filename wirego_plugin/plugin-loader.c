@@ -11,9 +11,10 @@ int (*wirego_version_minor_cb)(void) = NULL;
 char* (*wirego_plugin_name_cb)(void) = NULL;
 char* (*wirego_plugin_filter_cb)(void) = NULL;
 char* (*wirego_detect_int_cb)(int*) = NULL;
+char* (*wirego_detect_string_cb)(char**) = NULL;
 int (*wirego_get_fields_count_cb)(void) = NULL;
 int (*wirego_get_field_cb)(int, int*, char**, char**, int *, int*) = NULL;
-int (*wirego_dissect_packet_cb)(char*, int) = NULL;
+int (*wirego_dissect_packet_cb)(char *, char*, char*, int) = NULL;
 int (*wirego_result_release_cb)(int) = NULL;
 char* (*wirego_result_get_protocol_cb)(int) = NULL;
 char* (*wirego_result_get_info_cb)(int) = NULL;
@@ -73,6 +74,11 @@ int wirego_load_plugin(char *plugin_path) {
     return wirego_load_failure_helper("Failed to find symbol wirego_detect_int");
   }
 
+  wirego_detect_string_cb = (char* (*) (char**)) dlsym(plugin_h, "wirego_detect_string");
+  if (wirego_detect_string_cb == NULL) {
+    return wirego_load_failure_helper("Failed to find symbol wirego_detect_string");
+  }
+
   wirego_get_fields_count_cb = (int (*) (void)) dlsym(plugin_h, "wirego_get_fields_count");
   if (wirego_get_fields_count_cb == NULL) {
     return wirego_load_failure_helper("Failed to find symbol wirego_get_fields_count");
@@ -83,7 +89,7 @@ int wirego_load_plugin(char *plugin_path) {
     return wirego_load_failure_helper("Failed to find symbol wirego_get_field");
   }
 
-  wirego_dissect_packet_cb = (int (*) (char*, int)) dlsym(plugin_h, "wirego_dissect_packet");
+  wirego_dissect_packet_cb = (int (*) (char*, char*, char*, int)) dlsym(plugin_h, "wirego_dissect_packet");
   if (wirego_dissect_packet_cb == NULL) {
     return wirego_load_failure_helper("Failed to find symbol wirego_dissect_packet");
   }

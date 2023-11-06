@@ -24,7 +24,8 @@ type WiregoInterface interface {
 	Setup() error
 	GetFields() []WiresharkField
 	GetDissectorFilterInteger() (string, int)
-	DissectPacket(packet []byte) *DissectResult
+	GetDissectorFilterString() (string, string)
+	DissectPacket(src string, dst string, packet []byte) *DissectResult
 }
 
 // Just a simple holder
@@ -143,6 +144,18 @@ func wirego_detect_int(i *C.int) *C.char {
 	return C.CString(filterName)
 }
 
+//export wirego_detect_string
+func wirego_detect_string(value **C.char) *C.char {
+	filterName, filterValue := wg.listener.GetDissectorFilterString()
+
+	if len(filterName) == 0 {
+		*value = nil
+		return nil
+	}
+	*value = C.CString(filterValue)
+	return C.CString(filterName)
+}
+
 //export wirego_get_fields_count
 func wirego_get_fields_count() int {
 	return len(wg.listener.GetFields())
@@ -178,9 +191,10 @@ func wirego_get_field(index int, internalId *C.int, name **C.char, filter **C.ch
 	let's use some dummy accessors and a result cache.
 */
 //export wirego_dissect_packet
-func wirego_dissect_packet(packet *C.char, packetSize C.int) int {
+func wirego_dissect_packet(src *C.char, dst *C.char, packet *C.char, packetSize C.int) int {
+
 	h := rand.Int()
-	result := wg.listener.DissectPacket(C.GoBytes(unsafe.Pointer(packet), packetSize))
+	result := wg.listener.DissectPacket(C.GoString(src), C.GoString(dst), C.GoBytes(unsafe.Pointer(packet), packetSize))
 
 	wg.resultsCache[h] = result
 	return h
