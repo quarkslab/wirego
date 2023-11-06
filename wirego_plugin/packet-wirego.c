@@ -29,6 +29,7 @@ void proto_register_wirego(void);
 void proto_reg_handoff_wirego(void);
 static int dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree _U_, void *data _U_);
 void register_preferences_menu(void);
+char * get_plugin_path(void);
 
 //static dissector_handle_t wirego_handle;
 static int proto_wirego = -1;
@@ -46,25 +47,18 @@ typedef struct {
 
 int fields_count = -1;
 field_id_to_plugin_field_id_t * fields_mapping = NULL;
-static char wirego_plugin_path[512];
-
 
 //Register protocol when plugin is loaded.
 void proto_register_wirego(void) {
 
+  //Register preferences menu (actually more a helper to an actual pref)
+  register_preferences_menu();
+
   //Retrive golang plugin from env variable
-  char * golang_plugin_path = NULL;
-  golang_plugin_path = getenv("WIREGO_PLUGIN");
+  char * golang_plugin_path = get_plugin_path();
 
-  if (golang_plugin_path == NULL) {
-    printf("WIREGO_PLUGIN not set.\n");
-    
-    //Register a dummy entry
-    proto_wirego = proto_register_protocol("Wirego", "Wirego", "wirego");
-
-    //Register preferences menu
-    register_preferences_menu();
-    printf("%s\n", wirego_plugin_path);
+  if ((golang_plugin_path == NULL) || (!strlen(golang_plugin_path))) {
+    printf("Wirego: $HOME/.wirego does not exist\n");
     return;
   }
 
@@ -178,19 +172,52 @@ void proto_register_wirego(void) {
 
   //Register the protocol subtree
   proto_register_subtree_array(ett, array_length(ett));
+}
 
-  //Register preferences menu
-  register_preferences_menu();
+char * get_plugin_path(void) {
+  char config_path[1024];
+  static char plugin_path[1024];
+  FILE * f;
+  memset(config_path, 0x00, 1024);
+  memset(plugin_path, 0x00, 1024);
+  char * home = getenv("HOME");
+  snprintf(config_path, 1023, "%s/.wirego", home);
+
+  f = fopen(config_path, "r");
+  if (!f)
+    return "";
+
+  unsigned long r = fread(plugin_path, 1, 1024, f);
+  fclose(f);
+  if (r && plugin_path[r-1] == 0x0a)
+    plugin_path[r-1] = 0x00;
+  return plugin_path;
 }
 
 void register_preferences_menu(void) {
   module_t *wirego_module;
-  wirego_module = prefs_register_protocol(proto_wirego, NULL);
+  static char current_config[1024];
+  char * current_plugin_path = NULL;
 
-  prefs_register_filename_preference(wirego_module, "path",
-        "Golang plugin path",
-        "Fullpath to the golang wirego plugin",
-        (const char**) (&wirego_plugin_path), FALSE);
+  int proto_main_wirego = proto_register_protocol("Wirego", "Wirego", "wirego");
+
+  wirego_module = prefs_register_protocol(proto_main_wirego, NULL);
+  current_plugin_path = get_plugin_path();
+
+  memset(current_config, 0x00, 1024);
+  if (strlen(current_plugin_path) != 0)
+    snprintf(current_config, 1023, "Current configuration is: %s", current_plugin_path);
+  else    
+    snprintf(current_config, 1023, "Current configuration is not set)");
+
+  prefs_register_static_text_preference(wirego_module, "helper",
+        "Edit $HOME/.wirego to set the path to the golang plugin",
+        "Wirego configuraiton file contains the fullpath to the wirego golang plugin");
+
+  prefs_register_static_text_preference(wirego_module, "path",
+        current_config,
+        "Wirego configuraiton file contains the fullpath to the wirego golang plugin");
+
 }
 
 
