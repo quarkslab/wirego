@@ -223,6 +223,7 @@ void register_preferences_menu(void) {
 
 void proto_reg_handoff_wirego(void) {
   static dissector_handle_t wirego_handle;
+  char *filter_name;
 
   if (!wirego_is_plugin_loaded()) 
     return;
@@ -231,22 +232,29 @@ void proto_reg_handoff_wirego(void) {
   wirego_handle = create_dissector_handle(dissect_wirego, proto_wirego);
 
   //Set dissector filter (int)
-  int filter_value;
-  char *filter_name;
-  filter_name = wirego_detect_int_cb(&filter_value);
-  if (filter_name != NULL) {
+  int idx = 0;
+  while (1) {
+    int filter_value;
+    filter_name = wirego_detect_int_cb(&filter_value, idx);
+
+    if (filter_name == NULL)
+      break;
     dissector_add_uint(filter_name, filter_value, wirego_handle);
     free(filter_name);
+    idx++;
   }
 
   //Set dissector filter (string)
-  char* filter_value_str;
-  filter_name = wirego_detect_string_cb(&filter_value_str);
-  if (filter_name != NULL) {
+  idx = 0;
+  while (1) {
+    char* filter_value_str;
+    filter_name = wirego_detect_string_cb(&filter_value_str, idx);
+    if (filter_name == NULL)
+      break;
     dissector_add_string(filter_name, filter_value_str, wirego_handle);
     free(filter_name);
+    idx++;
   }
-
 }
 
 static int
