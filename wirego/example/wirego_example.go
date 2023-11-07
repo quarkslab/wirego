@@ -55,18 +55,16 @@ func (WiregoExample) GetFields() []wirego.WiresharkField {
 	return fields
 }
 
-// GetDissectorFilterInteger returns a wireshark filter with an integer value,
-// that will select which packets will be sent to your dissector for parsing.
-// If you don't have any, just return ("", 0)
-func (WiregoExample) GetDissectorFilterInteger() (string, int) {
-	return "tcp.port", 25
-}
+// GetDissectorFilter returns a wireshark filter that will select which packets
+// will be sent to your dissector for parsing.
+// Two types of filters can be defined: Integers or Strings
+func (WiregoExample) GetDissectorFilter() []wirego.DissectorFilter {
+	var filters []wirego.DissectorFilter
 
-// GetDissectorFilterString returns a wireshark filter with a string value,
-// that will select which packets will be sent to your dissector for parsing.
-// If you don't have any, just return ("", "")
-func (WiregoExample) GetDissectorFilterString() (string, string) {
-	return "", ""
+	filters = append(filters, wirego.DissectorFilter{FilterType: wirego.DissectorFilterTypeInt, Name: "udp.port", ValueInt: 17})
+	filters = append(filters, wirego.DissectorFilter{FilterType: wirego.DissectorFilterTypeInt, Name: "ip.addr", ValueString: "127.0.0.1"})
+
+	return filters
 }
 
 // DissectPacket provides the packet payload to be parsed.

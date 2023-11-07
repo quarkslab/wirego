@@ -23,8 +23,7 @@ type WiregoInterface interface {
 	GetFilter() string
 	Setup() error
 	GetFields() []WiresharkField
-	GetDissectorFilterInteger(idx int) (string, int)
-	GetDissectorFilterString(idx int) (string, string)
+	GetDissectorFilter() []DissectorFilter
 	DissectPacket(src string, dst string, packet []byte) *DissectResult
 }
 
@@ -96,6 +95,20 @@ type DissectResult struct {
 	Fields   []DissectField
 }
 
+type DissectorFilterType int
+
+const (
+	DissectorFilterTypeInt    DissectorFilterType = iota
+	DissectorFilterTypeString DissectorFilterType = iota
+)
+
+type DissectorFilter struct {
+	FilterType  DissectorFilterType
+	Name        string
+	ValueInt    int
+	ValueString string
+}
+
 func Register(listener WiregoInterface) error {
 	wg.listener = listener
 	return nil
@@ -134,26 +147,38 @@ func wirego_plugin_filter() *C.char {
 
 //export wirego_detect_int
 func wirego_detect_int(i *C.int, idx C.int) *C.char {
-	filterName, filterValue := wg.listener.GetDissectorFilterInteger(int(idx))
+	filters := wg.listener.GetDissectorFilter()
 
-	if len(filterName) == 0 {
-		*i = 0
-		return nil
+	cnt := 0
+	for _, f := range filters {
+		if f.FilterType == DissectorFilterTypeInt {
+			if cnt == int(idx) {
+				*i = C.int(f.ValueInt)
+				return C.CString(f.Name)
+			}
+			cnt++
+		}
 	}
-	*i = C.int(filterValue)
-	return C.CString(filterName)
+
+	*i = 0
+	return nil
 }
 
 //export wirego_detect_string
 func wirego_detect_string(value **C.char, idx C.int) *C.char {
-	filterName, filterValue := wg.listener.GetDissectorFilterString(int(idx))
+	filters := wg.listener.GetDissectorFilter()
 
-	if len(filterName) == 0 {
-		*value = nil
-		return nil
+	cnt := 0
+	for _, f := range filters {
+		if f.FilterType == DissectorFilterTypeString {
+			*value = C.CString(f.ValueString)
+			return C.CString(f.Name)
+		}
+		cnt++
 	}
-	*value = C.CString(filterValue)
-	return C.CString(filterName)
+
+	*value = nil
+	return nil
 }
 
 //export wirego_get_fields_count
