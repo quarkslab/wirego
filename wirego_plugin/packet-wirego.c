@@ -323,19 +323,44 @@ dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _
       inet_ntop(AF_INET6, pinfo->net_dst.data, dst, 255);
       break;
           case AT_ETHER:
-    sprintf(dst, "%02x:%02x:%02x:%02x:%02x:%02x", ((const char*)pinfo->net_dst.data)[0]&0xFF, 
-    ((const char*)pinfo->net_dst.data)[1]&0xFF,
-    ((const char*)pinfo->net_dst.data)[2]&0xFF,
-    ((const char*)pinfo->net_dst.data)[3]&0xFF,
-    ((const char*)pinfo->net_dst.data)[4]&0xFF,
-    ((const char*)pinfo->net_dst.data)[5]&0xFF);
+      sprintf(dst, "%02x:%02x:%02x:%02x:%02x:%02x", ((const char*)pinfo->net_dst.data)[0]&0xFF, 
+      ((const char*)pinfo->net_dst.data)[1]&0xFF,
+      ((const char*)pinfo->net_dst.data)[2]&0xFF,
+      ((const char*)pinfo->net_dst.data)[3]&0xFF,
+      ((const char*)pinfo->net_dst.data)[4]&0xFF,
+      ((const char*)pinfo->net_dst.data)[5]&0xFF);
     break;
-
   }
-  tvb_memcpy(tvb, golang_buff, 0, pdu_len);
-  int handle = wirego_dissect_packet_cb(src, dst, golang_buff, pdu_len);
-  free(golang_buff);
 
+  //Compile network stack
+  unsigned int full_layer_size = 512;
+  char * full_layer = malloc(full_layer_size *sizeof(char));
+	wmem_list_frame_t *protos = wmem_list_head(pinfo->layers);
+	int	    proto_id;
+	const char *name;
+	while (protos != NULL)
+	{
+		proto_id = GPOINTER_TO_INT(wmem_list_frame_data(protos));
+		name = proto_get_protocol_filter_name(proto_id);
+
+    if (strlen(full_layer) + 1 + strlen(name) + 1 >= full_layer_size) {
+      full_layer_size += 512 + 1 + strlen(name);
+      full_layer = realloc(full_layer, full_layer_size);
+    }
+		strcat(full_layer, name);
+    strcat(full_layer, ".");
+		protos = wmem_list_frame_next(protos);
+	}
+  //Strip trailing '.'
+  if (strlen(full_layer))
+    full_layer[strlen(full_layer) - 1] = 0x00;
+
+  tvb_memcpy(tvb, golang_buff, 0, pdu_len);
+  int handle = wirego_dissect_packet_cb(src, dst, full_layer, golang_buff, pdu_len);
+  free(golang_buff);
+  golang_buff = NULL;
+  free(full_layer);
+  full_layer = NULL;
 
   //Flag protocol name
   col_set_str(pinfo->cinfo, COL_PROTOCOL, wirego_result_get_protocol_cb(handle));

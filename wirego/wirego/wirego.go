@@ -24,7 +24,7 @@ type WiregoInterface interface {
 	Setup() error
 	GetFields() []WiresharkField
 	GetDissectorFilter() []DissectorFilter
-	DissectPacket(src string, dst string, packet []byte) *DissectResult
+	DissectPacket(src string, dst string, stack string, packet []byte) *DissectResult
 }
 
 // Just a simple holder
@@ -216,10 +216,10 @@ func wirego_get_field(index int, internalId *C.int, name **C.char, filter **C.ch
 	let's use some dummy accessors and a result cache.
 */
 //export wirego_dissect_packet
-func wirego_dissect_packet(src *C.char, dst *C.char, packet *C.char, packetSize C.int) int {
+func wirego_dissect_packet(src *C.char, dst *C.char, layer *C.char, packet *C.char, packetSize C.int) int {
 
 	h := rand.Int()
-	result := wg.listener.DissectPacket(C.GoString(src), C.GoString(dst), C.GoBytes(unsafe.Pointer(packet), packetSize))
+	result := wg.listener.DissectPacket(C.GoString(src), C.GoString(dst), C.GoString(layer), C.GoBytes(unsafe.Pointer(packet), packetSize))
 
 	wg.resultsCache[h] = result
 	return h

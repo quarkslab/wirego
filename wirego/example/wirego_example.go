@@ -68,7 +68,7 @@ func (WiregoExample) GetDissectorFilter() []wirego.DissectorFilter {
 }
 
 // DissectPacket provides the packet payload to be parsed.
-func (WiregoExample) DissectPacket(src string, dst string, packet []byte) *wirego.DissectResult {
+func (WiregoExample) DissectPacket(src string, dst string, layer string, packet []byte) *wirego.DissectResult {
 	var res wirego.DissectResult
 
 	//This string will appear on the packet being parsed
