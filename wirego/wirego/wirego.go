@@ -220,7 +220,6 @@ func wirego_dissect_packet(src *C.char, dst *C.char, layer *C.char, packet *C.ch
 
 	h := rand.Int()
 	result := wg.listener.DissectPacket(C.GoString(src), C.GoString(dst), C.GoString(layer), C.GoBytes(unsafe.Pointer(packet), packetSize))
-
 	wg.resultsCache[h] = result
 	return h
 }

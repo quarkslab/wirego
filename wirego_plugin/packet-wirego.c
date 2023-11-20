@@ -369,6 +369,7 @@ dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _
   col_set_str(pinfo->cinfo, COL_INFO, wirego_result_get_info_cb(handle));
 
   int result_fields_count = wirego_result_get_fields_count_cb(handle);
+
   if (result_fields_count != 0) {
     //Add a subtree on this packet
     proto_item *ti = proto_tree_add_item(tree, proto_wirego, tvb, 0, -1, ENC_BIG_ENDIAN);
@@ -381,8 +382,8 @@ dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _
       int length;
       wirego_result_get_field_cb(handle, i, &internal_id, &offset, &length);
       for (int j = 0; j < fields_count; j++) {
-        if (fields_mapping[i].internal_id == internal_id) {
-          external_id = fields_mapping[i].external_id;
+        if (fields_mapping[j].internal_id == internal_id) {
+          external_id = fields_mapping[j].external_id;
           break;
         }
       }
