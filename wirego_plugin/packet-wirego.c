@@ -276,6 +276,11 @@ dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _
     Thus we're using tvb_memcpy, which will provide us a dedicated buffer to play with.
     That's not optimal at all, but we'll start with this.
   */
+
+  if (!tvb || !pinfo || !tree) {
+    return -1;
+  }
+
   int pdu_len = tvb_reported_length(tvb);
 
   if (pdu_len <= 0)
@@ -362,6 +367,11 @@ dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _
   free(full_layer);
   full_layer = NULL;
 
+  if (handle == -1) {
+    col_set_str(pinfo->cinfo, COL_PROTOCOL, "Wirego plugin failed.");
+    col_set_str(pinfo->cinfo, COL_INFO, "Wirego plugin failed.");
+    return -1;
+  }
   //Flag protocol name
   col_set_str(pinfo->cinfo, COL_PROTOCOL, wirego_result_get_protocol_cb(handle));
 
@@ -391,7 +401,6 @@ dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _
         proto_tree_add_item(wirego_tree, external_id, tvb, offset, length, ENC_BIG_ENDIAN);
       }
     }
-
   }
   wirego_result_release_cb(handle);
 

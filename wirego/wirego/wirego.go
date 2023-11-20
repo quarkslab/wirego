@@ -14,6 +14,7 @@ package wirego
 import "C"
 import (
 	"math/rand"
+	"sync"
 	"unsafe"
 )
 
@@ -31,6 +32,7 @@ type WiregoInterface interface {
 type Wirego struct {
 	listener     WiregoInterface
 	resultsCache map[int]*DissectResult
+	lock         sync.Mutex
 }
 
 // We use a static "object" here
@@ -217,15 +219,26 @@ func wirego_get_field(index int, internalId *C.int, name **C.char, filter **C.ch
 */
 //export wirego_dissect_packet
 func wirego_dissect_packet(src *C.char, dst *C.char, layer *C.char, packet *C.char, packetSize C.int) int {
+	if (src == nil) || (dst == nil) || (layer == nil) || (packet == nil) || packetSize == 0 {
+		return -1
+	}
 
 	h := rand.Int()
 	result := wg.listener.DissectPacket(C.GoString(src), C.GoString(dst), C.GoString(layer), C.GoBytes(unsafe.Pointer(packet), packetSize))
+
+	if result == nil {
+		return -1
+	}
+	wg.lock.Lock()
+	defer wg.lock.Unlock()
 	wg.resultsCache[h] = result
 	return h
 }
 
 //export wirego_result_get_protocol
 func wirego_result_get_protocol(h int) *C.char {
+	wg.lock.Lock()
+	defer wg.lock.Unlock()
 	desc, found := wg.resultsCache[h]
 	if !found {
 		return nil
@@ -236,6 +249,8 @@ func wirego_result_get_protocol(h int) *C.char {
 
 //export wirego_result_get_info
 func wirego_result_get_info(h int) *C.char {
+	wg.lock.Lock()
+	defer wg.lock.Unlock()
 	desc, found := wg.resultsCache[h]
 	if !found {
 		return nil
@@ -246,6 +261,8 @@ func wirego_result_get_info(h int) *C.char {
 
 //export wirego_result_get_fields_count
 func wirego_result_get_fields_count(h int) C.int {
+	wg.lock.Lock()
+	defer wg.lock.Unlock()
 	desc, found := wg.resultsCache[h]
 	if !found {
 		return C.int(0)
@@ -259,6 +276,8 @@ func wirego_result_get_field(h int, idx int, internalId *C.int, offset *C.int, l
 	*internalId = -1
 	*offset = -1
 	*length = -1
+	wg.lock.Lock()
+	defer wg.lock.Unlock()
 
 	desc, found := wg.resultsCache[h]
 	if !found {
@@ -271,11 +290,11 @@ func wirego_result_get_field(h int, idx int, internalId *C.int, offset *C.int, l
 	*internalId = C.int(desc.Fields[idx].InternalId)
 	*offset = C.int(desc.Fields[idx].Offset)
 	*length = C.int(desc.Fields[idx].Length)
-
-	return
 }
 
 //export wirego_result_release
 func wirego_result_release(h int) {
+	wg.lock.Lock()
+	defer wg.lock.Unlock()
 	delete(wg.resultsCache, h)
 }
