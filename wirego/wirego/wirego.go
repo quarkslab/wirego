@@ -118,6 +118,9 @@ func Register(listener WiregoInterface) error {
 
 //export wirego_setup
 func wirego_setup() C.int {
+	if wg.listener == nil {
+		return C.int(-1)
+	}
 	err := wg.listener.Setup()
 	if err != nil {
 		return C.int(-1)
@@ -139,16 +142,26 @@ func wirego_version_minor() C.int {
 
 //export wirego_plugin_name
 func wirego_plugin_name() *C.char {
+	if wg.listener == nil {
+		return nil
+	}
 	return C.CString(wg.listener.GetName())
 }
 
 //export wirego_plugin_filter
 func wirego_plugin_filter() *C.char {
+	if wg.listener == nil {
+		return nil
+	}
 	return C.CString(wg.listener.GetFilter())
 }
 
 //export wirego_detect_int
 func wirego_detect_int(i *C.int, idx C.int) *C.char {
+	if wg.listener == nil {
+		return nil
+	}
+
 	filters := wg.listener.GetDissectorFilter()
 
 	cnt := 0
@@ -168,6 +181,9 @@ func wirego_detect_int(i *C.int, idx C.int) *C.char {
 
 //export wirego_detect_string
 func wirego_detect_string(value **C.char, idx C.int) *C.char {
+	if wg.listener == nil {
+		return nil
+	}
 	filters := wg.listener.GetDissectorFilter()
 
 	cnt := 0
@@ -184,12 +200,19 @@ func wirego_detect_string(value **C.char, idx C.int) *C.char {
 }
 
 //export wirego_get_fields_count
-func wirego_get_fields_count() int {
-	return len(wg.listener.GetFields())
+func wirego_get_fields_count() C.int {
+	if wg.listener == nil {
+		return C.int(0)
+	}
+	return C.int(len(wg.listener.GetFields()))
 }
 
 //export wirego_get_field
-func wirego_get_field(index int, internalId *C.int, name **C.char, filter **C.char, valueType *C.int, display *C.int) int {
+func wirego_get_field(index int, internalId *C.int, name **C.char, filter **C.char, valueType *C.int, display *C.int) C.int {
+	if wg.listener == nil {
+		return C.int(-1)
+	}
+
 	fields := wg.listener.GetFields()
 	*internalId = -1
 	*name = nil
@@ -198,7 +221,7 @@ func wirego_get_field(index int, internalId *C.int, name **C.char, filter **C.ch
 	*display = -1
 
 	if (index < 0) || (index >= len(fields)) {
-		return -1
+		return C.int(-1)
 	}
 
 	f := fields[index]
@@ -209,7 +232,7 @@ func wirego_get_field(index int, internalId *C.int, name **C.char, filter **C.ch
 	*valueType = C.int(f.ValueType)
 	*display = C.int(f.DisplayMode)
 
-	return 0
+	return C.int(0)
 }
 
 /*
@@ -218,25 +241,33 @@ func wirego_get_field(index int, internalId *C.int, name **C.char, filter **C.ch
 	let's use some dummy accessors and a result cache.
 */
 //export wirego_dissect_packet
-func wirego_dissect_packet(src *C.char, dst *C.char, layer *C.char, packet *C.char, packetSize C.int) int {
+func wirego_dissect_packet(src *C.char, dst *C.char, layer *C.char, packet *C.char, packetSize C.int) C.int {
+	if wg.listener == nil || wg.resultsCache == nil {
+		return C.int(-1)
+	}
+
 	if (src == nil) || (dst == nil) || (layer == nil) || (packet == nil) || packetSize == 0 {
-		return -1
+		return C.int(-1)
 	}
 
 	h := rand.Int()
 	result := wg.listener.DissectPacket(C.GoString(src), C.GoString(dst), C.GoString(layer), C.GoBytes(unsafe.Pointer(packet), packetSize))
 
 	if result == nil {
-		return -1
+		return C.int(-1)
 	}
 	wg.lock.Lock()
 	defer wg.lock.Unlock()
 	wg.resultsCache[h] = result
-	return h
+	return C.int(h)
 }
 
 //export wirego_result_get_protocol
 func wirego_result_get_protocol(h int) *C.char {
+	if wg.listener == nil || wg.resultsCache == nil {
+		return nil
+	}
+
 	wg.lock.Lock()
 	defer wg.lock.Unlock()
 	desc, found := wg.resultsCache[h]
@@ -249,6 +280,10 @@ func wirego_result_get_protocol(h int) *C.char {
 
 //export wirego_result_get_info
 func wirego_result_get_info(h int) *C.char {
+	if wg.listener == nil || wg.resultsCache == nil {
+		return nil
+	}
+
 	wg.lock.Lock()
 	defer wg.lock.Unlock()
 	desc, found := wg.resultsCache[h]
@@ -261,6 +296,10 @@ func wirego_result_get_info(h int) *C.char {
 
 //export wirego_result_get_fields_count
 func wirego_result_get_fields_count(h int) C.int {
+	if wg.listener == nil || wg.resultsCache == nil {
+		return C.int(0)
+	}
+
 	wg.lock.Lock()
 	defer wg.lock.Unlock()
 	desc, found := wg.resultsCache[h]
@@ -276,6 +315,11 @@ func wirego_result_get_field(h int, idx int, internalId *C.int, offset *C.int, l
 	*internalId = -1
 	*offset = -1
 	*length = -1
+
+	if wg.listener == nil || wg.resultsCache == nil {
+		return
+	}
+
 	wg.lock.Lock()
 	defer wg.lock.Unlock()
 
@@ -294,6 +338,10 @@ func wirego_result_get_field(h int, idx int, internalId *C.int, offset *C.int, l
 
 //export wirego_result_release
 func wirego_result_release(h int) {
+	if wg.listener == nil || wg.resultsCache == nil {
+		return
+	}
+
 	wg.lock.Lock()
 	defer wg.lock.Unlock()
 	delete(wg.resultsCache, h)

@@ -277,7 +277,9 @@ dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _
     That's not optimal at all, but we'll start with this.
   */
 
-  if (!tvb || !pinfo || !tree) {
+
+//FIXME: it appears that tree can sometimes be NULL
+  if (!tvb || !pinfo /*|| !tree*/) {
     return -1;
   }
 
