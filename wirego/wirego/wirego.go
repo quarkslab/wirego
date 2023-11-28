@@ -13,6 +13,7 @@ package wirego
 
 import "C"
 import (
+	"fmt"
 	"math/rand"
 	"sync"
 	"unsafe"
@@ -31,7 +32,8 @@ type WiregoInterface interface {
 // Just a simple holder
 type Wirego struct {
 	listener     WiregoInterface
-	resultsCache map[int]*DissectResult
+	internalIds  map[int]bool
+	resultsCache map[C.int]*DissectResult
 	lock         sync.Mutex
 }
 
@@ -122,11 +124,26 @@ func wirego_setup() C.int {
 		return C.int(-1)
 	}
 	err := wg.listener.Setup()
+
 	if err != nil {
 		return C.int(-1)
 	}
 
-	wg.resultsCache = make(map[int]*DissectResult)
+	wg.resultsCache = make(map[C.int]*DissectResult)
+	wg.internalIds = make(map[int]bool)
+
+	//Checks fields for duplicates
+	fields := wg.listener.GetFields()
+
+	for _, f := range fields {
+		_, duplicate := wg.internalIds[int(f.InternalId)]
+		if duplicate {
+			fmt.Printf("Failed to add wirego fields, duplicated InternalId: %d\n", f.InternalId)
+			return C.int(-1)
+		}
+		wg.internalIds[int(f.InternalId)] = true
+	}
+
 	return C.int(0)
 }
 
@@ -229,6 +246,7 @@ func wirego_get_field(index int, internalId *C.int, name **C.char, filter **C.ch
 
 	f := fields[index]
 
+	wg.internalIds[int(f.InternalId)] = true
 	*internalId = C.int(f.InternalId)
 	*name = C.CString(f.Name)
 	*filter = C.CString(f.Filter)
@@ -253,12 +271,31 @@ func wirego_dissect_packet(src *C.char, dst *C.char, layer *C.char, packet *C.ch
 		return C.int(-1)
 	}
 
-	h := rand.Int()
+	h := C.int(rand.Int())
 	result := wg.listener.DissectPacket(C.GoString(src), C.GoString(dst), C.GoString(layer), C.GoBytes(unsafe.Pointer(packet), packetSize))
 
 	if result == nil {
 		return C.int(-1)
 	}
+
+	//Check results
+	for _, r := range result.Fields {
+		if C.int(r.Offset) >= packetSize {
+			fmt.Printf("Wirego plugin did return an invalid Offset : %d (packet size is %d bytes)\n", r.Offset, packetSize)
+			return C.int(-1)
+		}
+		if C.int(r.Offset+r.Length) >= packetSize {
+			fmt.Printf("Wirego plugin did return an invalid Length : %d (offset is %d and packet size is %d bytes)\n", r.Length, r.Offset, packetSize)
+			return C.int(-1)
+		}
+		_, found := wg.internalIds[int(r.InternalId)]
+		if !found {
+			fmt.Printf("Wirego plugin did return an invalid InternalId : %d\n", r.InternalId)
+			return C.int(-1)
+		}
+	}
+
+	//Add to cache
 	wg.lock.Lock()
 	defer wg.lock.Unlock()
 	wg.resultsCache[h] = result
@@ -266,7 +303,7 @@ func wirego_dissect_packet(src *C.char, dst *C.char, layer *C.char, packet *C.ch
 }
 
 //export wirego_result_get_protocol
-func wirego_result_get_protocol(h int) *C.char {
+func wirego_result_get_protocol(h C.int) *C.char {
 	if wg.listener == nil || wg.resultsCache == nil {
 		return nil
 	}
@@ -282,7 +319,7 @@ func wirego_result_get_protocol(h int) *C.char {
 }
 
 //export wirego_result_get_info
-func wirego_result_get_info(h int) *C.char {
+func wirego_result_get_info(h C.int) *C.char {
 	if wg.listener == nil || wg.resultsCache == nil {
 		return nil
 	}
@@ -298,7 +335,7 @@ func wirego_result_get_info(h int) *C.char {
 }
 
 //export wirego_result_get_fields_count
-func wirego_result_get_fields_count(h int) C.int {
+func wirego_result_get_fields_count(h C.int) C.int {
 	if wg.listener == nil || wg.resultsCache == nil {
 		return C.int(0)
 	}
@@ -314,7 +351,7 @@ func wirego_result_get_fields_count(h int) C.int {
 }
 
 //export wirego_result_get_field
-func wirego_result_get_field(h int, idx int, internalId *C.int, offset *C.int, length *C.int) {
+func wirego_result_get_field(h C.int, idx C.int, internalId *C.int, offset *C.int, length *C.int) {
 	*internalId = -1
 	*offset = -1
 	*length = -1
@@ -331,7 +368,7 @@ func wirego_result_get_field(h int, idx int, internalId *C.int, offset *C.int, l
 		return
 	}
 
-	if idx >= len(desc.Fields) {
+	if idx >= C.int(len(desc.Fields)) {
 		return
 	}
 	*internalId = C.int(desc.Fields[idx].InternalId)
@@ -340,7 +377,7 @@ func wirego_result_get_field(h int, idx int, internalId *C.int, offset *C.int, l
 }
 
 //export wirego_result_release
-func wirego_result_release(h int) {
+func wirego_result_release(h C.int) {
 	if wg.listener == nil || wg.resultsCache == nil {
 		return
 	}
