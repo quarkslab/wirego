@@ -157,7 +157,7 @@ func wirego_plugin_filter() *C.char {
 }
 
 //export wirego_detect_int
-func wirego_detect_int(i *C.int, idx C.int) *C.char {
+func wirego_detect_int(matchValue *C.int, idx C.int) *C.char {
 	if wg.listener == nil {
 		return nil
 	}
@@ -168,19 +168,19 @@ func wirego_detect_int(i *C.int, idx C.int) *C.char {
 	for _, f := range filters {
 		if f.FilterType == DissectorFilterTypeInt {
 			if cnt == int(idx) {
-				*i = C.int(f.ValueInt)
+				*matchValue = C.int(f.ValueInt)
 				return C.CString(f.Name)
 			}
 			cnt++
 		}
 	}
 
-	*i = 0
+	*matchValue = 0
 	return nil
 }
 
 //export wirego_detect_string
-func wirego_detect_string(value **C.char, idx C.int) *C.char {
+func wirego_detect_string(matchValue **C.char, idx C.int) *C.char {
 	if wg.listener == nil {
 		return nil
 	}
@@ -189,13 +189,16 @@ func wirego_detect_string(value **C.char, idx C.int) *C.char {
 	cnt := 0
 	for _, f := range filters {
 		if f.FilterType == DissectorFilterTypeString {
-			*value = C.CString(f.ValueString)
-			return C.CString(f.Name)
+			if cnt == int(idx) {
+
+				*matchValue = C.CString(f.ValueString)
+				return C.CString(f.Name)
+			}
+			cnt++
 		}
-		cnt++
 	}
 
-	*value = nil
+	*matchValue = nil
 	return nil
 }
 
