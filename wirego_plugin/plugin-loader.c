@@ -3,6 +3,7 @@
 #include "config.h"
 #include <stdio.h>
 #include <dlfcn.h>
+#include <wsutil/wslog.h>
 
 void * plugin_h = NULL;
 int (*wirego_setup_cb)(void) = NULL;
@@ -27,7 +28,7 @@ int wirego_is_plugin_loaded(void) {
 }
 
 int wirego_load_failure_helper(const char *str) {
-  printf("%s", str);
+  ws_warning("%s", str);
   dlclose(plugin_h);
   plugin_h = NULL;
   return -1;

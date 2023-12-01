@@ -21,6 +21,8 @@
 #include <epan/conversation.h>
 #include <epan/dissectors/packet-tcp.h>
 #include <wsutil/str_util.h>
+#include <wsutil/report_message.h>
+#include <wsutil/wslog.h>
 #include <arpa/inet.h>
 #include "plugin-loader.h"
 #include "packet-wirego.h"
@@ -30,8 +32,9 @@ void proto_reg_handoff_wirego(void);
 static int dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree _U_, void *data _U_);
 void register_preferences_menu(void);
 char * get_plugin_path(void);
+enum ftenum field_value_type_to_ws(int vtype);
+field_display_e field_display_type_to_ws(int dtype);
 
-//static dissector_handle_t wirego_handle;
 static int proto_wirego = -1;
 
 //WireGo's subtree
@@ -61,16 +64,18 @@ void proto_register_wirego(void) {
   char * golang_plugin_path = get_plugin_path();
 
   if ((golang_plugin_path == NULL) || (!strlen(golang_plugin_path))) {
-    printf("Wirego: $HOME/.wirego does not exist\n");
+    ws_warning("Wirego: $HOME/.wirego does not exist\n");
     return;
   }
 
   //Load the golang plugin
   if (wirego_load_plugin(golang_plugin_path) == -1) {
+    ws_warning("Wirego failed to load the golang plugin at %s", golang_plugin_path);
+    report_failure("Wirego failed to load the golang plugin at %s", golang_plugin_path);
     return;
   }
 
-  printf("Wirego version: %d.%d\n", wirego_version_major_cb(), wirego_version_minor_cb());
+  ws_warning("Wirego version: %d.%d\n", wirego_version_major_cb(), wirego_version_minor_cb());
 
   //Setup a list of "header fields" (hf)
   static hf_register_info *hfx;
@@ -96,54 +101,8 @@ void proto_register_wirego(void) {
     hfx[i].p_id = &(fields_mapping[i].wireshark_field_id);
     hfx[i].hfinfo.name = name;
     hfx[i].hfinfo.abbrev = filter;
-    switch (value_type) {
-      case 0x01:
-        hfx[i].hfinfo.type = FT_NONE;
-      break;
-      case 0x02:
-        hfx[i].hfinfo.type = FT_BOOLEAN;
-      break;
-      case 0x03:
-        hfx[i].hfinfo.type = FT_UINT8;
-      break;
-      case 0x04:
-        hfx[i].hfinfo.type = FT_INT8;
-      break;
-      case 0x05:
-        hfx[i].hfinfo.type = FT_UINT16;
-      break;
-      case 0x06:
-        hfx[i].hfinfo.type = FT_INT16;
-      break;
-      case 0x07:
-        hfx[i].hfinfo.type = FT_UINT32;
-      break;
-      case 0x08:
-        hfx[i].hfinfo.type = FT_INT32;
-      break;
-      case 0x09:
-        hfx[i].hfinfo.type = FT_STRINGZ;
-      break;
-      case 0x10:
-        hfx[i].hfinfo.type = FT_STRING;   
-      break;             
-      default:
-        hfx[i].hfinfo.type = FT_NONE;
-    };
-    switch (display) {
-      case 0x01:
-        hfx[i].hfinfo.display = BASE_NONE;
-      break;
-      case 0x02:
-        hfx[i].hfinfo.display = BASE_DEC;
-      break;
-      case 0x03:
-        hfx[i].hfinfo.display = BASE_HEX;
-      break;
-      default:
-        hfx[i].hfinfo.display = BASE_HEX;
-      break;
-    }
+    hfx[i].hfinfo.type = field_value_type_to_ws(value_type);
+    hfx[i].hfinfo.display = field_display_type_to_ws(display);
     hfx[i].hfinfo.strings = NULL;
     hfx[i].hfinfo.bitmask = 0x00;
     hfx[i].hfinfo.blurb = NULL;
@@ -165,7 +124,6 @@ void proto_register_wirego(void) {
   static char long_name[255];
   char * name = wirego_plugin_name_cb();
   
-  memset(long_name, 0x00, 255);
   snprintf(long_name, 255, "%s (Wirego v%d.%d)", name, wirego_version_major_cb(), wirego_version_minor_cb());
   proto_wirego = proto_register_protocol(long_name, name, wirego_plugin_filter_cb());
   //Don't release name and filter, since those are used by wireshark's internals
@@ -379,10 +337,9 @@ char * get_plugin_path(void) {
   char config_path[1024];
   static char plugin_path[1024];
   FILE * f;
-  memset(config_path, 0x00, 1024);
   memset(plugin_path, 0x00, 1024);
   char * home = getenv("HOME");
-  snprintf(config_path, 1023, "%s/.wirego", home);
+  snprintf(config_path, 1024, "%s/.wirego", home);
 
   f = fopen(config_path, "r");
   if (!f)
@@ -411,14 +368,13 @@ int save_plugin_path(const char * path) {
 void preferences_apply_cb(void) {
   if (strcmp(get_plugin_path(), pref_wirego_config_filename)) {
     save_plugin_path(pref_wirego_config_filename);
-    printf("Wirego> Updated plugin path to %s\n",pref_wirego_config_filename);
+    ws_warning("Wirego: Updated plugin path to %s\n",pref_wirego_config_filename);
   }
 }
 
 // Define the Wirego preferences panel
 void register_preferences_menu(void) {
   module_t *wirego_module;
-
   int proto_main_wirego = proto_register_protocol("Wirego", "Wirego", "wirego");
   wirego_module = prefs_register_protocol(proto_main_wirego, preferences_apply_cb);
 
@@ -434,4 +390,58 @@ void register_preferences_menu(void) {
 }
 
 
+enum ftenum field_value_type_to_ws(int vtype) {
+  switch (vtype) {
+    case 0x01:
+      return FT_NONE;
+    break;
+    case 0x02:
+      return FT_BOOLEAN;
+    break;
+    case 0x03:
+      return FT_UINT8;
+    break;
+    case 0x04:
+      return FT_INT8;
+    break;
+    case 0x05:
+      return FT_UINT16;
+    break;
+    case 0x06:
+      return FT_INT16;
+    break;
+    case 0x07:
+      return FT_UINT32;
+    break;
+    case 0x08:
+      return FT_INT32;
+    break;
+    case 0x09:
+      return FT_STRINGZ;
+    break;
+    case 0x10:
+      return FT_STRING;   
+    break;             
+    default:
+      return FT_NONE;
+  };
+  return FT_NONE;
+}
 
+field_display_e field_display_type_to_ws(int dtype) {
+  switch (dtype) {
+    case 0x01:
+      return BASE_NONE;
+    break;
+    case 0x02:
+      return BASE_DEC;
+    break;
+    case 0x03:
+      return BASE_HEX;
+    break;
+    default:
+      return BASE_NONE;
+    break;
+  }
+  return BASE_NONE;
+}
