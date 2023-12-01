@@ -212,6 +212,43 @@ void pinfo_to_proto_stack(packet_info *pinfo, char *src, char *dst) {
   }
 }
 
+char * compile_network_stack(packet_info *pinfo) {
+  unsigned int full_layer_size = 512;
+  char * full_layer = malloc(full_layer_size * sizeof(char));
+	wmem_list_frame_t *protos = wmem_list_head(pinfo->layers);
+	int	    proto_id;
+	const char *name;
+  full_layer[0] = 0x00;
+
+	while (protos != NULL)
+	{
+		proto_id = GPOINTER_TO_INT(wmem_list_frame_data(protos));
+		name = proto_get_protocol_filter_name(proto_id);
+
+    if (strlen(full_layer) + 1 + strlen(name) + 1 >= full_layer_size) {
+      full_layer_size += 512 + 1 + strlen(name);
+      full_layer = realloc(full_layer, full_layer_size);
+    }
+		strcat(full_layer, name);
+    strcat(full_layer, ".");
+		protos = wmem_list_frame_next(protos);
+	}
+  //Strip trailing '.'
+  if (strlen(full_layer))
+    full_layer[strlen(full_layer) - 1] = 0x00;
+
+  return full_layer;
+}
+
+int get_wireshark_field_id_from_wirego_field_id(int wirego_field_id) {
+  for (int idx = 0; idx < fields_count; idx++) {
+    if (fields_mapping[idx].wirego_field_id == wirego_field_id) {
+      return fields_mapping[idx].wireshark_field_id;
+    }
+  }
+  return -1;  
+}
+
 static int
 dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _U_)
 {
@@ -251,28 +288,7 @@ dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _
   pinfo_to_proto_stack(pinfo, src, dst);
 
 
-  //Compile network stack
-  unsigned int full_layer_size = 512;
-  char * full_layer = malloc(full_layer_size *sizeof(char));
-	wmem_list_frame_t *protos = wmem_list_head(pinfo->layers);
-	int	    proto_id;
-	const char *name;
-	while (protos != NULL)
-	{
-		proto_id = GPOINTER_TO_INT(wmem_list_frame_data(protos));
-		name = proto_get_protocol_filter_name(proto_id);
-
-    if (strlen(full_layer) + 1 + strlen(name) + 1 >= full_layer_size) {
-      full_layer_size += 512 + 1 + strlen(name);
-      full_layer = realloc(full_layer, full_layer_size);
-    }
-		strcat(full_layer, name);
-    strcat(full_layer, ".");
-		protos = wmem_list_frame_next(protos);
-	}
-  //Strip trailing '.'
-  if (strlen(full_layer))
-    full_layer[strlen(full_layer) - 1] = 0x00;
+  char * full_layer = compile_network_stack(pinfo);
 
   //Pass everything to the golang plugin
   golang_buff = (char*) malloc(pdu_len);
@@ -300,7 +316,6 @@ dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _
   //How many custom fields did the plugin return?
   int result_fields_count = wirego_result_get_fields_count_cb(handle);
   if (result_fields_count != 0) {
-    
     //Add a subtree on this packet
     proto_item *ti = proto_tree_add_item(tree, proto_wirego, tvb, 0, -1, ENC_BIG_ENDIAN);
     proto_tree *wirego_tree = proto_item_add_subtree(ti, ett_wirego);
@@ -312,12 +327,7 @@ dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _
       int offset;
       int length;
       wirego_result_get_field_cb(handle, i, &wirego_field_id, &offset, &length);
-      for (int j = 0; j < fields_count; j++) {
-        if (fields_mapping[j].wirego_field_id == wirego_field_id) {
-          wireshark_field_id = fields_mapping[j].wireshark_field_id;
-          break;
-        }
-      }
+      wireshark_field_id = get_wireshark_field_id_from_wirego_field_id(wirego_field_id);
       if (wireshark_field_id != -1) {
         proto_tree_add_item(wirego_tree, wireshark_field_id, tvb, offset, length, ENC_BIG_ENDIAN);
       }

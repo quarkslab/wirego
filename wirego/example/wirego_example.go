@@ -41,12 +41,12 @@ func (WiregoExample) Setup() error {
 
 // This function shall return the plugin name
 func (WiregoExample) GetName() string {
-	return "Wirego template"
+	return "Wirego Example"
 }
 
 // This function shall return the wireshark filter
 func (WiregoExample) GetFilter() string {
-	return "wiregotpl"
+	return "wgexample"
 }
 
 // GetFields returns the list of fields descriptor that we may eventually return
@@ -61,8 +61,8 @@ func (WiregoExample) GetFields() []wirego.WiresharkField {
 func (WiregoExample) GetDissectorFilter() []wirego.DissectorFilter {
 	var filters []wirego.DissectorFilter
 
-	filters = append(filters, wirego.DissectorFilter{FilterType: wirego.DissectorFilterTypeInt, Name: "udp.port", ValueInt: 17})
-	filters = append(filters, wirego.DissectorFilter{FilterType: wirego.DissectorFilterTypeInt, Name: "ip.addr", ValueString: "127.0.0.1"})
+	filters = append(filters, wirego.DissectorFilter{FilterType: wirego.DissectorFilterTypeInt, Name: "udp.port", ValueInt: 137})
+	filters = append(filters, wirego.DissectorFilter{FilterType: wirego.DissectorFilterTypeInt, Name: "dns.srv.instance", ValueString: "ff:ff:ff:ff:ff:ff"})
 
 	return filters
 }
@@ -72,13 +72,14 @@ func (WiregoExample) DissectPacket(src string, dst string, layer string, packet 
 	var res wirego.DissectResult
 
 	//This string will appear on the packet being parsed
-	res.Protocol = "Wirego sample"
+	res.Protocol = "Wirego example"
 	//This (optional) string will appear in the info section
 	res.Info = "wiresgo pkt info"
 
 	//Add a few fields and refer to them using our own "internalId"
 	res.Fields = append(res.Fields, wirego.DissectField{WiregoFieldId: FieldIdCustom1, Offset: 0, Length: 2})
 	res.Fields = append(res.Fields, wirego.DissectField{WiregoFieldId: FieldIdCustom2, Offset: 2, Length: 4})
+	fmt.Println(layer, " ", src, " to ", dst)
 	fmt.Println(hex.Dump(packet))
 	return &res
 }
