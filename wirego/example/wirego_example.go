@@ -33,8 +33,8 @@ func init() {
 func (WiregoExample) Setup() error {
 
 	//Setup our wireshark custom fields
-	fields = append(fields, wirego.WiresharkField{InternalId: FieldIdCustom1, Name: "Custom1", Filter: "wirego.custom01", ValueType: wirego.ValueTypeUInt8, DisplayMode: wirego.DisplayModeHexadecimal})
-	fields = append(fields, wirego.WiresharkField{InternalId: FieldIdCustom2, Name: "Custom2", Filter: "wirego.custom02", ValueType: wirego.ValueTypeUInt16, DisplayMode: wirego.DisplayModeDecimal})
+	fields = append(fields, wirego.WiresharkField{WiregoFieldId: FieldIdCustom1, Name: "Custom1", Filter: "wirego.custom01", ValueType: wirego.ValueTypeUInt8, DisplayMode: wirego.DisplayModeHexadecimal})
+	fields = append(fields, wirego.WiresharkField{WiregoFieldId: FieldIdCustom2, Name: "Custom2", Filter: "wirego.custom02", ValueType: wirego.ValueTypeUInt16, DisplayMode: wirego.DisplayModeDecimal})
 
 	return nil
 }
@@ -77,8 +77,8 @@ func (WiregoExample) DissectPacket(src string, dst string, layer string, packet 
 	res.Info = "wiresgo pkt info"
 
 	//Add a few fields and refer to them using our own "internalId"
-	res.Fields = append(res.Fields, wirego.DissectField{InternalId: FieldIdCustom1, Offset: 0, Length: 2})
-	res.Fields = append(res.Fields, wirego.DissectField{InternalId: FieldIdCustom2, Offset: 2, Length: 4})
+	res.Fields = append(res.Fields, wirego.DissectField{WiregoFieldId: FieldIdCustom1, Offset: 0, Length: 2})
+	res.Fields = append(res.Fields, wirego.DissectField{WiregoFieldId: FieldIdCustom2, Offset: 2, Length: 4})
 	fmt.Println(hex.Dump(packet))
 	return &res
 }

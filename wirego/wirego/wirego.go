@@ -31,10 +31,10 @@ type WiregoInterface interface {
 
 // Just a simple holder
 type Wirego struct {
-	listener     WiregoInterface
-	internalIds  map[int]bool
-	resultsCache map[C.int]*DissectResult
-	lock         sync.Mutex
+	listener       WiregoInterface
+	wiregoFieldIds map[int]bool
+	resultsCache   map[C.int]*DissectResult
+	lock           sync.Mutex
 }
 
 // We use a static "object" here
@@ -78,18 +78,18 @@ const (
 // A field descriptor, to be provided by the actual plugin
 type FieldId int
 type WiresharkField struct {
-	InternalId  FieldId
-	Name        string
-	Filter      string
-	ValueType   ValueType
-	DisplayMode DisplayMode
+	WiregoFieldId FieldId
+	Name          string
+	Filter        string
+	ValueType     ValueType
+	DisplayMode   DisplayMode
 }
 
 // A field, as returned by the dissector
 type DissectField struct {
-	InternalId FieldId
-	Offset     int
-	Length     int
+	WiregoFieldId FieldId
+	Offset        int
+	Length        int
 }
 
 // A dissector result is a protocol name, an info string and a list of extracted fields
@@ -130,18 +130,18 @@ func wirego_setup() C.int {
 	}
 
 	wg.resultsCache = make(map[C.int]*DissectResult)
-	wg.internalIds = make(map[int]bool)
+	wg.wiregoFieldIds = make(map[int]bool)
 
 	//Checks fields for duplicates
 	fields := wg.listener.GetFields()
 
 	for _, f := range fields {
-		_, duplicate := wg.internalIds[int(f.InternalId)]
+		_, duplicate := wg.wiregoFieldIds[int(f.WiregoFieldId)]
 		if duplicate {
-			fmt.Printf("Failed to add wirego fields, duplicated InternalId: %d\n", f.InternalId)
+			fmt.Printf("Failed to add wirego fields, duplicated WiregoFieldId: %d\n", f.WiregoFieldId)
 			return C.int(-1)
 		}
-		wg.internalIds[int(f.InternalId)] = true
+		wg.wiregoFieldIds[int(f.WiregoFieldId)] = true
 	}
 
 	return C.int(0)
@@ -228,13 +228,13 @@ func wirego_get_fields_count() C.int {
 }
 
 //export wirego_get_field
-func wirego_get_field(index int, internalId *C.int, name **C.char, filter **C.char, valueType *C.int, display *C.int) C.int {
+func wirego_get_field(index int, wiregoFieldId *C.int, name **C.char, filter **C.char, valueType *C.int, display *C.int) C.int {
 	if wg.listener == nil {
 		return C.int(-1)
 	}
 
 	fields := wg.listener.GetFields()
-	*internalId = -1
+	*wiregoFieldId = -1
 	*name = nil
 	*filter = nil
 	*valueType = -1
@@ -246,8 +246,8 @@ func wirego_get_field(index int, internalId *C.int, name **C.char, filter **C.ch
 
 	f := fields[index]
 
-	wg.internalIds[int(f.InternalId)] = true
-	*internalId = C.int(f.InternalId)
+	wg.wiregoFieldIds[int(f.WiregoFieldId)] = true
+	*wiregoFieldId = C.int(f.WiregoFieldId)
 	*name = C.CString(f.Name)
 	*filter = C.CString(f.Filter)
 	*valueType = C.int(f.ValueType)
@@ -288,9 +288,9 @@ func wirego_dissect_packet(src *C.char, dst *C.char, layer *C.char, packet *C.ch
 			fmt.Printf("Wirego plugin did return an invalid Length : %d (offset is %d and packet size is %d bytes)\n", r.Length, r.Offset, packetSize)
 			return C.int(-1)
 		}
-		_, found := wg.internalIds[int(r.InternalId)]
+		_, found := wg.wiregoFieldIds[int(r.WiregoFieldId)]
 		if !found {
-			fmt.Printf("Wirego plugin did return an invalid InternalId : %d\n", r.InternalId)
+			fmt.Printf("Wirego plugin did return an invalid WiregoFieldId : %d\n", r.WiregoFieldId)
 			return C.int(-1)
 		}
 	}
@@ -351,8 +351,8 @@ func wirego_result_get_fields_count(h C.int) C.int {
 }
 
 //export wirego_result_get_field
-func wirego_result_get_field(h C.int, idx C.int, internalId *C.int, offset *C.int, length *C.int) {
-	*internalId = -1
+func wirego_result_get_field(h C.int, idx C.int, wiregoFieldId *C.int, offset *C.int, length *C.int) {
+	*wiregoFieldId = -1
 	*offset = -1
 	*length = -1
 
@@ -371,7 +371,7 @@ func wirego_result_get_field(h C.int, idx C.int, internalId *C.int, offset *C.in
 	if idx >= C.int(len(desc.Fields)) {
 		return
 	}
-	*internalId = C.int(desc.Fields[idx].InternalId)
+	*wiregoFieldId = C.int(desc.Fields[idx].WiregoFieldId)
 	*offset = C.int(desc.Fields[idx].Offset)
 	*length = C.int(desc.Fields[idx].Length)
 }

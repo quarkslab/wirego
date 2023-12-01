@@ -114,4 +114,8 @@ Here's a partial list:
 
 ## Additional notes
 
-"Yes", being able to set the plugin path using the preferences page for Wirego would be nice. Sadly, the preferences for a plugin are loaded once the plugin is fully loaded. Hence, this would be too late to read which plugin should actually be loaded.
+Wirego preferences uses a dedicated config file to locate the golang plugin path.
+Here's why:
+
+  - we need to setup erything (plugin name, fields..) during the proto_register_wirego call
+  - preferences values are only loaded during the proto_reg_handoff_wirego call, which is too late for us

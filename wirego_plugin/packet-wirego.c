@@ -37,12 +37,15 @@ static int proto_wirego = -1;
 //WireGo's subtree
 static int ett_wirego  = -1;
 
+//Plugin path
+static const gchar* pref_wirego_config_filename = "";
+
 
 
 //Map our go plugin internal field identifiers to the ones provided by Wireshark
 typedef struct {
-  int internal_id;
-  int external_id;
+  int wirego_field_id;
+  int wireshark_field_id;
 } field_id_to_plugin_field_id_t;
 
 int fields_count = -1;
@@ -78,19 +81,19 @@ void proto_register_wirego(void) {
   fields_mapping = (field_id_to_plugin_field_id_t *) malloc(fields_count * sizeof(field_id_to_plugin_field_id_t));
 
   for (int i = 0; i < fields_count; i++) {
-    int internal_id;
+    int wirego_field_id;
     char *name;
     char *filter;
     int value_type;
     int display;
 
     //Fetch field
-    wirego_get_field_cb(i, &internal_id, &name, &filter, &value_type, &display);
+    wirego_get_field_cb(i, &wirego_field_id, &name, &filter, &value_type, &display);
 
     //Convert field to wireshark
-    fields_mapping[i].internal_id = internal_id;
-    fields_mapping[i].external_id = -1;
-    hfx[i].p_id = &(fields_mapping[i].external_id);
+    fields_mapping[i].wirego_field_id = wirego_field_id;
+    fields_mapping[i].wireshark_field_id = -1;
+    hfx[i].p_id = &(fields_mapping[i].wireshark_field_id);
     hfx[i].hfinfo.name = name;
     hfx[i].hfinfo.abbrev = filter;
     switch (value_type) {
@@ -177,6 +180,8 @@ void proto_register_wirego(void) {
 void proto_reg_handoff_wirego(void) {
   static dissector_handle_t wirego_handle;
   char *filter_name;
+
+  printf("proto_reg_handoff_wirego PATH: %s\n", pref_wirego_config_filename);
 
   if (!wirego_is_plugin_loaded()) 
     return;
@@ -347,19 +352,19 @@ dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _
 
     //Process all custom fields
     for (int i = 0; i < result_fields_count; i++) {
-      int external_id = -1;
-      int internal_id;
+      int wireshark_field_id = -1;
+      int wirego_field_id;
       int offset;
       int length;
-      wirego_result_get_field_cb(handle, i, &internal_id, &offset, &length);
+      wirego_result_get_field_cb(handle, i, &wirego_field_id, &offset, &length);
       for (int j = 0; j < fields_count; j++) {
-        if (fields_mapping[j].internal_id == internal_id) {
-          external_id = fields_mapping[j].external_id;
+        if (fields_mapping[j].wirego_field_id == wirego_field_id) {
+          wireshark_field_id = fields_mapping[j].wireshark_field_id;
           break;
         }
       }
-      if (external_id != -1) {
-        proto_tree_add_item(wirego_tree, external_id, tvb, offset, length, ENC_BIG_ENDIAN);
+      if (wireshark_field_id != -1) {
+        proto_tree_add_item(wirego_tree, wireshark_field_id, tvb, offset, length, ENC_BIG_ENDIAN);
       }
     }
   }
@@ -390,29 +395,41 @@ char * get_plugin_path(void) {
   return plugin_path;
 }
 
+int save_plugin_path(const char * path) {
+  FILE * f;
+  char config_path[1024];
+  char * home = getenv("HOME");
+  snprintf(config_path, 1023, "%s/.wirego", home);
+  f = fopen(config_path, "w");
+  if (!f)
+    return -1;
+  fwrite(path, 1, strlen(path), f);
+  fclose(f);
+  return 0;
+}
+
+void preferences_apply_cb(void) {
+  if (strcmp(get_plugin_path(), pref_wirego_config_filename)) {
+    save_plugin_path(pref_wirego_config_filename);
+    printf("Wirego> Updated plugin path to %s\n",pref_wirego_config_filename);
+  }
+}
+
+// Define the Wirego preferences panel
 void register_preferences_menu(void) {
   module_t *wirego_module;
-  static char current_config[1024];
-  char * current_plugin_path = NULL;
 
   int proto_main_wirego = proto_register_protocol("Wirego", "Wirego", "wirego");
+  wirego_module = prefs_register_protocol(proto_main_wirego, preferences_apply_cb);
 
-  wirego_module = prefs_register_protocol(proto_main_wirego, NULL);
-  current_plugin_path = get_plugin_path();
-
-  memset(current_config, 0x00, 1024);
-  if (strlen(current_plugin_path) != 0)
-    snprintf(current_config, 1023, "Current configuration is: %s", current_plugin_path);
-  else    
-    snprintf(current_config, 1023, "Current configuration is not set)");
+	prefs_register_filename_preference(wirego_module, "pluginpath",
+					   "Wirego plugin path",
+					   "The fullpath to the wirego plugin, written in Go",
+					   &pref_wirego_config_filename, FALSE);
 
   prefs_register_static_text_preference(wirego_module, "helper",
-        "Edit $HOME/.wirego to set the path to the golang plugin",
-        "Wirego configuraiton file contains the fullpath to the wirego golang plugin");
-
-  prefs_register_static_text_preference(wirego_module, "path",
-        current_config,
-        "Wirego configuraiton file contains the fullpath to the wirego golang plugin");
+        "You will need to restart Wireshark after changing the plugin path.",
+        "");
 
 }
 
