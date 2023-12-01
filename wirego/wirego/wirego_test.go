@@ -386,6 +386,8 @@ func TestDissectPacket(t *testing.T) {
 			t.Fatal("wirego_result_get_field has proper Length for result" + fmt.Sprintf(" %d", i))
 		}
 	}
+
+	wirego_result_release(handle)
 }
 
 func TestDissectPacketAccessorFailures(t *testing.T) {
@@ -423,6 +425,7 @@ func TestDissectPacketAccessorFailures(t *testing.T) {
 		t.Fatal("wirego_result_get_field fails when called with invalid handle")
 	}
 
+	wirego_result_release(invalidHandle)
 }
 
 func TestDissectPacketResultsInvalidOffset(t *testing.T) {
@@ -524,8 +527,61 @@ func TestDissectPacketResultsInvalidInternalId(t *testing.T) {
 	layer = 0x00
 
 	handle := wirego_dissect_packet(&src, &dst, &layer, &packet, packetSize)
-
 	if handle != -1 {
 		t.Fatal("wirego_dissect_packet fails if returned field uses invalid internalId")
+	}
+}
+
+func TestUnRegistered(t *testing.T) {
+	Register(nil)
+
+	if wirego_setup() != -1 {
+		t.Fatal("wirego_setup fails if no listener is registered.")
+	}
+	if wirego_plugin_name() != nil {
+		t.Fatal("wirego_plugin_name fails if no listener is registered.")
+	}
+	if wirego_plugin_filter() != nil {
+		t.Fatal("wirego_plugin_filter fails if no listener is registered.")
+	}
+
+	var matchValueInt _Ctype_int
+	var matchValueStr *_Ctype_char
+	if wirego_detect_int(&matchValueInt, 0) != nil {
+		t.Fatal("wirego_detect_int fails if no listener is registered.")
+	}
+	if wirego_detect_string(&matchValueStr, 0) != nil {
+		t.Fatal("wirego_detect_string fails if no listener is registered.")
+	}
+
+	if wirego_get_fields_count() != 0 {
+		t.Fatal("wirego_get_fields_count fails if no listener is registered.")
+	}
+
+	var internalId _Ctype_int
+	var name *_Ctype_char
+	var filter *_Ctype_char
+	var valueType _Ctype_int
+	var display _Ctype_int
+
+	if wirego_get_field(0, &internalId, &name, &filter, &valueType, &display) != -1 {
+		t.Fatal("wirego_get_field fails if no listener is registered.")
+	}
+
+	var src _Ctype_char
+	var dst _Ctype_char
+	var layer _Ctype_char
+	var packet _Ctype_char
+	if wirego_dissect_packet(&src, &dst, &layer, &packet, 0) != -1 {
+		t.Fatal("wirego_dissect_packet fails if no listener is registered.")
+	}
+	if wirego_result_get_protocol(0) != nil {
+		t.Fatal("wirego_result_get_protocol fails if no listener is registered.")
+	}
+	if wirego_result_get_info(0) != nil {
+		t.Fatal("wirego_result_get_info fails if no listener is registered.")
+	}
+	if wirego_result_get_fields_count(0) != 0 {
+		t.Fatal("wirego_result_get_fields_count fails if no listener is registered.")
 	}
 }
