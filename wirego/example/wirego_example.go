@@ -62,7 +62,7 @@ func (WiregoExample) GetDissectorFilter() []wirego.DissectorFilter {
 	var filters []wirego.DissectorFilter
 
 	filters = append(filters, wirego.DissectorFilter{FilterType: wirego.DissectorFilterTypeInt, Name: "udp.port", ValueInt: 137})
-	filters = append(filters, wirego.DissectorFilter{FilterType: wirego.DissectorFilterTypeInt, Name: "dns.srv.instance", ValueString: "ff:ff:ff:ff:ff:ff"})
+	filters = append(filters, wirego.DissectorFilter{FilterType: wirego.DissectorFilterTypeString, Name: "bluetooth.uuid", ValueString: "1234"})
 
 	return filters
 }
