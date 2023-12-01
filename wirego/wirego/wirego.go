@@ -14,7 +14,6 @@ package wirego
 import "C"
 import (
 	"fmt"
-	"math/rand"
 	"sync"
 	"unsafe"
 )
@@ -262,7 +261,7 @@ func wirego_get_field(index int, wiregoFieldId *C.int, name **C.char, filter **C
 	let's use some dummy accessors and a result cache.
 */
 //export wirego_dissect_packet
-func wirego_dissect_packet(src *C.char, dst *C.char, layer *C.char, packet *C.char, packetSize C.int) C.int {
+func wirego_dissect_packet(packetNumber C.int, src *C.char, dst *C.char, layer *C.char, packet *C.char, packetSize C.int) C.int {
 	if wg.listener == nil || wg.resultsCache == nil {
 		return C.int(-1)
 	}
@@ -271,7 +270,14 @@ func wirego_dissect_packet(src *C.char, dst *C.char, layer *C.char, packet *C.ch
 		return C.int(-1)
 	}
 
-	h := C.int(rand.Int())
+	wg.lock.Lock()
+	_, found := wg.resultsCache[packetNumber]
+	wg.lock.Unlock()
+
+	if found {
+		return packetNumber
+	}
+
 	result := wg.listener.DissectPacket(C.GoString(src), C.GoString(dst), C.GoString(layer), C.GoBytes(unsafe.Pointer(packet), packetSize))
 
 	if result == nil {
@@ -298,8 +304,8 @@ func wirego_dissect_packet(src *C.char, dst *C.char, layer *C.char, packet *C.ch
 	//Add to cache
 	wg.lock.Lock()
 	defer wg.lock.Unlock()
-	wg.resultsCache[h] = result
-	return C.int(h)
+	wg.resultsCache[packetNumber] = result
+	return packetNumber
 }
 
 //export wirego_result_get_protocol
@@ -374,15 +380,4 @@ func wirego_result_get_field(h C.int, idx C.int, wiregoFieldId *C.int, offset *C
 	*wiregoFieldId = C.int(desc.Fields[idx].WiregoFieldId)
 	*offset = C.int(desc.Fields[idx].Offset)
 	*length = C.int(desc.Fields[idx].Length)
-}
-
-//export wirego_result_release
-func wirego_result_release(h C.int) {
-	if wg.listener == nil || wg.resultsCache == nil {
-		return
-	}
-
-	wg.lock.Lock()
-	defer wg.lock.Unlock()
-	delete(wg.resultsCache, h)
 }

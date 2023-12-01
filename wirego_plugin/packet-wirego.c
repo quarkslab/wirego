@@ -139,8 +139,6 @@ void proto_reg_handoff_wirego(void) {
   static dissector_handle_t wirego_handle;
   char *filter_name;
 
-  printf("proto_reg_handoff_wirego PATH: %s\n", pref_wirego_config_filename);
-
   if (!wirego_is_plugin_loaded()) 
     return;
     
@@ -170,6 +168,47 @@ void proto_reg_handoff_wirego(void) {
     dissector_add_string(filter_name, filter_value_str, wirego_handle);
     free(filter_name);
     idx++;
+  }
+}
+
+void pinfo_to_proto_stack(packet_info *pinfo, char *src, char *dst) {
+  //Very suboptimal, FIXME.
+
+  src[0] = 0x00;
+  dst[0] = 0x00;
+  switch (pinfo->net_src.type) {
+    case AT_IPv4:
+      inet_ntop(AF_INET, pinfo->net_src.data, src, 255);
+    break;
+    case AT_IPv6:
+      inet_ntop(AF_INET6, pinfo->net_src.data, src, 255);
+    break;
+    case AT_ETHER:
+      sprintf(src, "%02x:%02x:%02x:%02x:%02x:%02x", 
+        ((const char*)pinfo->net_src.data)[0]&0xFF, 
+        ((const char*)pinfo->net_src.data)[1]&0xFF,
+        ((const char*)pinfo->net_src.data)[2]&0xFF,
+        ((const char*)pinfo->net_src.data)[3]&0xFF,
+        ((const char*)pinfo->net_src.data)[4]&0xFF,
+        ((const char*)pinfo->net_src.data)[5]&0xFF);
+    break;
+  }
+  switch (pinfo->net_dst.type) {
+    case AT_IPv4:
+      inet_ntop(AF_INET, pinfo->net_dst.data, dst, 255);
+      break;
+    case AT_IPv6:
+      inet_ntop(AF_INET6, pinfo->net_dst.data, dst, 255);
+    break;
+    case AT_ETHER:
+      sprintf(dst, "%02x:%02x:%02x:%02x:%02x:%02x",
+      ((const char*)pinfo->net_dst.data)[0]&0xFF, 
+      ((const char*)pinfo->net_dst.data)[1]&0xFF,
+      ((const char*)pinfo->net_dst.data)[2]&0xFF,
+      ((const char*)pinfo->net_dst.data)[3]&0xFF,
+      ((const char*)pinfo->net_dst.data)[4]&0xFF,
+      ((const char*)pinfo->net_dst.data)[5]&0xFF);
+    break;
   }
 }
 
@@ -203,57 +242,14 @@ dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _
 
   if (pdu_len <= 0)
     return 0;
-
-/*
-
-  printf("Type: %d ", pinfo->net_src.type);
-  if (pinfo->net_src.len == 4) {
-    unsigned int addr = *((unsigned int*)pinfo->net_src.data);
-    
-    printf("%d.%d.%d.%d", addr &0xFF, (addr>>8)&0xFF, (addr>>16)&0xFF, (addr>>24)&0xFF);
-  }
-  printf("\n");
-*/
-  
-  //Very suboptimal, FIXME.
-  char * golang_buff = (char*) malloc(pdu_len);
+ 
+  char * golang_buff = NULL;
   char src[255];
   char dst[255];
   src[0] = 0x00;
   dst[0] = 0x00;
+  pinfo_to_proto_stack(pinfo, src, dst);
 
-  switch (pinfo->net_src.type) {
-    case AT_IPv4:
-      inet_ntop(AF_INET, pinfo->net_src.data, src, 255);
-      break;
-    case AT_IPv6:
-      inet_ntop(AF_INET6, pinfo->net_src.data, src, 255);
-      break;
-    case AT_ETHER:
-    sprintf(src, "%02x:%02x:%02x:%02x:%02x:%02x", ((const char*)pinfo->net_src.data)[0]&0xFF, 
-    ((const char*)pinfo->net_src.data)[1]&0xFF,
-    ((const char*)pinfo->net_src.data)[2]&0xFF,
-    ((const char*)pinfo->net_src.data)[3]&0xFF,
-    ((const char*)pinfo->net_src.data)[4]&0xFF,
-    ((const char*)pinfo->net_src.data)[5]&0xFF);
-    break;
-  }
-  switch (pinfo->net_dst.type) {
-    case AT_IPv4:
-      inet_ntop(AF_INET, pinfo->net_dst.data, dst, 255);
-      break;
-    case AT_IPv6:
-      inet_ntop(AF_INET6, pinfo->net_dst.data, dst, 255);
-      break;
-          case AT_ETHER:
-      sprintf(dst, "%02x:%02x:%02x:%02x:%02x:%02x", ((const char*)pinfo->net_dst.data)[0]&0xFF, 
-      ((const char*)pinfo->net_dst.data)[1]&0xFF,
-      ((const char*)pinfo->net_dst.data)[2]&0xFF,
-      ((const char*)pinfo->net_dst.data)[3]&0xFF,
-      ((const char*)pinfo->net_dst.data)[4]&0xFF,
-      ((const char*)pinfo->net_dst.data)[5]&0xFF);
-    break;
-  }
 
   //Compile network stack
   unsigned int full_layer_size = 512;
@@ -279,8 +275,9 @@ dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _
     full_layer[strlen(full_layer) - 1] = 0x00;
 
   //Pass everything to the golang plugin
+  golang_buff = (char*) malloc(pdu_len);
   tvb_memcpy(tvb, golang_buff, 0, pdu_len);
-  int handle = wirego_dissect_packet_cb(src, dst, full_layer, golang_buff, pdu_len);
+  int handle = wirego_dissect_packet_cb(pinfo->num, src, dst, full_layer, golang_buff, pdu_len);
   free(golang_buff);
   golang_buff = NULL;
   free(full_layer);
@@ -326,7 +323,6 @@ dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _
       }
     }
   }
-  wirego_result_release_cb(handle);
 
   return tvb_captured_length(tvb);
 }
