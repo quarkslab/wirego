@@ -39,12 +39,6 @@ type Wirego struct {
 // We use a static "object" here
 var wg Wirego
 
-// Wirego version, for API compability issues management
-const (
-	WIREGO_VERSION_MAJOR = 1
-	WIREGO_VERSION_MINOR = 0
-)
-
 // Fields types
 type ValueType int
 
