@@ -53,6 +53,12 @@ func init() {
 Now we just need to implement the WiregoInterface interface:
 
 ```golang
+// Define here enum identifiers, used to refer to a specific field
+const (
+	FieldIdCustom1 wirego.FieldId = 1
+	FieldIdCustom2 wirego.FieldId = 2
+)
+
 // This function shall return the plugin name
 func (WiregoExample) GetName() string {
 	return "Wirego Example"
@@ -66,6 +72,14 @@ func (WiregoExample) GetFilter() string {
 // GetFields returns the list of fields descriptor that we may eventually return
 // when dissecting a packet payload
 func (WiregoExample) GetFields() []wirego.WiresharkField {
+  var fields []wirego.WiresharkField
+	//First field is named "Custom1", I will refer it later using enum value "FieldIdCustom1"
+  //I want to be able to filter matching values in Wireshark using the filter "wirego.custom01"
+  //and it's an 8bits value, that should be displayed in hexadecimal
+	fields = append(fields, wirego.WiresharkField{WiregoFieldId: FieldIdCustom1, Name: "Custom1", Filter: "wirego.custom01", ValueType: wirego.ValueTypeUInt8, DisplayMode: wirego.DisplayModeHexadecimal})
+	fields = append(fields, wirego.WiresharkField{WiregoFieldId: FieldIdCustom2, Name: "Custom2", Filter: "wirego.custom02", ValueType: wirego.ValueTypeUInt16, DisplayMode: wirego.DisplayModeDecimal})
+
+
 	return fields
 }
 
