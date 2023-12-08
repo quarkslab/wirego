@@ -45,3 +45,9 @@ There are three reasons for this:
 The Wirego dissect call will return an "handler" which can be used later to access all subtelties of the result using dedicated accessors. Again, we don't want Wirego to return complex data structures from the go environment to the Wireshark one.
 
 __Note:__ Converting data structures from Wireshark to simpler ones, passing them to Wirego, then converting back has a cost in terms of memory and CPU. At this point of the project, this seems to be a safer method.
+
+
+## Garbage collection
+
+https://pkg.go.dev/cmd/cgo#hdr-Passing_pointers
+
