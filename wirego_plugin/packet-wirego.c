@@ -194,8 +194,7 @@ dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _
   */
 
 
-//FIXME: it appears that tree can sometimes be NULL
-  if (!tvb || !pinfo /*|| !tree*/) {
+  if (!tvb || !pinfo) {
     return -1;
   }
 
@@ -237,30 +236,37 @@ dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _
   //Fill "info" column
   col_set_str(pinfo->cinfo, COL_INFO, wirego_result_get_info_cb(handle));
 
-  //How many custom fields did the plugin return?
-  int result_fields_count = wirego_result_get_fields_count_cb(handle);
-  if (result_fields_count != 0) {
-    //Add a subtree on this packet
-    proto_item *ti = proto_tree_add_item(tree, proto_wirego, tvb, 0, -1, ENC_BIG_ENDIAN);
-    proto_tree *wirego_tree = proto_item_add_subtree(ti, ett_wirego);
+  //During the first pass, tree can eventually be NULL
+  //Wireshark does not ask the plugin to fill detailed structures
+  if (tree) {
+    //How many custom fields did the plugin return?
+    int result_fields_count = wirego_result_get_fields_count_cb(handle);
+    if (result_fields_count != 0) {
+      
+      //Add a subtree on this packet
+      proto_item *ti = proto_tree_add_item(tree, proto_wirego, tvb, 0, -1, ENC_BIG_ENDIAN);
+      if (!ti) goto DONE;
+      proto_tree *wirego_tree = proto_item_add_subtree(ti, ett_wirego);
+      if (!wirego_tree)  goto DONE;
 
-    //Process all custom fields
-    for (int i = 0; i < result_fields_count; i++) {
-      int wireshark_field_id = -1;
-      int wirego_field_id;
-      int offset;
-      int length;
-      //Ask plugin for result
-      wirego_result_get_field_cb(handle, i, &wirego_field_id, &offset, &length);
-      //Convert plugin field id to wireshark id
-      wireshark_field_id = get_wireshark_field_id_from_wirego_field_id(wirego_field_id);
-      //Add tree entry
-      if (wireshark_field_id != -1) {
-        proto_tree_add_item(wirego_tree, wireshark_field_id, tvb, offset, length, ENC_BIG_ENDIAN);
-      }
+      //Process all custom fields
+      for (int i = 0; i < result_fields_count; i++) {
+        int wireshark_field_id = -1;
+        int wirego_field_id;
+        int offset;
+        int length;
+        //Ask plugin for result
+        wirego_result_get_field_cb(handle, i, &wirego_field_id, &offset, &length);
+        //Convert plugin field id to wireshark id
+        wireshark_field_id = get_wireshark_field_id_from_wirego_field_id(wirego_field_id);
+        //Add tree entry
+        if (wireshark_field_id != -1) {
+          proto_tree_add_item(wirego_tree, wireshark_field_id, tvb, offset, length, ENC_BIG_ENDIAN);
+        }
+      }    
     }
   }
-
+DONE:
   wirego_result_release_cb(handle);
   return tvb_captured_length(tvb);
 }
