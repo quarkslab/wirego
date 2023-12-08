@@ -69,13 +69,13 @@ func (WiregoExample) GetDissectorFilter() []wirego.DissectorFilter {
 }
 
 // DissectPacket provides the packet payload to be parsed.
-func (WiregoExample) DissectPacket(src string, dst string, layer string, packet []byte) *wirego.DissectResult {
+func (WiregoExample) DissectPacket(packetNumber int, src string, dst string, layer string, packet []byte) *wirego.DissectResult {
 	var res wirego.DissectResult
 
 	//This string will appear on the packet being parsed
 	res.Protocol = "Protocol name example"
 	//This (optional) string will appear in the info section
-	res.Info = "Info example"
+	res.Info = fmt.Sprintf("Info example pkt %d", packetNumber)
 
 	//Add a few fields and refer to them using our own "internalId"
 	res.Fields = append(res.Fields, wirego.DissectField{WiregoFieldId: FieldIdCustom1, Offset: 0, Length: 2})

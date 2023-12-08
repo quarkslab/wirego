@@ -25,7 +25,7 @@ type WiregoInterface interface {
 	Setup() error
 	GetFields() []WiresharkField
 	GetDissectorFilter() []DissectorFilter
-	DissectPacket(src string, dst string, stack string, packet []byte) *DissectResult
+	DissectPacket(packetNumber int, src string, dst string, stack string, packet []byte) *DissectResult
 }
 
 // Just a simple holder
@@ -282,7 +282,7 @@ func wirego_dissect_packet(packetNumber C.int, src *C.char, dst *C.char, layer *
 		return packetNumber
 	}
 
-	result := wg.listener.DissectPacket(C.GoString(src), C.GoString(dst), C.GoString(layer), C.GoBytes(unsafe.Pointer(packet), packetSize))
+	result := wg.listener.DissectPacket(int(packetNumber), C.GoString(src), C.GoString(dst), C.GoString(layer), C.GoBytes(unsafe.Pointer(packet), packetSize))
 
 	if result == nil {
 		return C.int(-1)
