@@ -102,8 +102,8 @@ void proto_register_wirego(void) {
     fields_mapping[i].wirego_field_id = wirego_field_id;
     fields_mapping[i].wireshark_field_id = -1;
     hfx[i].p_id = &(fields_mapping[i].wireshark_field_id);
-    hfx[i].hfinfo.name = name;
-    hfx[i].hfinfo.abbrev = filter;
+    hfx[i].hfinfo.name = strdup(name);
+    hfx[i].hfinfo.abbrev = strdup(filter);
     hfx[i].hfinfo.type = field_value_type_to_ws(value_type);
     hfx[i].hfinfo.display = field_display_type_to_ws(display);
     hfx[i].hfinfo.strings = NULL;
@@ -128,7 +128,7 @@ void proto_register_wirego(void) {
   char * name = wirego_plugin_name_cb();
   
   snprintf(long_name, 255, "%s (Wirego v%d.%d)", name, wirego_version_major_cb(), wirego_version_minor_cb());
-  proto_wirego = proto_register_protocol(long_name, name, wirego_plugin_filter_cb());
+  proto_wirego = proto_register_protocol(long_name, strdup(name), strdup(wirego_plugin_filter_cb()));
   //Don't release name and filter, since those are used by wireshark's internals
   //Register our custom fields
   proto_register_field_array(proto_wirego, hfx, fields_count);
@@ -155,7 +155,7 @@ void proto_reg_handoff_wirego(void) {
 
     if (filter_name == NULL)
       break;
-    dissector_add_uint(filter_name, filter_value, wirego_handle);
+    dissector_add_uint(strdup(filter_name), filter_value, wirego_handle);
     free(filter_name);
     idx++;
   }
@@ -167,7 +167,7 @@ void proto_reg_handoff_wirego(void) {
     filter_name = wirego_detect_string_cb(&filter_value_str, idx);
     if (filter_name == NULL)
       break;
-    dissector_add_string(filter_name, filter_value_str, wirego_handle);
+    dissector_add_string(strdup(filter_name), strdup(filter_value_str), wirego_handle);
     free(filter_name);
     idx++;
   }

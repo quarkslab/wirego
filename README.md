@@ -117,14 +117,14 @@ func (WiregoExample) DissectPacket(packetNumber int, src string, dst string, lay
 
 The last step is to build your plugin using:
 
-      go build -o mywonderfullplugin.so -buildmode=c-shared
+      go build -o wirego_example.so -buildmode=c-shared
 
 And... that's all!
 
 Run Wireshark, to go Preferences -> Wirego and point to your freshly built golang plugin.
 
 
-A fully working example can be found [Here](./wirego/example/wirego_example.go)
+A fully working example can be found [here](./wirego/example/wirego_example.go)
 
 ## Building the Wirego plugin
 

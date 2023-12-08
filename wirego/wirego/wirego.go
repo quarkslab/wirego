@@ -111,6 +111,7 @@ var resultatsCacheEnable bool = true
 // Register registers a listener implementing the WiregoInterface interface
 func Register(listener WiregoInterface) error {
 	wg.listener = listener
+
 	return nil
 }
 
@@ -223,6 +224,7 @@ func wirego_detect_string(matchValue **C.char, idx C.int) *C.char {
 
 //export wirego_get_fields_count
 func wirego_get_fields_count() C.int {
+
 	if wg.listener == nil {
 		return C.int(0)
 	}
@@ -278,7 +280,6 @@ func wirego_dissect_packet(packetNumber C.int, src *C.char, dst *C.char, layer *
 	wg.lock.Unlock()
 
 	if found {
-		fmt.Println("Reusing cache entry.")
 		return packetNumber
 	}
 
