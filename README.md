@@ -25,7 +25,7 @@ In order to use Wirego, you will need to build the Wirego plugin for Wireshark (
 
 Your plugin in Go will need to import the "wirego" package and register to wirego during init():
 
-~~~~
+```golang
 package main
 
 import (
@@ -48,11 +48,11 @@ func init() {
 	//Register to the wirego package
 	wirego.Register(wge)
 }
-~~~~
+```
 
 Now we just need to implement the WiregoInterface interface:
 
-~~~~
+```golang
 // This function shall return the plugin name
 func (WiregoExample) GetName() string {
 	return "Wirego Example"
@@ -95,7 +95,7 @@ func (WiregoExample) DissectPacket(packetNumber int, src string, dst string, lay
 	res.Fields = append(res.Fields, wirego.DissectField{WiregoFieldId: FieldIdCustom2, Offset: 2, Length: 4})
 	return &res
 }
-~~~~
+```
 
 The last step is to build your plugin using:
 
