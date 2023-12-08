@@ -29,9 +29,9 @@ Your plugin in Go will need to import the "wirego" package and register to wireg
 package main
 
 import (
-	"encoding/hex"
-	"fmt"
-	"wirego/wirego"
+  "encoding/hex"
+  "fmt"
+  "wirego/wirego"
 )
 
 // Since we implement the wirego.WiregoInterface we need some structure to hold it.
@@ -43,10 +43,10 @@ func main() {}
 
 // Called at golang environment initialization (you should probably not touch this)
 func init() {
-	var wge WiregoExample
+  var wge WiregoExample
 
-	//Register to the wirego package
-	wirego.Register(wge)
+  //Register to the wirego package
+  wirego.Register(wge)
 }
 ```
 
@@ -55,65 +55,69 @@ Now we just need to implement the WiregoInterface interface:
 ```golang
 // Define here enum identifiers, used to refer to a specific field
 const (
-	FieldIdCustom1 wirego.FieldId = 1
-	FieldIdCustom2 wirego.FieldId = 2
+  FieldIdCustom1 wirego.FieldId = 1
+  FieldIdCustom2 wirego.FieldId = 2
 )
 
 // This function shall return the plugin name
 func (WiregoExample) GetName() string {
-	return "Wirego Example"
+  return "Wirego Example"
 }
 
 // This function shall return the wireshark filter
 func (WiregoExample) GetFilter() string {
-	return "wgexample"
+  return "wgexample"
 }
 
 // GetFields returns the list of fields descriptor that we may eventually return
 // when dissecting a packet payload
 func (WiregoExample) GetFields() []wirego.WiresharkField {
   var fields []wirego.WiresharkField
-	//First field is named "Custom1", I will refer it later using enum value "FieldIdCustom1"
+  //First field is named "Custom1", I will refer it later using enum value "FieldIdCustom1"
   //I want to be able to filter matching values in Wireshark using the filter "wirego.custom01"
   //and it's an 8bits value, that should be displayed in hexadecimal
-	fields = append(fields, wirego.WiresharkField{WiregoFieldId: FieldIdCustom1, Name: "Custom1", Filter: "wirego.custom01", ValueType: wirego.ValueTypeUInt8, DisplayMode: wirego.DisplayModeHexadecimal})
-	fields = append(fields, wirego.WiresharkField{WiregoFieldId: FieldIdCustom2, Name: "Custom2", Filter: "wirego.custom02", ValueType: wirego.ValueTypeUInt16, DisplayMode: wirego.DisplayModeDecimal})
+  fields = append(fields, wirego.WiresharkField{WiregoFieldId: FieldIdCustom1, Name: "Custom1", Filter: "wirego.custom01", ValueType: wirego.ValueTypeUInt8, DisplayMode: wirego.DisplayModeHexadecimal})
+  fields = append(fields, wirego.WiresharkField{WiregoFieldId: FieldIdCustom2, Name: "Custom2", Filter: "wirego.custom02", ValueType: wirego.ValueTypeUInt16, DisplayMode: wirego.DisplayModeDecimal})
 
 
-	return fields
+  return fields
 }
 
 // GetDissectorFilter returns a wireshark filter that will select which packets
 // will be sent to your dissector for parsing.
 // Two types of filters can be defined: Integers or Strings
 func (WiregoExample) GetDissectorFilter() []wirego.DissectorFilter {
-	var filters []wirego.DissectorFilter
+  var filters []wirego.DissectorFilter
 
-	filters = append(filters, wirego.DissectorFilter{FilterType: wirego.DissectorFilterTypeInt, Name: "udp.port", ValueInt: 137})
-	filters = append(filters, wirego.DissectorFilter{FilterType: wirego.DissectorFilterTypeString, Name: "bluetooth.uuid", ValueString: "1234"})
+  filters = append(filters, wirego.DissectorFilter{FilterType: wirego.DissectorFilterTypeInt, Name: "udp.port", ValueInt: 137})
+  filters = append(filters, wirego.DissectorFilter{FilterType: wirego.DissectorFilterTypeString, Name: "bluetooth.uuid", ValueString: "1234"})
 
-	return filters
+  return filters
 }
+```
 
+The most interesting part is the DissectPacket function, where you will implement your parser:
+
+```golang
 // DissectPacket provides the packet payload to be parsed.
 func (WiregoExample) DissectPacket(packetNumber int, src string, dst string, layer string, packet []byte) *wirego.DissectResult {
-	var res wirego.DissectResult
+  var res wirego.DissectResult
 
-	//This string will appear on the packet being parsed
-	res.Protocol = "Protocol name example"
-	//This (optional) string will appear in the info section
-	res.Info = fmt.Sprintf("Info example pkt %d", packetNumber)
+  //This string will appear on the packet being parsed
+  res.Protocol = "Protocol name example"
+  //This (optional) string will appear in the info section
+  res.Info = fmt.Sprintf("Info example pkt %d", packetNumber)
 
-	//Add a few fields and refer to them using our own "internalId"
-	res.Fields = append(res.Fields, wirego.DissectField{WiregoFieldId: FieldIdCustom1, Offset: 0, Length: 2})
-	res.Fields = append(res.Fields, wirego.DissectField{WiregoFieldId: FieldIdCustom2, Offset: 2, Length: 4})
-	return &res
+  //Add a few fields and refer to them using our own "internalId"
+  res.Fields = append(res.Fields, wirego.DissectField{WiregoFieldId: FieldIdCustom1, Offset: 0, Length: 2})
+  res.Fields = append(res.Fields, wirego.DissectField{WiregoFieldId: FieldIdCustom2, Offset: 2, Length: 4})
+  return &res
 }
 ```
 
 The last step is to build your plugin using:
 
-    	go build -o mywonderfullplugin.so -buildmode=c-shared
+      go build -o mywonderfullplugin.so -buildmode=c-shared
 
 And... that's all!
 
