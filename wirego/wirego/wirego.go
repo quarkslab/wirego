@@ -106,9 +106,18 @@ type DissectorFilter struct {
 	ValueString string
 }
 
+var resultatsCacheEnable bool = true
+
+// Register registers a listener implementing the WiregoInterface interface
 func Register(listener WiregoInterface) error {
 	wg.listener = listener
 	return nil
+}
+
+// ResultatsCacheEnable enables or disables the results cache. By default, the results cache is enabled.
+// If re-analyzing a packet makes sense for your protocol, disable this feature.
+func ResultatsCacheEnable(enable bool) {
+	resultatsCacheEnable = enable
 }
 
 //export wirego_setup
@@ -269,6 +278,7 @@ func wirego_dissect_packet(packetNumber C.int, src *C.char, dst *C.char, layer *
 	wg.lock.Unlock()
 
 	if found {
+		fmt.Println("Reusing cache entry.")
 		return packetNumber
 	}
 
@@ -374,4 +384,11 @@ func wirego_result_get_field(h C.int, idx C.int, wiregoFieldId *C.int, offset *C
 	*wiregoFieldId = C.int(desc.Fields[idx].WiregoFieldId)
 	*offset = C.int(desc.Fields[idx].Offset)
 	*length = C.int(desc.Fields[idx].Length)
+}
+
+//export wirego_result_release
+func wirego_result_release(h C.int) {
+	if !resultatsCacheEnable {
+		delete(wg.resultsCache, h)
+	}
 }

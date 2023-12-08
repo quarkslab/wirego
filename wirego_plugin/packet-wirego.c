@@ -261,6 +261,7 @@ dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _
     }
   }
 
+  wirego_result_release_cb(handle);
   return tvb_captured_length(tvb);
 }
 
