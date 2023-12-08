@@ -18,6 +18,7 @@ extern char* (*wirego_result_get_protocol_cb)(int);
 extern char* (*wirego_result_get_info_cb)(int);
 extern int (*wirego_result_get_fields_count_cb)(int);
 extern void (*wirego_result_get_field_cb)(int, int, int*, int*, int*);
+extern void (*wirego_result_release_cb)(int);
 
 
 int wirego_is_plugin_loaded(void);
