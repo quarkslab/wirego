@@ -176,6 +176,12 @@ void proto_reg_handoff_wirego(void) {
 static int
 dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _U_)
 {
+  int pdu_len;
+  char * golang_buff = NULL;
+  char src[255];
+  char dst[255];
+  char * full_layer = NULL;
+  int dissectHandle = -1;
   /*
     In a more classic Wireshark plugin we would use all the tvb_* accessors here
     Since processing of the packet is performed in the golang plugin (that's actually the very purpose
@@ -194,35 +200,30 @@ dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _
   */
 
 
-  if (!tvb || !pinfo) {
+  if (!tvb || !pinfo)
     return -1;
-  }
 
-  int pdu_len = tvb_reported_length(tvb);
-
+  pdu_len = tvb_reported_length(tvb);
   if (pdu_len <= 0)
     return 0;
- 
-  char * golang_buff = NULL;
-  char src[255];
-  char dst[255];
+
   src[0] = 0x00;
   dst[0] = 0x00;
   pinfo_to_proto_stack(pinfo, src, dst);
 
 
-  char * full_layer = compile_network_stack(pinfo);
+  full_layer = compile_network_stack(pinfo);
 
   //Pass everything to the golang plugin
   golang_buff = (char*) malloc(pdu_len);
   tvb_memcpy(tvb, golang_buff, 0, pdu_len);
-  int handle = wirego_dissect_packet_cb(pinfo->num, src, dst, full_layer, golang_buff, pdu_len);
+  dissectHandle = wirego_dissect_packet_cb(pinfo->num, src, dst, full_layer, golang_buff, pdu_len);
   free(golang_buff);
   golang_buff = NULL;
   free(full_layer);
   full_layer = NULL;
 
-  if (handle == -1) {
+  if (dissectHandle == -1) {
     col_set_str(pinfo->cinfo, COL_PROTOCOL, "Wirego plugin failed.");
     col_set_str(pinfo->cinfo, COL_INFO, "Wirego plugin failed.");
     return -1;
@@ -231,16 +232,16 @@ dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _
   //Analyse plugin results
 
   //Flag protocol name
-  col_set_str(pinfo->cinfo, COL_PROTOCOL, wirego_result_get_protocol_cb(handle));
+  col_set_str(pinfo->cinfo, COL_PROTOCOL, wirego_result_get_protocol_cb(dissectHandle));
 
   //Fill "info" column
-  col_set_str(pinfo->cinfo, COL_INFO, wirego_result_get_info_cb(handle));
+  col_set_str(pinfo->cinfo, COL_INFO, wirego_result_get_info_cb(dissectHandle));
 
   //During the first pass, tree can eventually be NULL
   //Wireshark does not ask the plugin to fill detailed structures
   if (tree) {
     //How many custom fields did the plugin return?
-    int result_fields_count = wirego_result_get_fields_count_cb(handle);
+    int result_fields_count = wirego_result_get_fields_count_cb(dissectHandle);
     if (result_fields_count != 0) {
       
       //Add a subtree on this packet
@@ -256,7 +257,7 @@ dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _
         int offset;
         int length;
         //Ask plugin for result
-        wirego_result_get_field_cb(handle, i, &wirego_field_id, &offset, &length);
+        wirego_result_get_field_cb(dissectHandle, i, &wirego_field_id, &offset, &length);
         //Convert plugin field id to wireshark id
         wireshark_field_id = get_wireshark_field_id_from_wirego_field_id(wirego_field_id);
         //Add tree entry
@@ -267,7 +268,7 @@ dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _
     }
   }
 DONE:
-  wirego_result_release_cb(handle);
+  wirego_result_release_cb(dissectHandle);
   return tvb_captured_length(tvb);
 }
 
@@ -279,8 +280,11 @@ char * get_plugin_path(void) {
   FILE * f;
   memset(plugin_path, 0x00, 1024);
   char * home = getenv("HOME");
-  snprintf(config_path, 1024, "%s/.wirego", home);
 
+  if (!home) 
+    return "";
+
+  snprintf(config_path, 1024, "%s/.wirego", home);
   f = fopen(config_path, "r");
   if (!f)
     return "";
@@ -296,7 +300,7 @@ int save_plugin_path(const char * path) {
   FILE * f;
   char config_path[1024];
   char * home = getenv("HOME");
-  snprintf(config_path, 1023, "%s/.wirego", home);
+  snprintf(config_path, 1024, "%s/.wirego", home);
   f = fopen(config_path, "w");
   if (!f)
     return -1;
@@ -392,6 +396,10 @@ void pinfo_to_proto_stack(packet_info *pinfo, char *src, char *dst) {
 
   src[0] = 0x00;
   dst[0] = 0x00;
+
+  if (!pinfo || !pinfo->net_src.data || !pinfo->net_dst.data)
+    return;
+
   switch (pinfo->net_src.type) {
     case AT_IPv4:
       inet_ntop(AF_INET, pinfo->net_src.data, src, 255);
@@ -430,12 +438,15 @@ void pinfo_to_proto_stack(packet_info *pinfo, char *src, char *dst) {
 
 char * compile_network_stack(packet_info *pinfo) {
   unsigned int full_layer_size = 512;
-  char * full_layer = malloc(full_layer_size * sizeof(char));
-	wmem_list_frame_t *protos = wmem_list_head(pinfo->layers);
+  char * full_layer = calloc(full_layer_size, sizeof(char));
+	wmem_list_frame_t *protos;
 	int	    proto_id;
 	const char *name;
-  full_layer[0] = 0x00;
 
+  if (!pinfo || !pinfo->layers)
+    return full_layer;
+
+  protos = wmem_list_head(pinfo->layers);
 	while (protos != NULL)
 	{
 		proto_id = GPOINTER_TO_INT(wmem_list_frame_data(protos));

@@ -14,6 +14,7 @@ package wirego
 import "C"
 import (
 	"fmt"
+	"runtime"
 	"sync"
 	"unsafe"
 )
@@ -34,6 +35,12 @@ type Wirego struct {
 	wiregoFieldIds map[int]bool
 	resultsCache   map[C.int]*DissectResult
 	lock           sync.Mutex
+
+	//Fetched and duplicated from plugin, to trick gc
+	pluginName             string
+	pluginFilter           string
+	pluginDissectorFilters []DissectorFilter
+	pluginFields           []WiresharkField
 }
 
 // We use a static "object" here
@@ -108,9 +115,17 @@ type DissectorFilter struct {
 
 var resultatsCacheEnable bool = true
 
+var pinner runtime.Pinner
+
 // Register registers a listener implementing the WiregoInterface interface
 func Register(listener WiregoInterface) error {
 	wg.listener = listener
+
+	//Disable GC.
+	//This fixes any problem with the garbage collector!
+	//debug.SetGCPercent(-1)
+	//debug.SetMemoryLimit(math.MaxInt64)
+
 	return nil
 }
 
@@ -133,6 +148,19 @@ func wirego_setup() C.int {
 
 	wg.resultsCache = make(map[C.int]*DissectResult)
 	wg.wiregoFieldIds = make(map[int]bool)
+
+	//Preload all "static" values to bypass the GC and keep local copies
+	wg.pluginName = wg.listener.GetName()
+	pinner.Pin(&wg.pluginName)
+
+	wg.pluginFilter = wg.listener.GetFilter()
+	pinner.Pin(&wg.pluginFilter)
+
+	wg.pluginDissectorFilters = wg.listener.GetDissectorFilter()
+	pinner.Pin(&wg.pluginDissectorFilters)
+
+	wg.pluginFields = wg.listener.GetFields()
+	pinner.Pin(&wg.pluginFields)
 
 	//Checks fields for duplicates
 	fields := wg.listener.GetFields()
@@ -161,34 +189,23 @@ func wirego_version_minor() C.int {
 
 //export wirego_plugin_name
 func wirego_plugin_name() *C.char {
-	if wg.listener == nil {
-		return nil
-	}
-	return C.CString(wg.listener.GetName())
+	return C.CString(wg.pluginName)
 }
 
 //export wirego_plugin_filter
 func wirego_plugin_filter() *C.char {
-	if wg.listener == nil {
-		return nil
-	}
-	return C.CString(wg.listener.GetFilter())
+	return C.CString(wg.pluginFilter)
 }
 
 //export wirego_detect_int
 func wirego_detect_int(matchValue *C.int, idx C.int) *C.char {
-	if wg.listener == nil {
-		return nil
-	}
-
-	filters := wg.listener.GetDissectorFilter()
-
 	cnt := 0
-	for _, f := range filters {
+	for _, f := range wg.pluginDissectorFilters {
 		if f.FilterType == DissectorFilterTypeInt {
 			if cnt == int(idx) {
 				*matchValue = C.int(f.ValueInt)
-				return C.CString(f.Name)
+				name := C.CString(f.Name)
+				return name
 			}
 			cnt++
 		}
@@ -200,18 +217,15 @@ func wirego_detect_int(matchValue *C.int, idx C.int) *C.char {
 
 //export wirego_detect_string
 func wirego_detect_string(matchValue **C.char, idx C.int) *C.char {
-	if wg.listener == nil {
-		return nil
-	}
-	filters := wg.listener.GetDissectorFilter()
 
 	cnt := 0
-	for _, f := range filters {
+	for _, f := range wg.pluginDissectorFilters {
 		if f.FilterType == DissectorFilterTypeString {
 			if cnt == int(idx) {
 
 				*matchValue = C.CString(f.ValueString)
-				return C.CString(f.Name)
+				name := C.CString(f.Name)
+				return name
 			}
 			cnt++
 		}
@@ -223,30 +237,22 @@ func wirego_detect_string(matchValue **C.char, idx C.int) *C.char {
 
 //export wirego_get_fields_count
 func wirego_get_fields_count() C.int {
-	if wg.listener == nil {
-		return C.int(0)
-	}
-	return C.int(len(wg.listener.GetFields()))
+	return C.int(len(wg.pluginFields))
 }
 
 //export wirego_get_field
 func wirego_get_field(index int, wiregoFieldId *C.int, name **C.char, filter **C.char, valueType *C.int, display *C.int) C.int {
-	if wg.listener == nil {
-		return C.int(-1)
-	}
-
-	fields := wg.listener.GetFields()
 	*wiregoFieldId = -1
 	*name = nil
 	*filter = nil
 	*valueType = -1
 	*display = -1
 
-	if (index < 0) || (index >= len(fields)) {
+	if (index < 0) || (index >= len(wg.pluginFields)) {
 		return C.int(-1)
 	}
 
-	f := fields[index]
+	f := wg.pluginFields[index]
 
 	wg.wiregoFieldIds[int(f.WiregoFieldId)] = true
 	*wiregoFieldId = C.int(f.WiregoFieldId)
@@ -278,7 +284,6 @@ func wirego_dissect_packet(packetNumber C.int, src *C.char, dst *C.char, layer *
 	wg.lock.Unlock()
 
 	if found {
-		fmt.Println("Reusing cache entry.")
 		return packetNumber
 	}
 
@@ -306,6 +311,7 @@ func wirego_dissect_packet(packetNumber C.int, src *C.char, dst *C.char, layer *
 	}
 
 	//Add to cache
+	pinner.Pin(&result)
 	wg.lock.Lock()
 	defer wg.lock.Unlock()
 	wg.resultsCache[packetNumber] = result
