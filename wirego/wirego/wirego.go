@@ -163,9 +163,7 @@ func wirego_setup() C.int {
 	pinner.Pin(&wg.pluginFields)
 
 	//Checks fields for duplicates
-	fields := wg.listener.GetFields()
-
-	for _, f := range fields {
+	for _, f := range wg.pluginFields {
 		_, duplicate := wg.wiregoFieldIds[int(f.WiregoFieldId)]
 		if duplicate {
 			fmt.Printf("Failed to add wirego fields, duplicated WiregoFieldId: %d\n", f.WiregoFieldId)
