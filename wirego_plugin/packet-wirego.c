@@ -128,6 +128,7 @@ void proto_register_wirego(void) {
   char * name = wirego_plugin_name_cb();
   
   snprintf(long_name, 255, "%s (Wirego v%d.%d)", name, wirego_version_major_cb(), wirego_version_minor_cb());
+  //Wireshark will directly store the returns strings into internal structures and tables.
   proto_wirego = proto_register_protocol(long_name, name, wirego_plugin_filter_cb());
   //Don't release name and filter, since those are used by wireshark's internals
   //Register our custom fields
@@ -168,6 +169,7 @@ void proto_reg_handoff_wirego(void) {
     if (filter_name == NULL)
       break;
     dissector_add_string(filter_name, filter_value_str, wirego_handle);
+    free(filter_value_str);
     free(filter_name);
     idx++;
   }
@@ -224,6 +226,8 @@ dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _
   full_layer = NULL;
 
   if (dissectHandle == -1) {
+    //col_set_str will keep a pointer to the given value
+    //while col_add_str will duplicate
     col_set_str(pinfo->cinfo, COL_PROTOCOL, "Wirego plugin failed.");
     col_set_str(pinfo->cinfo, COL_INFO, "Wirego plugin failed.");
     return -1;
