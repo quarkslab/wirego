@@ -148,6 +148,7 @@ Now build Wireshark (see README.xxx), but basically it's just:
     cmake ../
     make -j
 
+__Note:__ If cmake command fails and complains about an unknown "add_wireshark_plugin_library" command, replace it with "add_wireshark_epan_plugin_library" (prior version 4.2, this CMake command has been renamed).
 
 ## Building the Golang plugin example
 
