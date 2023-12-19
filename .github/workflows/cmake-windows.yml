@@ -31,8 +31,12 @@ jobs:
       - name: Clone Wirego plugin
         uses: actions/checkout@v3
         with:
-          path: ${{ github.workspace }}\wireshark\plugins\epan\wirego
-      - name: Mkdir
+          path: ${{ github.workspace }}\wirego
+      - name: Create plugin dir
+        run: mkdir ${{ github.workspace }}\wireshark\plugins\epan\wirego
+      - name: Copy plugin files
+        run: copy ${{ github.workspace }}\wirego\wirego_plugin\* ${{ github.workspace }}\wireshark\plugins\epan\wirego\
+      - name: Create build dir
         run: mkdir ${{ github.workspace }}\build
       - name: Debug dir
         shell: cmd
