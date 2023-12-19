@@ -2,7 +2,7 @@ name: Wirego plugin build on Linux
 
 on:
   push:
-    branches: [ "ci-tests" ]
+    branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
 

@@ -2,7 +2,7 @@ name: Wirego plugin build on macos
 
 on:
   push:
-    branches: [ "ci-tests" ]
+    branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
 
@@ -52,4 +52,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: WiregoPlugin-macos
-          path: ${{ github.workspace }}/build/run/plugins/4.2/epan/wirego.so
+          path: ${{ github.workspace }}/build/run/Wireshark.app/Contents/PlugIns/wireshark/4-2/epan/wirego.so
