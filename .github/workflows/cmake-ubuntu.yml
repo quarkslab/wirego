@@ -1,6 +1,4 @@
-# This starter workflow is for a CMake project running on multiple platforms. There is a different starter workflow if you just want a single platform.
-# See: https://github.com/actions/starter-workflows/blob/main/ci/cmake-single-platform.yml
-name: CMake on multiple platforms
+name: Wirego plugin build on Linux
 
 on:
   push:
@@ -23,28 +21,20 @@ jobs:
       #
       # To add more build types (Release, Debug, RelWithDebInfo, etc.) customize the build_type list.
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest]
         build_type: [Release]
-        c_compiler: [gcc, cl]
+        c_compiler: [gcc]
         include:
-          - os: windows-latest
-            c_compiler: cl
-            cpp_compiler: cl
           - os: ubuntu-latest
             c_compiler: gcc
             cpp_compiler: g++
-        exclude:
-          - os: windows-latest
-            c_compiler: gcc
-          - os: ubuntu-latest
-            c_compiler: cl
 
     steps:
     - uses: actions/checkout@v3
       with:
         path: ${{ github.workspace }}/wirego
 
-    - name: Install wireshark deps
+    - name: Install wireshark deps on linux
       run: sudo apt-get install -y git build-essential cmake libgcrypt-dev libpcap-dev libgcrypt20-dev libglib2.0-dev flex bison libpcre2-dev libnghttp2-dev libc-ares-dev libspeexdsp-dev
 
     - name: Clone Wireshark
@@ -86,5 +76,5 @@ jobs:
     - name: Export plugin
       uses: actions/upload-artifact@v4
       with:
-        name: WiregoPlugin
+        name: WiregoPlugin-Ubuntu
         path: ${{ steps.strings.outputs.build-output-dir }}/run/plugins/4.2/epan/wirego.so
