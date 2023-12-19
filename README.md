@@ -16,8 +16,6 @@ Wirego is a plugin for Wireshark, written in C that actually loads a plugin writ
 
 You basically don't have to touch the Wirego plugin and you will be given a dummy empty golang plugin to start with.
 
-Now how does the Wirego plugin where to find your wonderfull quick and dirty Golang plugin?
-Well, you just edit a $HOME/.wirego configuration file containing the full path to your plugin and that's it.
 
 ## Overview
 
@@ -126,27 +124,17 @@ Run Wireshark, to go Preferences -> Wirego and point to your freshly built golan
 
 A fully working example can be found [here](./wirego/example/wirego_example.go)
 
-## Building the Wirego plugin
+## Getting the Wirego plugin
 
-Clone Wireshark:
+Pre-built versions of the wirego plugin can be downloaded [here](https://github.com/quarkslab/wirego/releases/tag/v0.9).
 
-    git clone https://github.com/wireshark/wireshark.git
+Refer to the [Wireshark documentation](https://www.wireshark.org/docs/wsug_html_chunked/ChPluginFolders.html), depending on your platform, to know where the plugin should be dropped.
 
-Create a symlink from the Wireshark plugins folder to the "wirego_plugin"
+__Note:__ Windows is not currently supported, this should arrive soon.
 
-    ln -s <path_to>/wirego_plugin wireshark/plugins/epan/wirego
 
-Edit Wireshark's main CMakelists.txt and add the following to PLUGIN_SRC_DIRS:
+If you don't plan to use a pre-built version of the wirego plugin, you can [built it manually](https://github.com/quarkslab/wirego/BUILDING.md).
 
-    plugins/epan/wirego
-
-Now build Wireshark (see README.xxx), but basically it's just:
-
-    mkdir build && cd build
-    cmake ../
-    make -j
-
-__Note:__ If cmake command fails and complains about an unknown "add_wireshark_plugin_library" command, replace it with "add_wireshark_epan_plugin_library" (prior version 4.2, this CMake command has been renamed).
 
 ## Building the Golang plugin example
 
