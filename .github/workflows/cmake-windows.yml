@@ -12,9 +12,6 @@ jobs:
     runs-on: windows-2022
     env:
       PLATFORM: x64
-      WIRESHARK_BASE_DIR: C:\Development
-      CMAKE_PREFIX_PATH: D:\a\wireshark\Qt\6.2.3\msvc2019_64
-      WIRESHARK_VERSION_EXTRA: -GithubActionBuild
     steps:
       - name: Choco install
         run: choco install -y --force --no-progress asciidoctorj xsltproc docbook-bundle nsis winflexbison3 cmake
@@ -41,13 +38,6 @@ jobs:
           path: ${{ github.workspace }}/wireshark/plugins/epan/wirego
       - name: Mkdir
         run: mkdir build
-      - name: Cmake
-        run: cmake -DCMAKE_SYSTEM_VERSION="10.0.20348.0" -A x64 ..
-        env:
-          PLATFORM: x64
-          WIRESHARK_BASE_DIR: C:/wireshark-libs
-          QT5_BASE_DIR: C:/Qt/5.12.3/msvc2017_64
-        working-directory: build
       - name: Configure CMake
         # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
         # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
@@ -63,5 +53,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: WiregoPlugin-Windows
-          path: /run/plugins/4.2/epan/wirego.so
+          path: run/plugins/4.2/epan/wirego.so
           working-directory: build
