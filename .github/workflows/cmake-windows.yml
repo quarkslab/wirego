@@ -15,11 +15,6 @@ jobs:
     steps:
       - name: Choco install
         run: choco install -y --force --no-progress asciidoctorj xsltproc docbook-bundle nsis winflexbison3 cmake
-      - name: Install strawberryperl
-        uses: shogo82148/actions-setup-perl@v1
-        with:
-          perl-version: '5.30'
-          distribution: strawberry
       - name: Add msbuild to PATH
         uses: microsoft/setup-msbuild@v1.1
         with:
@@ -35,23 +30,22 @@ jobs:
       - name: Clone Wirego plugin
         uses: actions/checkout@v3
         with:
-          path: ${{ github.workspace }}/wireshark/plugins/epan/wirego
+          path: ${{ github.workspace }}\wireshark\plugins\epan\wirego
       - name: Mkdir
-        run: mkdir build
+        run: mkdir ${{ github.workspace }}\build
       - name: Configure CMake
         # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
         # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
         run: >
           cmake -DCMAKE_SYSTEM_VERSION="10.0.20348.0" -A x64
+          -B ${{ github.workspace }}\build
           -DBUILD_wireshark=OFF
-          -DCUSTOM_PLUGIN_SRC_DIR=${{ github.workspace }}/wireshark/plugins/epan/wirego
-        working-directory: build
+          -DCUSTOM_PLUGIN_SRC_DIR=${{ github.workspace }}\wireshark\plugins\epan\wirego
+          -S ${{ github.workspace }}\wireshark
       - name: Build
-        run: cmake --build . --config RelWithDebInfo -- plugins
-        working-directory: build
+        run: cmake --build ${{ github.workspace }}\build --config RelWithDebInfo -- plugins
       - name: Export plugin
         uses: actions/upload-artifact@v4
         with:
           name: WiregoPlugin-Windows
-          path: run/plugins/4.2/epan/wirego.so
-          working-directory: build
+          path: ${{ github.workspace }}\build\run\plugins\4.2\epan\wirego.so
