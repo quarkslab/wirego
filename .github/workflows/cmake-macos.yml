@@ -6,7 +6,6 @@ on:
   pull_request:
     branches: [ "main" ]
 
-
 jobs:
   macos:
     name: Build
@@ -15,7 +14,8 @@ jobs:
       - name: Install deps
         run: brew install c-ares glib libgcrypt pcre2 speexdsp
 
-      - uses: actions/checkout@v3
+      - name: Clone Wirego plugin
+        uses: actions/checkout@v3
         with:
           path: ${{ github.workspace }}/wirego
 
@@ -31,7 +31,7 @@ jobs:
 
       - name: Create output dir
         run: mkdir ${{ github.workspace }}/build
-   
+
       - name: Configure CMake
         # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
         # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
@@ -40,17 +40,16 @@ jobs:
           -DBUILD_wireshark=OFF
           -DCUSTOM_PLUGIN_SRC_DIR=${{ github.workspace }}/wireshark/plugins/epan/wirego
           -S ${{ github.workspace }}/wireshark
-  
+
       - name: Build
         # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
         run: cmake --build ${{ github.workspace }}/build --config Release -- plugins
-  
+
       - name: Debug ls
         run: ls -R ${{ github.workspace }}/build
-        
+
       - name: Export plugin
         uses: actions/upload-artifact@v4
         with:
           name: WiregoPlugin-macos
           path: ${{ github.workspace }}/build/run/plugins/4.2/epan/wirego.so
-  

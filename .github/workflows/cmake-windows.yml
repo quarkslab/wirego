@@ -22,12 +22,14 @@ jobs:
           vs-version: 16.8
       - name: Set MSVC command prompt
         uses: ilammy/msvc-dev-cmd@v1
+
       - name: Clone Wireshark
         uses: actions/checkout@v3
         with:
           repository: wireshark/wireshark
           path: ${{ github.workspace }}\wireshark
-          ref: release-4.2        
+          ref: release-4.2
+          
       - name: Clone Wirego plugin
         uses: actions/checkout@v3
         with:
