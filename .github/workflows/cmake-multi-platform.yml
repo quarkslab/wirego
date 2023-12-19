@@ -46,6 +46,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+      with:
+        path: ${{ github.workspace }}/wirego
 
     - name: Install wireshark deps
       run: sudo apt-get install -y git build-essential cmake libgcrypt-dev qt6-base-dev qt6-multimedia-dev qt6-tools-dev qt6-tools-dev-tools qt6-l10n-tools libqt6core5compat6-dev libpcap-dev libgcrypt20-dev libglib2.0-dev flex bison libpcre2-dev libnghttp2-dev libc-ares-dev libspeexdsp-dev
@@ -58,8 +60,8 @@ jobs:
         ref: release-4.2
         
     - name: Create plugin link
-      run: ln -s ${{ github.workspace }}/wirego_plugin ${{ github.workspace }}/wireshark/plugins/epan/wirego
-      
+           ln -s ${{ github.workspace }}/wirego/wirego_plugin ${{ github.workspace }}/wireshark/plugins/epan/wirego
+
     - name: Set reusable strings
       # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
       id: strings
@@ -76,7 +78,7 @@ jobs:
         -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
         -DBUILD_wireshark=OFF
-        -DCUSTOM_PLUGIN_SRC_DIR=${{ github.workspace }}/wirego_plugin/
+        -DCUSTOM_PLUGIN_SRC_DIR=${{ github.workspace }}/wireshark/plugins/epan/wirego
         -S ${{ github.workspace }}/wireshark
 
     - name: Build
