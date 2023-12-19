@@ -1,0 +1,56 @@
+name: Wirego plugin build on macos
+
+on:
+  push:
+    branches: [ "ci-tests" ]
+  pull_request:
+    branches: [ "main" ]
+
+
+jobs:
+  macos:
+    name: Build
+    runs-on: macos-latest
+    steps:
+      - name: Install deps
+        run: brew install c-ares glib libgcrypt pcre2 speexdsp
+
+      - uses: actions/checkout@v3
+        with:
+          path: ${{ github.workspace }}/wirego
+
+      - name: Clone Wireshark
+        uses: actions/checkout@v3
+        with:
+          repository: wireshark/wireshark
+          path: ${{ github.workspace }}/wireshark
+          ref: release-4.2
+
+      - name: Create plugin link
+        run: ln -s ${{ github.workspace }}/wirego/wirego_plugin ${{ github.workspace }}/wireshark/plugins/epan/wirego
+
+      - name: Create output dir
+        run: mkdir ${{ github.workspace }}/build
+   
+      - name: Configure CMake
+        # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
+        # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
+        run: >
+          cmake -B ${{ github.workspace }}/build
+          -DBUILD_wireshark=OFF
+          -DCUSTOM_PLUGIN_SRC_DIR=${{ github.workspace }}/wireshark/plugins/epan/wirego
+          -S ${{ github.workspace }}/wireshark
+  
+      - name: Build
+        # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
+        run: cmake --build ${{ github.workspace }}/build --config Release -- plugins
+  
+      - name: Debug ls
+        run: ls -R ${{ github.workspace }}/build
+        
+      - name: Export plugin
+        uses: actions/upload-artifact@v4
+        with:
+          name: WiregoPlugin-macos
+          path: ${{ github.workspace }}/build/run/plugins/4.2/epan/wirego.so
+  

@@ -2,7 +2,7 @@ name: Wirego plugin build on Windows
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "ci-tests" ]
   pull_request:
     branches: [ "main" ]
 
