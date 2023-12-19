@@ -35,7 +35,10 @@ jobs:
       - name: Mkdir
         run: mkdir ${{ github.workspace }}\build
       - name: Debug dir
-        run: dir /s ${{ github.workspace }}\wireshark\
+        run: dir ${{ github.workspace }}\wireshark\
+             dir ${{ github.workspace }}\wireshark\plugins\epan\
+             dir ${{ github.workspace }}\wireshark\plugins\epan\wirego
+             dir ${{ github.workspace }}\build\
       - name: Configure CMake
         run: >
           cmake -DCMAKE_SYSTEM_VERSION="10.0.20348.0" -A x64
