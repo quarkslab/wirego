@@ -35,6 +35,7 @@ jobs:
       - name: Mkdir
         run: mkdir ${{ github.workspace }}\build
       - name: Debug dir
+        shell: cmd
         run: dir ${{ github.workspace }}\wireshark\
              dir ${{ github.workspace }}\wireshark\plugins\epan\
              dir ${{ github.workspace }}\wireshark\plugins\epan\wirego
