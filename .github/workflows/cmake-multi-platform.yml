@@ -60,7 +60,7 @@ jobs:
         ref: release-4.2
         
     - name: Create plugin link
-           ln -s ${{ github.workspace }}/wirego/wirego_plugin ${{ github.workspace }}/wireshark/plugins/epan/wirego
+      run: ln -s ${{ github.workspace }}/wirego/wirego_plugin ${{ github.workspace }}/wireshark/plugins/epan/wirego
 
     - name: Set reusable strings
       # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
