@@ -52,7 +52,7 @@ jobs:
           -DCUSTOM_PLUGIN_SRC_DIR=${{ github.workspace }}\wireshark\plugins\epan\wirego
           -S ${{ github.workspace }}\wireshark
       - name: Build
-        run: cmake --build ${{ github.workspace }}\build --config RelWithDebInfo -- plugins
+        run: cmake --build ${{ github.workspace }}\build --config RelWithDebInfo
       - name: Export plugin
         uses: actions/upload-artifact@v4
         with:
