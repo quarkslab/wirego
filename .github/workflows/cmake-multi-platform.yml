@@ -45,7 +45,7 @@ jobs:
         path: ${{ github.workspace }}/wirego
 
     - name: Install wireshark deps
-      run: sudo apt-get install -y git build-essential cmake libgcrypt-dev qt6-base-dev qt6-multimedia-dev qt6-tools-dev qt6-tools-dev-tools qt6-l10n-tools libqt6core5compat6-dev libpcap-dev libgcrypt20-dev libglib2.0-dev flex bison libpcre2-dev libnghttp2-dev libc-ares-dev libspeexdsp-dev
+      run: sudo apt-get install -y git build-essential cmake libgcrypt-dev libpcap-dev libgcrypt20-dev libglib2.0-dev flex bison libpcre2-dev libnghttp2-dev libc-ares-dev libspeexdsp-dev
 
     - name: Clone Wireshark
       uses: actions/checkout@v3
@@ -78,4 +78,13 @@ jobs:
 
     - name: Build
       # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
-      run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
+      run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }} -- plugins
+
+    - name: Debug ls
+      run: ls -R ${{ steps.strings.outputs.build-output-dir }}
+      
+    - name: Export plugin
+      uses: actions/upload-artifact@v4
+      with:
+        name: WiregoPlugin
+        path: ${{ steps.strings.outputs.build-output-dir }}/run/plugins/4.2/epan/wirego.so
