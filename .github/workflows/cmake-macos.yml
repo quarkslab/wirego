@@ -1,4 +1,4 @@
-name: Wirego plugin build on Linux
+name: Wirego plugin build on macos
 
 on:
   push:
@@ -7,12 +7,12 @@ on:
     branches: [ "main" ]
 
 jobs:
-  linux:
+  macos:
     name: Build
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
-      - name: Install wireshark deps on linux
-        run: sudo apt-get install -y git build-essential cmake libgcrypt-dev libpcap-dev libgcrypt20-dev libglib2.0-dev flex bison libpcre2-dev libnghttp2-dev libc-ares-dev libspeexdsp-dev
+      - name: Install deps
+        run: brew install c-ares glib libgcrypt pcre2 speexdsp
 
       - name: Clone Wirego plugin
         uses: actions/checkout@v3
@@ -51,5 +51,5 @@ jobs:
       - name: Export plugin
         uses: actions/upload-artifact@v4
         with:
-          name: WiregoPlugin-Ubuntu
-          path: ${{ github.workspace }}/build/run/plugins/4.2/epan/wirego.so
+          name: WiregoPlugin-macos
+          path: ${{ github.workspace }}/build/run/Wireshark.app/Contents/PlugIns/wireshark/4-2/epan/wirego.so

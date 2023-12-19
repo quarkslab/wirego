@@ -1,0 +1,62 @@
+name: Wirego plugin build on Windows
+
+on:
+  push:
+    branches: [ "ci-tests" ]
+  pull_request:
+    branches: [ "ci-tests" ]
+
+jobs:
+  windows:
+    name: Build
+    runs-on: windows-2022
+    env:
+      PLATFORM: x64
+      WIRESHARK_BASE_DIR: C:\Development
+    steps:
+      - name: Choco install
+        run: choco install -y --force --no-progress asciidoctorj xsltproc docbook-bundle nsis winflexbison3 cmake
+      - name: Add msbuild to PATH
+        uses: microsoft/setup-msbuild@v1.1
+        with:
+          vs-version: 16.8
+      - name: Set MSVC command prompt
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Clone Wireshark
+        uses: actions/checkout@v3
+        with:
+          repository: wireshark/wireshark
+          path: ${{ github.workspace }}\wireshark
+          ref: release-4.2
+          
+      - name: Clone Wirego plugin
+        uses: actions/checkout@v3
+        with:
+          path: ${{ github.workspace }}\wirego
+      - name: Create plugin dir
+        run: mkdir ${{ github.workspace }}\wireshark\plugins\epan\wirego
+      - name: Copy plugin files
+        run: copy ${{ github.workspace }}\wirego\wirego_plugin\* ${{ github.workspace }}\wireshark\plugins\epan\wirego\
+      - name: Create build dir
+        run: mkdir ${{ github.workspace }}\build
+      - name: Debug dir
+        shell: cmd
+        run: dir ${{ github.workspace }}\wireshark\
+             dir ${{ github.workspace }}\wireshark\plugins\epan\
+             dir ${{ github.workspace }}\wireshark\plugins\epan\wirego
+             dir ${{ github.workspace }}\build\
+      - name: Configure CMake
+        run: >
+          cmake -DCMAKE_SYSTEM_VERSION="10.0.20348.0" -A x64
+          -B ${{ github.workspace }}\build
+          -DBUILD_wireshark=OFF
+          -DCUSTOM_PLUGIN_SRC_DIR=${{ github.workspace }}\wireshark\plugins\epan\wirego
+          -S ${{ github.workspace }}\wireshark
+      - name: Build
+        run: cmake --build ${{ github.workspace }}\build --config RelWithDebInfo
+      - name: Export plugin
+        uses: actions/upload-artifact@v4
+        with:
+          name: WiregoPlugin-Windows
+          path: ${{ github.workspace }}\build\run\plugins\4.2\epan\wirego.so
