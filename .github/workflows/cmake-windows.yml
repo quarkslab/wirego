@@ -2,9 +2,9 @@ name: Wirego plugin build on Windows
 
 on:
   push:
-    branches: [ "windows-support" ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ "windows-support" ]
+    branches: [ "main" ]
 
 jobs:
   windows:
@@ -59,4 +59,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: WiregoPlugin-Windows
-          path: ${{ github.workspace }}\build\run\plugins\4.2\epan\wirego.so
+          path: ${{ github.workspace }}\build\run\RelWithDebInfo\plugins\4.2\epan\wirego.dll
