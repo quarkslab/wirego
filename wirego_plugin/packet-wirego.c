@@ -22,7 +22,11 @@
 #include <wsutil/str_util.h>
 #include <wsutil/report_message.h>
 #include <wsutil/wslog.h>
-#include <arpa/inet.h>
+#ifdef WIN32
+  #include <ws2tcpip.h>
+#else
+  #include <arpa/inet.h>
+#endif
 #include "plugin-loader.h"
 #include "packet-wirego.h"
 
