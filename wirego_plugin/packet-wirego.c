@@ -22,11 +22,8 @@
 #include <wsutil/str_util.h>
 #include <wsutil/report_message.h>
 #include <wsutil/wslog.h>
-#ifdef WIN32
-  #include <ws2tcpip.h>
-#else
-  #include <arpa/inet.h>
-#endif
+#include <wsutil/to_str.h>
+
 #include "plugin-loader.h"
 #include "packet-wirego.h"
 
@@ -409,10 +406,10 @@ void pinfo_to_proto_stack(packet_info *pinfo, char *src, char *dst) {
 
   switch (pinfo->net_src.type) {
     case AT_IPv4:
-      inet_ntop(AF_INET, pinfo->net_src.data, src, 255);
+      ip_to_str_buf((const guint8*)pinfo->net_src.data, src, 255);
     break;
     case AT_IPv6:
-      inet_ntop(AF_INET6, pinfo->net_src.data, src, 255);
+      ip6_to_str_buf((const ws_in6_addr *)pinfo->net_src.data, src, 255);
     break;
     case AT_ETHER:
       sprintf(src, "%02x:%02x:%02x:%02x:%02x:%02x", 
@@ -426,10 +423,10 @@ void pinfo_to_proto_stack(packet_info *pinfo, char *src, char *dst) {
   }
   switch (pinfo->net_dst.type) {
     case AT_IPv4:
-      inet_ntop(AF_INET, pinfo->net_dst.data, dst, 255);
+      ip_to_str_buf((const guint8*)pinfo->net_dst.data, dst, 255);
       break;
     case AT_IPv6:
-      inet_ntop(AF_INET6, pinfo->net_dst.data, dst, 255);
+      ip6_to_str_buf((const ws_in6_addr *)pinfo->net_dst.data, dst, 255);
     break;
     case AT_ETHER:
       sprintf(dst, "%02x:%02x:%02x:%02x:%02x:%02x",
