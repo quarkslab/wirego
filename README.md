@@ -29,8 +29,9 @@ You may use prebuilt binaries for **step 1**, those can be downloaded [here](htt
 If prefer building the plugin (or if prebuilt binaries fails), refer to the following documentation [here](BUILD_WIREGO.md)
 
 
-For **step 2**, you will basically just have to __import "wirego"__ and to implement the following interface:
+For **step 2**, you will basically just have to __import "wirego"__ and implement the following interface:
 
+```golang
     // WiregoInterface is implemented by the actual wirego plugin
     type WiregoInterface interface {
       GetName() string
@@ -40,6 +41,7 @@ For **step 2**, you will basically just have to __import "wirego"__ and to imple
       GetDissectorFilter() []DissectorFilter
       DissectPacket(packetNumber int, src string, dst string, stack string, packet []byte) *DissectResult
     }
+```
 
 The full documentation can be found [here](DEVGUIDE.md).
 
