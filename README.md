@@ -19,177 +19,32 @@ You basically don't have to touch the Wirego plugin and you will be given a dumm
 
 ## Overview
 
-In order to use Wirego, you will need to build the Wirego plugin for Wireshark (or download a prebuild version [here](https://github.com/quarkslab/wirego/releases)).
+In order to setup Wirego, you will need follow 3 steps:
 
-Your plugin in Go will need to import the "wirego" package and register to wirego during init():
+  1. Install or build the Wirego plugin for Wireshark
+  2. Develop your own plugin, using the "wirego" Go package
+  3. Start Wireshark and tell Wirego where your plugin is
 
-```golang
-package main
-
-import (
-  "encoding/hex"
-  "fmt"
-  "wirego/wirego"
-)
-
-// Since we implement the wirego.WiregoInterface we need some structure to hold it.
-type WiregoExample struct {
-}
-
-// Unused (but mandatory)
-func main() {}
-
-// Called at golang environment initialization (you should probably not touch this)
-func init() {
-  var wge WiregoExample
-
-  //Register to the wirego package
-  wirego.Register(wge)
-}
-```
-
-Now we just need to implement the WiregoInterface interface:
-
-```golang
-// Define here enum identifiers, used to refer to a specific field
-const (
-  FieldIdCustom1 wirego.FieldId = 1
-  FieldIdCustom2 wirego.FieldId = 2
-)
-
-// This function shall return the plugin name
-func (WiregoExample) GetName() string {
-  return "Wirego Example"
-}
-
-// This function shall return the wireshark filter
-func (WiregoExample) GetFilter() string {
-  return "wgexample"
-}
-
-// GetFields returns the list of fields descriptor that we may eventually return
-// when dissecting a packet payload
-func (WiregoExample) GetFields() []wirego.WiresharkField {
-  var fields []wirego.WiresharkField
-  //First field is named "Custom1", I will refer it later using enum value "FieldIdCustom1"
-  //I want to be able to filter matching values in Wireshark using the filter "wirego.custom01"
-  //and it's an 8bits value, that should be displayed in hexadecimal
-  fields = append(fields, wirego.WiresharkField{WiregoFieldId: FieldIdCustom1, Name: "Custom1", Filter: "wirego.custom01", ValueType: wirego.ValueTypeUInt8, DisplayMode: wirego.DisplayModeHexadecimal})
-  fields = append(fields, wirego.WiresharkField{WiregoFieldId: FieldIdCustom2, Name: "Custom2", Filter: "wirego.custom02", ValueType: wirego.ValueTypeUInt16, DisplayMode: wirego.DisplayModeDecimal})
+You may use prebuilt binaries for **step 1**, those can be downloaded [here](https://github.com/quarkslab/wirego/releases).
+If prefer building the plugin (or if prebuilt binaries fails), refer to the following documentation [here](BUILD_WIREGO.md)
 
 
-  return fields
-}
+For **step 2**, you will basically just have to __import "wirego"__ and to implement the following interface:
 
-// GetDissectorFilter returns a wireshark filter that will select which packets
-// will be sent to your dissector for parsing.
-// Two types of filters can be defined: Integers or Strings
-func (WiregoExample) GetDissectorFilter() []wirego.DissectorFilter {
-  var filters []wirego.DissectorFilter
+    // WiregoInterface is implemented by the actual wirego plugin
+    type WiregoInterface interface {
+      GetName() string
+      GetFilter() string
+      Setup() error
+      GetFields() []WiresharkField
+      GetDissectorFilter() []DissectorFilter
+      DissectPacket(packetNumber int, src string, dst string, stack string, packet []byte) *DissectResult
+    }
 
-  filters = append(filters, wirego.DissectorFilter{FilterType: wirego.DissectorFilterTypeInt, Name: "udp.port", ValueInt: 137})
-  filters = append(filters, wirego.DissectorFilter{FilterType: wirego.DissectorFilterTypeString, Name: "bluetooth.uuid", ValueString: "1234"})
-
-  return filters
-}
-```
-
-The most interesting part is the DissectPacket function, where you will implement your parser:
-
-```golang
-// DissectPacket provides the packet payload to be parsed.
-func (WiregoExample) DissectPacket(packetNumber int, src string, dst string, layer string, packet []byte) *wirego.DissectResult {
-  var res wirego.DissectResult
-
-  //This string will appear on the packet being parsed
-  res.Protocol = "Protocol name example"
-  //This (optional) string will appear in the info section
-  res.Info = fmt.Sprintf("Info example pkt %d", packetNumber)
-
-  //Add a few fields and refer to them using our own "internalId"
-  res.Fields = append(res.Fields, wirego.DissectField{WiregoFieldId: FieldIdCustom1, Offset: 0, Length: 2})
-  res.Fields = append(res.Fields, wirego.DissectField{WiregoFieldId: FieldIdCustom2, Offset: 2, Length: 4})
-  return &res
-}
-```
-
-The last step is to build your plugin using:
-
-      go build -o wirego_example.so -buildmode=c-shared
-
-And... that's all!
-
-Run Wireshark, to go Preferences -> Wirego and point to your freshly built golang plugin.
+The full documentation can be found [here](DEVGUIDE.md).
 
 
-A fully working example can be found [here](./wirego/example/wirego_example.go)
-
-## Getting the Wirego plugin
-
-Pre-built versions of the wirego plugin can be downloaded [here](https://github.com/quarkslab/wirego/releases/tag/v0.9).
-
-Refer to the [Wireshark documentation](https://www.wireshark.org/docs/wsug_html_chunked/ChPluginFolders.html), depending on your platform, to know where the plugin should be dropped.
-You may also want to take a look at [https://www.wireshark.org/docs/wsug_html_chunked/ChConfigurationPluginFolders.html](https://www.wireshark.org/docs/wsug_html_chunked/ChConfigurationPluginFolders.html) which may give different hints.
-
-__Note:__ Windows is not currently supported, this should arrive soon.
-
-
-If you don't plan to use a pre-built version of the wirego plugin, you can [built it manually](https://github.com/quarkslab/wirego/BUILDING.md).
-
-
-## Building the Golang plugin example
-
-Before going any further, you should build the example and try to load it with the wirego Wireshark plugin.
-
-    cd wirego/example/
-    make
-
-The example plugin is a dummy plugin to help you getting started.
-
-## Running Wireshark
-
-Now that Wireshark has been built, you can see that the "epan" directory now contains a plugin called "wirego.so" (see Wireshark documentation for the exact location).
-
-
-To make sure your plugin has been properly loaded, open Analyze>Enabled Protocols and search for "wirego".
-
-If your golang plugin fails to load for any reason, the plugin will not appear on that list.
-
-You may also open Wireshark preferences, select "Protocols" on the left menu and then locate "Wirego". The preferences page for Wirego will actually show the path loaded from your configuration file (if any).
-
-
-## Developping a Golang plugin
-
-Now that you've built the "example" plugin, it's probably time to update it with your own code.
-
-Everything you need to update is found in "wirego/example/wirego_example.go" (feel free to rename this file).
-
-In order to create a plugin, you need to import "wirego" and implement the **wirego.WiregoInterface** interface (defined in wirego/wirego.go).
-
-
-The GetName() and GetFilter() defines how your plugin will appear in Wireshark and how you will be able to filter it using Wireshark.
-
-The **Setup()** function is called when the plugin is loaded. Feel free to setup everything you need here.
-That's also a nice place to setup the complete detailed list of your custom fields.
-A "field" is defined by the **wirego.WiresharkField** structure and contains:
-
-  - The field enum (InternalId), as defined previously
-  - The field name
-  - A Wireshark filter that can be used to filter matching packets
-  - The type of value for this field
-  - How this field should be displayed (**DisplayMode**)
-
-The **GetFields()** returns the list of fields description (see **Setup()**).
-Those fields are the results of your parsing code.
-During the plugin initialization, behind the hood, we list all the different fields that we may eventually provide, when analyzing packets.
-Each field will then be referred with a simple "enum" value, pointing to the full description of the field previously defined.
-
-
-The function **GetDissectorFilterInteger()** is used to filter the packets that should be sent to your disector. If your protocol happens on TCP port 7122, that's where you define it.
-
-
-
-**DissectPacket(packet []byte)** is where the magic happens. You receive a packet payload and return a **wirego.DissectResult** structure.
+Now it's time for **step 3**: [install the Wirego plugin and start Wireshark](RUNNING.md)!
 
 
 ## Next steps
@@ -203,9 +58,7 @@ Here's a partial list:
 
 ## Additional notes
 
-Wirego preferences uses a dedicated config file to locate the golang plugin path, hence when modifying you will need to restart Wireshark.
-
-Here's why:
+When the path to your plugin in Go is modified, you will be required to restart Wireshark, here's why:
 
   - we need to setup everything (plugin name, fields..) during the proto_register_wirego call
   - preferences values are only loaded during the proto_reg_handoff_wirego call, which is too late for us
