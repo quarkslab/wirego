@@ -19,7 +19,7 @@ You basically don't have to touch the Wirego plugin and you will be given a dumm
 
 ## Overview
 
-In order to use Wirego, you will need to build the Wirego plugin for Wireshark (or download a prebuild version).
+In order to use Wirego, you will need to build the Wirego plugin for Wireshark (or download a prebuild version [here](https://github.com/quarkslab/wirego/releases)).
 
 Your plugin in Go will need to import the "wirego" package and register to wirego during init():
 
@@ -129,6 +129,7 @@ A fully working example can be found [here](./wirego/example/wirego_example.go)
 Pre-built versions of the wirego plugin can be downloaded [here](https://github.com/quarkslab/wirego/releases/tag/v0.9).
 
 Refer to the [Wireshark documentation](https://www.wireshark.org/docs/wsug_html_chunked/ChPluginFolders.html), depending on your platform, to know where the plugin should be dropped.
+You may also want to take a look at [https://www.wireshark.org/docs/wsug_html_chunked/ChConfigurationPluginFolders.html](https://www.wireshark.org/docs/wsug_html_chunked/ChConfigurationPluginFolders.html) which may give different hints.
 
 __Note:__ Windows is not currently supported, this should arrive soon.
 
@@ -149,11 +150,6 @@ The example plugin is a dummy plugin to help you getting started.
 
 Now that Wireshark has been built, you can see that the "epan" directory now contains a plugin called "wirego.so" (see Wireshark documentation for the exact location).
 
-Edit a file located at $HOME/.wirego and type the full path to your plugin.
-Start Wireshark.
-
-  echo "/home/bob/myplugin/myplugin.so" > $HOME/.wirego
-  ./wireshark
 
 To make sure your plugin has been properly loaded, open Analyze>Enabled Protocols and search for "wirego".
 
