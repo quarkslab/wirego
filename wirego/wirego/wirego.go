@@ -297,7 +297,7 @@ func wirego_dissect_packet(packetNumber C.int, src *C.char, dst *C.char, layer *
 			fmt.Printf("Wirego plugin did return an invalid Offset : %d (packet size is %d bytes)\n", r.Offset, packetSize)
 			return C.int(-1)
 		}
-		if C.int(r.Offset+r.Length) >= packetSize {
+		if C.int(r.Offset+r.Length) > packetSize {
 			fmt.Printf("Wirego plugin did return an invalid Length : %d (offset is %d and packet size is %d bytes)\n", r.Length, r.Offset, packetSize)
 			return C.int(-1)
 		}
