@@ -3,7 +3,8 @@ package main
 import (
 	"encoding/hex"
 	"fmt"
-	"wirego/wirego"
+
+	"github.com/quarkslab/wirego/wirego/wirego"
 )
 
 var fields []wirego.WiresharkField
