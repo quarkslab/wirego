@@ -38,7 +38,9 @@ int wirego_is_plugin_loaded(void) {
 
 #ifdef WIN32
 int wirego_load_failure_helper(const char *str) {
-  ws_warning("%s", str);
+  if (str != NULL) {
+    ws_warning("%s", str);
+  }
   FreeLibrary(plugin_h);
   plugin_h = NULL;
   return -1;
@@ -148,7 +150,9 @@ int wirego_load_plugin(char *plugin_path) {
 // Linux & MacOS
 
 int wirego_load_failure_helper(const char *str) {
-  ws_warning("%s", str);
+  if (str != NULL) {
+    ws_warning("%s", str);
+  }
   dlclose(plugin_h);
   plugin_h = NULL;
   return -1;
