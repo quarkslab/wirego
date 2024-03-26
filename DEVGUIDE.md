@@ -104,6 +104,19 @@ func (WiregoExample) GetDetectionHeuristicsParents() []string {
 }
 ```
 
+When using detection heuristics mode, if a packet matches the "heuristics parent" previously defined, a detection function will be called. Return true if the packet is yours and false otherwise.
+
+```golang
+func (WiregoExample) DetectionHeuristic(packetNumber int, src string, dst string, layer string, packet []byte) bool {
+	//All packets starting with 0x00 should be passed to our dissector (super advanced heuristic)
+	if len(packet) != 0 && packet[0] == 0x00 {
+		return true
+	}
+	return false
+}
+```
+
+
 The most interesting part is the DissectPacket function, where you will implement your parser:
 
 ```golang
