@@ -138,13 +138,54 @@ void proto_register_wirego(void) {
   proto_register_subtree_array(ett, array_length(ett));
 }
 
+
+static gboolean wirego_heuristic_check(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data)
+{
+  int pdu_len;
+  char * golang_buff = NULL;
+  char src[255];
+  char dst[255];
+  char * full_layer = NULL;
+  int detected;
+
+  if (!tvb || !pinfo)
+    return -1;
+
+  pdu_len = tvb_reported_length(tvb);
+  if (pdu_len <= 0)
+    return 0;
+
+  src[0] = 0x00;
+  dst[0] = 0x00;
+  pinfo_to_proto_stack(pinfo, src, dst);
+
+
+  full_layer = compile_network_stack(pinfo);
+
+  //Pass everything to the golang plugin
+  golang_buff = (char*) malloc(pdu_len);
+  tvb_memcpy(tvb, golang_buff, 0, pdu_len);
+  detected = wirego_detection_heuristic_cb(pinfo->num, src, dst, full_layer, golang_buff, pdu_len);
+  free(golang_buff);
+  golang_buff = NULL;
+  free(full_layer);
+  full_layer = NULL;
+
+  if (detected == 0)
+    return FALSE;
+  
+  dissect_wirego(tvb, pinfo, tree, data);
+  return TRUE;
+}
+
+
 void proto_reg_handoff_wirego(void) {
   static dissector_handle_t wirego_handle;
   char *filter_name;
 
   if (!wirego_is_plugin_loaded()) 
     return;
-    
+  
   //Register dissector
   wirego_handle = create_dissector_handle(dissect_wirego, proto_wirego);
 
@@ -173,6 +214,19 @@ void proto_reg_handoff_wirego(void) {
     free(filter_name);
     idx++;
   }
+
+  //Set dissector heuristic
+  idx = 0;
+  while (1) {
+    char* parent_protocol_str;
+    parent_protocol_str = wirego_detect_heuristic_cb(idx);
+    if (parent_protocol_str == NULL)
+      break;
+    heur_dissector_add(parent_protocol_str, wirego_heuristic_check, "Wirego", "wirego_tcp", proto_wirego, HEURISTIC_ENABLE);
+    free(parent_protocol_str);
+    idx++;
+  }
+
 }
 
 static int
@@ -184,6 +238,7 @@ dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _
   char dst[255];
   char * full_layer = NULL;
   int dissectHandle = -1;
+
   /*
     In a more classic Wireshark plugin we would use all the tvb_* accessors here
     Since processing of the packet is performed in the golang plugin (that's actually the very purpose

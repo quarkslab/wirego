@@ -17,8 +17,14 @@ type FakeListener struct {
 	getFilterCount  int
 	getFilterReturn string
 
-	getDissectorFilterCount  int
-	getDissectorFilterReturn []DissectorFilter
+	getDetectionFiltersCount  int
+	getDetectionFiltersReturn []DetectionFilter
+
+	getDetectionHeuristicsParentsCount  int
+	getDetectionHeuristicsParentsReturn []string
+
+	detectionHeuristicCount  int
+	detectionHeuristicReturn bool
 
 	getFieldsCount  int
 	getFieldsReturn []WiresharkField
@@ -45,11 +51,19 @@ func (l *FakeListener) GetFields() []WiresharkField {
 	l.getFieldsCount++
 	return l.getFieldsReturn
 }
-func (l *FakeListener) GetDissectorFilter() []DissectorFilter {
-	l.getDissectorFilterCount++
-	return l.getDissectorFilterReturn
+func (l *FakeListener) GetDetectionFilters() []DetectionFilter {
+	l.getDetectionFiltersCount++
+	return l.getDetectionFiltersReturn
 }
-func (l *FakeListener) DissectPacket(src string, dst string, stack string, packet []byte) *DissectResult {
+func (l *FakeListener) GetDetectionHeuristicsParents() []string {
+	l.getDetectionHeuristicsParentsCount++
+	return l.getDetectionHeuristicsParentsReturn
+}
+func (l *FakeListener) DetectionHeuristic(pktNumber int, src string, dst string, stack string, packet []byte) bool {
+	l.detectionHeuristicCount++
+	return l.detectionHeuristicReturn
+}
+func (l *FakeListener) DissectPacket(pktNumber int, src string, dst string, stack string, packet []byte) *DissectResult {
 	l.dissectCount++
 	return &l.dissectResult
 }
@@ -63,8 +77,8 @@ func (fake *FakeListener) Reset() {
 	fake.getFilterReturn = ""
 	fake.getFieldsCount = 0
 	fake.getFieldsReturn = []WiresharkField{}
-	fake.getDissectorFilterCount = 0
-	fake.getDissectorFilterReturn = []DissectorFilter{}
+	fake.getDetectionFiltersCount = 0
+	fake.getDetectionFiltersReturn = []DetectionFilter{}
 	fake.dissectCount = 0
 	fake.dissectResult = DissectResult{}
 
@@ -178,14 +192,15 @@ func TestPluginFilter(t *testing.T) {
 func TestDetectInt(t *testing.T) {
 	var fake FakeListener
 	fake.Reset()
+
+	fake.getDetectionFiltersReturn = append(fake.getDetectionFiltersReturn, DetectionFilter{FilterType: DetectionFilterTypeInt, Name: "tcp.port", ValueInt: 11})
+	fake.getDetectionFiltersReturn = append(fake.getDetectionFiltersReturn, DetectionFilter{FilterType: DetectionFilterTypeString, Name: "ip.addr", ValueString: "1.1.1.1"})
+	fake.getDetectionFiltersReturn = append(fake.getDetectionFiltersReturn, DetectionFilter{FilterType: DetectionFilterTypeInt, Name: "tcp.port", ValueInt: 11})
+	Register(&fake)
+
 	if wirego_setup() == -1 {
 		t.Fatal("wirego_setup works fine for this test.")
 	}
-
-	fake.getDissectorFilterReturn = append(fake.getDissectorFilterReturn, DissectorFilter{FilterType: DissectorFilterTypeInt, Name: "tcp.port", ValueInt: 11})
-	fake.getDissectorFilterReturn = append(fake.getDissectorFilterReturn, DissectorFilter{FilterType: DissectorFilterTypeString, Name: "ip.addr", ValueString: "1.1.1.1"})
-	fake.getDissectorFilterReturn = append(fake.getDissectorFilterReturn, DissectorFilter{FilterType: DissectorFilterTypeInt, Name: "tcp.port", ValueInt: 11})
-	Register(&fake)
 
 	idx := 0
 	for {
@@ -212,9 +227,9 @@ func TestDetectString(t *testing.T) {
 	var fake FakeListener
 	fake.Reset()
 
-	fake.getDissectorFilterReturn = append(fake.getDissectorFilterReturn, DissectorFilter{FilterType: DissectorFilterTypeInt, Name: "tcp.port", ValueInt: 11})
-	fake.getDissectorFilterReturn = append(fake.getDissectorFilterReturn, DissectorFilter{FilterType: DissectorFilterTypeString, Name: "ip.addr", ValueString: "1.1.1.1"})
-	fake.getDissectorFilterReturn = append(fake.getDissectorFilterReturn, DissectorFilter{FilterType: DissectorFilterTypeInt, Name: "tcp.port", ValueInt: 11})
+	fake.getDetectionFiltersReturn = append(fake.getDetectionFiltersReturn, DetectionFilter{FilterType: DetectionFilterTypeInt, Name: "tcp.port", ValueInt: 11})
+	fake.getDetectionFiltersReturn = append(fake.getDetectionFiltersReturn, DetectionFilter{FilterType: DetectionFilterTypeString, Name: "ip.addr", ValueString: "1.1.1.1"})
+	fake.getDetectionFiltersReturn = append(fake.getDetectionFiltersReturn, DetectionFilter{FilterType: DetectionFilterTypeInt, Name: "tcp.port", ValueInt: 11})
 	Register(&fake)
 	if wirego_setup() == -1 {
 		t.Fatal("wirego_setup works fine for this test.")
@@ -246,8 +261,8 @@ func TestGetFieldsCount(t *testing.T) {
 	var fake FakeListener
 	fake.Reset()
 
-	fake.getFieldsReturn = append(fake.getFieldsReturn, WiresharkField{InternalId: 1, Name: "Field 1", Filter: "field1", ValueType: ValueTypeInt8, DisplayMode: DisplayModeDecimal})
-	fake.getFieldsReturn = append(fake.getFieldsReturn, WiresharkField{InternalId: 2, Name: "Field 2", Filter: "field2", ValueType: ValueTypeUInt32, DisplayMode: DisplayModeHexadecimal})
+	fake.getFieldsReturn = append(fake.getFieldsReturn, WiresharkField{WiregoFieldId: 1, Name: "Field 1", Filter: "field1", ValueType: ValueTypeInt8, DisplayMode: DisplayModeDecimal})
+	fake.getFieldsReturn = append(fake.getFieldsReturn, WiresharkField{WiregoFieldId: 2, Name: "Field 2", Filter: "field2", ValueType: ValueTypeUInt32, DisplayMode: DisplayModeHexadecimal})
 	Register(&fake)
 	if wirego_setup() == -1 {
 		t.Fatal("wirego_setup works fine for this test.")
@@ -262,8 +277,8 @@ func TestGetField(t *testing.T) {
 	var fake FakeListener
 	fake.Reset()
 
-	fake.getFieldsReturn = append(fake.getFieldsReturn, WiresharkField{InternalId: 1, Name: "Field 1", Filter: "field1", ValueType: ValueTypeInt8, DisplayMode: DisplayModeDecimal})
-	fake.getFieldsReturn = append(fake.getFieldsReturn, WiresharkField{InternalId: 2, Name: "Field 2", Filter: "field2", ValueType: ValueTypeUInt32, DisplayMode: DisplayModeHexadecimal})
+	fake.getFieldsReturn = append(fake.getFieldsReturn, WiresharkField{WiregoFieldId: 1, Name: "Field 1", Filter: "field1", ValueType: ValueTypeInt8, DisplayMode: DisplayModeDecimal})
+	fake.getFieldsReturn = append(fake.getFieldsReturn, WiresharkField{WiregoFieldId: 2, Name: "Field 2", Filter: "field2", ValueType: ValueTypeUInt32, DisplayMode: DisplayModeHexadecimal})
 	Register(&fake)
 	if wirego_setup() == -1 {
 		t.Fatal("wirego_setup works fine for this test.")
@@ -281,7 +296,7 @@ func TestGetField(t *testing.T) {
 		if h == -1 {
 			t.Fatal("wirego_get_field returns no error")
 		}
-		if internalId != _Ctype_int(fake.getFieldsReturn[idx].InternalId) {
+		if internalId != _Ctype_int(fake.getFieldsReturn[idx].WiregoFieldId) {
 			t.Fatal("wirego_get_field returns proper field internal id for index" + fmt.Sprintf(" %d", idx))
 		}
 		if !checkCString(name, fake.getFieldsReturn[idx].Name) {
@@ -308,12 +323,12 @@ func TestGetFieldFailure(t *testing.T) {
 	var fake FakeListener
 	fake.Reset()
 
-	fake.getFieldsReturn = append(fake.getFieldsReturn, WiresharkField{InternalId: 1, Name: "Field 1", Filter: "field1", ValueType: ValueTypeInt8, DisplayMode: DisplayModeDecimal})
-	fake.getFieldsReturn = append(fake.getFieldsReturn, WiresharkField{InternalId: 1, Name: "Field 1", Filter: "field1", ValueType: ValueTypeInt8, DisplayMode: DisplayModeDecimal})
-	fake.getFieldsReturn = append(fake.getFieldsReturn, WiresharkField{InternalId: 2, Name: "Field 2", Filter: "field2", ValueType: ValueTypeUInt32, DisplayMode: DisplayModeHexadecimal})
+	fake.getFieldsReturn = append(fake.getFieldsReturn, WiresharkField{WiregoFieldId: 1, Name: "Field 1", Filter: "field1", ValueType: ValueTypeInt8, DisplayMode: DisplayModeDecimal})
+	fake.getFieldsReturn = append(fake.getFieldsReturn, WiresharkField{WiregoFieldId: 1, Name: "Field 1", Filter: "field1", ValueType: ValueTypeInt8, DisplayMode: DisplayModeDecimal})
+	fake.getFieldsReturn = append(fake.getFieldsReturn, WiresharkField{WiregoFieldId: 2, Name: "Field 2", Filter: "field2", ValueType: ValueTypeUInt32, DisplayMode: DisplayModeHexadecimal})
 	Register(&fake)
 	if wirego_setup() != -1 {
-		t.Fatal("wirego_get_field returns an error if duplicate InternalIds are found")
+		t.Fatal("wirego_get_field returns an error if duplicate WiregoFieldIds are found")
 	}
 }
 
@@ -323,10 +338,10 @@ func TestDissectPacket(t *testing.T) {
 
 	fake.dissectResult.Protocol = "Test Proto"
 	fake.dissectResult.Info = "Much information"
-	fake.dissectResult.Fields = append(fake.dissectResult.Fields, DissectField{InternalId: 1, Offset: 0, Length: 14})
-	fake.dissectResult.Fields = append(fake.dissectResult.Fields, DissectField{InternalId: 2, Offset: 10, Length: 1})
-	fake.getFieldsReturn = append(fake.getFieldsReturn, WiresharkField{InternalId: 1, Name: "Field 1", Filter: "field1", ValueType: ValueTypeInt8, DisplayMode: DisplayModeDecimal})
-	fake.getFieldsReturn = append(fake.getFieldsReturn, WiresharkField{InternalId: 2, Name: "Field 2", Filter: "field2", ValueType: ValueTypeUInt32, DisplayMode: DisplayModeHexadecimal})
+	fake.dissectResult.Fields = append(fake.dissectResult.Fields, DissectField{WiregoFieldId: 1, Offset: 0, Length: 14})
+	fake.dissectResult.Fields = append(fake.dissectResult.Fields, DissectField{WiregoFieldId: 2, Offset: 10, Length: 1})
+	fake.getFieldsReturn = append(fake.getFieldsReturn, WiresharkField{WiregoFieldId: 1, Name: "Field 1", Filter: "field1", ValueType: ValueTypeInt8, DisplayMode: DisplayModeDecimal})
+	fake.getFieldsReturn = append(fake.getFieldsReturn, WiresharkField{WiregoFieldId: 2, Name: "Field 2", Filter: "field2", ValueType: ValueTypeUInt32, DisplayMode: DisplayModeHexadecimal})
 	Register(&fake)
 	if wirego_setup() == -1 {
 		t.Fatal("wirego_setup works fine for this test.")
@@ -351,7 +366,7 @@ func TestDissectPacket(t *testing.T) {
 	dst = 0x00
 	layer = 0x00
 
-	handle := wirego_dissect_packet(&src, &dst, &layer, &packet, packetSize)
+	handle := wirego_dissect_packet(1, &src, &dst, &layer, &packet, packetSize)
 
 	if handle == -1 {
 		t.Fatal("wirego_dissect_packet doesn't fail")
@@ -376,8 +391,8 @@ func TestDissectPacket(t *testing.T) {
 	}
 	for i := 0; i < len(fake.dissectResult.Fields); i++ {
 		wirego_result_get_field(handle, _Ctype_int(i), &internalId, &offset, &length)
-		if internalId != _Ctype_int(fake.dissectResult.Fields[i].InternalId) {
-			t.Fatal("wirego_result_get_field has proper InternalId for result" + fmt.Sprintf(" %d", i))
+		if internalId != _Ctype_int(fake.dissectResult.Fields[i].WiregoFieldId) {
+			t.Fatal("wirego_result_get_field has proper WiregoFieldId for result" + fmt.Sprintf(" %d", i))
 		}
 		if offset != _Ctype_int(fake.dissectResult.Fields[i].Offset) {
 			t.Fatal("wirego_result_get_field has proper Offset for result" + fmt.Sprintf(" %d", i))
@@ -396,10 +411,10 @@ func TestDissectPacketAccessorFailures(t *testing.T) {
 
 	fake.dissectResult.Protocol = "Test Proto"
 	fake.dissectResult.Info = "Much information"
-	fake.dissectResult.Fields = append(fake.dissectResult.Fields, DissectField{InternalId: 1, Offset: 0, Length: 14})
-	fake.dissectResult.Fields = append(fake.dissectResult.Fields, DissectField{InternalId: 2, Offset: 10, Length: 1})
-	fake.getFieldsReturn = append(fake.getFieldsReturn, WiresharkField{InternalId: 1, Name: "Field 1", Filter: "field1", ValueType: ValueTypeInt8, DisplayMode: DisplayModeDecimal})
-	fake.getFieldsReturn = append(fake.getFieldsReturn, WiresharkField{InternalId: 2, Name: "Field 2", Filter: "field2", ValueType: ValueTypeUInt32, DisplayMode: DisplayModeHexadecimal})
+	fake.dissectResult.Fields = append(fake.dissectResult.Fields, DissectField{WiregoFieldId: 1, Offset: 0, Length: 14})
+	fake.dissectResult.Fields = append(fake.dissectResult.Fields, DissectField{WiregoFieldId: 2, Offset: 10, Length: 1})
+	fake.getFieldsReturn = append(fake.getFieldsReturn, WiresharkField{WiregoFieldId: 1, Name: "Field 1", Filter: "field1", ValueType: ValueTypeInt8, DisplayMode: DisplayModeDecimal})
+	fake.getFieldsReturn = append(fake.getFieldsReturn, WiresharkField{WiregoFieldId: 2, Name: "Field 2", Filter: "field2", ValueType: ValueTypeUInt32, DisplayMode: DisplayModeHexadecimal})
 	Register(&fake)
 
 	var internalId _Ctype_int
@@ -434,8 +449,8 @@ func TestDissectPacketResultsInvalidOffset(t *testing.T) {
 
 	fake.dissectResult.Protocol = "Test Proto"
 	fake.dissectResult.Info = "Much information"
-	fake.dissectResult.Fields = append(fake.dissectResult.Fields, DissectField{InternalId: 1, Offset: 3012, Length: 14})
-	fake.getFieldsReturn = append(fake.getFieldsReturn, WiresharkField{InternalId: 1, Name: "Field 1", Filter: "field1", ValueType: ValueTypeInt8, DisplayMode: DisplayModeDecimal})
+	fake.dissectResult.Fields = append(fake.dissectResult.Fields, DissectField{WiregoFieldId: 1, Offset: 3012, Length: 14})
+	fake.getFieldsReturn = append(fake.getFieldsReturn, WiresharkField{WiregoFieldId: 1, Name: "Field 1", Filter: "field1", ValueType: ValueTypeInt8, DisplayMode: DisplayModeDecimal})
 	Register(&fake)
 	if wirego_setup() == -1 {
 		t.Fatal("wirego_setup works fine for this test.")
@@ -456,7 +471,7 @@ func TestDissectPacketResultsInvalidOffset(t *testing.T) {
 	dst = 0x00
 	layer = 0x00
 
-	handle := wirego_dissect_packet(&src, &dst, &layer, &packet, packetSize)
+	handle := wirego_dissect_packet(1, &src, &dst, &layer, &packet, packetSize)
 
 	if handle != -1 {
 		t.Fatal("wirego_dissect_packet fails if returned field offset is invalid")
@@ -469,8 +484,8 @@ func TestDissectPacketResultsInvalidLength(t *testing.T) {
 
 	fake.dissectResult.Protocol = "Test Proto"
 	fake.dissectResult.Info = "Much information"
-	fake.dissectResult.Fields = append(fake.dissectResult.Fields, DissectField{InternalId: 1, Offset: 100, Length: 3012})
-	fake.getFieldsReturn = append(fake.getFieldsReturn, WiresharkField{InternalId: 1, Name: "Field 1", Filter: "field1", ValueType: ValueTypeInt8, DisplayMode: DisplayModeDecimal})
+	fake.dissectResult.Fields = append(fake.dissectResult.Fields, DissectField{WiregoFieldId: 1, Offset: 100, Length: 3012})
+	fake.getFieldsReturn = append(fake.getFieldsReturn, WiresharkField{WiregoFieldId: 1, Name: "Field 1", Filter: "field1", ValueType: ValueTypeInt8, DisplayMode: DisplayModeDecimal})
 	Register(&fake)
 	if wirego_setup() == -1 {
 		t.Fatal("wirego_setup works fine for this test.")
@@ -491,21 +506,21 @@ func TestDissectPacketResultsInvalidLength(t *testing.T) {
 	dst = 0x00
 	layer = 0x00
 
-	handle := wirego_dissect_packet(&src, &dst, &layer, &packet, packetSize)
+	handle := wirego_dissect_packet(1, &src, &dst, &layer, &packet, packetSize)
 
 	if handle != -1 {
 		t.Fatal("wirego_dissect_packet fails if returned field length is invalid")
 	}
 }
 
-func TestDissectPacketResultsInvalidInternalId(t *testing.T) {
+func TestDissectPacketResultsInvalidWiregoFieldId(t *testing.T) {
 	var fake FakeListener
 	fake.Reset()
 
 	fake.dissectResult.Protocol = "Test Proto"
 	fake.dissectResult.Info = "Much information"
-	fake.dissectResult.Fields = append(fake.dissectResult.Fields, DissectField{InternalId: 1, Offset: 100, Length: 10})
-	fake.getFieldsReturn = append(fake.getFieldsReturn, WiresharkField{InternalId: 733, Name: "Field 1", Filter: "field1", ValueType: ValueTypeInt8, DisplayMode: DisplayModeDecimal})
+	fake.dissectResult.Fields = append(fake.dissectResult.Fields, DissectField{WiregoFieldId: 1, Offset: 100, Length: 10})
+	fake.getFieldsReturn = append(fake.getFieldsReturn, WiresharkField{WiregoFieldId: 733, Name: "Field 1", Filter: "field1", ValueType: ValueTypeInt8, DisplayMode: DisplayModeDecimal})
 	Register(&fake)
 	if wirego_setup() == -1 {
 		t.Fatal("wirego_setup works fine for this test.")
@@ -526,7 +541,7 @@ func TestDissectPacketResultsInvalidInternalId(t *testing.T) {
 	dst = 0x00
 	layer = 0x00
 
-	handle := wirego_dissect_packet(&src, &dst, &layer, &packet, packetSize)
+	handle := wirego_dissect_packet(1, &src, &dst, &layer, &packet, packetSize)
 	if handle != -1 {
 		t.Fatal("wirego_dissect_packet fails if returned field uses invalid internalId")
 	}
@@ -572,7 +587,7 @@ func TestUnRegistered(t *testing.T) {
 	var dst _Ctype_char
 	var layer _Ctype_char
 	var packet _Ctype_char
-	if wirego_dissect_packet(&src, &dst, &layer, &packet, 0) != -1 {
+	if wirego_dissect_packet(1, &src, &dst, &layer, &packet, 0) != -1 {
 		t.Fatal("wirego_dissect_packet fails if no listener is registered.")
 	}
 	if wirego_result_get_protocol(0) != nil {

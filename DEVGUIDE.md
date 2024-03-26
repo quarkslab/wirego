@@ -71,17 +71,36 @@ func (WiregoExample) GetFields() []wirego.WiresharkField {
 
   return fields
 }
+```
 
-// GetDissectorFilter returns a wireshark filter that will select which packets
+
+In order to tell Wireshark which packets should be sent to your dissector, two methods are available:
+
+  - use Wireshark filters to match on a given traffic (ex. udp.port == 137)
+  - register a detection function which will be called on a given protocol (ex. "apply my heuristic function on all TCP payloads")
+
+The first method is faster but not always relevant. If your protocol works on a given HTTP traffic, you probably don't want to redirect all TCP port 80 to your dissector.
+The second option lets you register on HTTP traffic and apply an heuristic function to detect if this packet should be redirected to your dissector or not.
+You can use both method at the same time, but need to used at least one.
+
+```golang
+// GetDetectionFilters returns a wireshark filter that will select which packets
 // will be sent to your dissector for parsing.
 // Two types of filters can be defined: Integers or Strings
-func (WiregoExample) GetDissectorFilter() []wirego.DissectorFilter {
-  var filters []wirego.DissectorFilter
+func (WiregoExample) GetDetectionFilters() []wirego.DetectionFilter {
+  var filters []wirego.DetectionFilter
 
-  filters = append(filters, wirego.DissectorFilter{FilterType: wirego.DissectorFilterTypeInt, Name: "udp.port", ValueInt: 137})
-  filters = append(filters, wirego.DissectorFilter{FilterType: wirego.DissectorFilterTypeString, Name: "bluetooth.uuid", ValueString: "1234"})
+  filters = append(filters, wirego.DetectionFilter{FilterType: wirego.DetectionFilterTypeInt, Name: "udp.port", ValueInt: 137})
+  filters = append(filters, wirego.DetectionFilter{FilterType: wirego.DetectionFilterTypeString, Name: "bluetooth.uuid", ValueString: "1234"})
 
   return filters
+}
+
+// GetDetectionHeuristicsParents returns a list of protocols on top of which detection heuristic
+// should be called.
+func (WiregoExample) GetDetectionHeuristicsParents() []string {
+	//We want to apply our detection heuristic on all tcp and http payloads
+	return []string{"udp", "http"}
 }
 ```
 

@@ -25,7 +25,9 @@ type WiregoInterface interface {
 	GetFilter() string
 	Setup() error
 	GetFields() []WiresharkField
-	GetDissectorFilter() []DissectorFilter
+	GetDetectionFilters() []DetectionFilter
+	GetDetectionHeuristicsParents() []string
+	DetectionHeuristic(packetNumber int, src string, dst string, stack string, packet []byte) bool
 	DissectPacket(packetNumber int, src string, dst string, stack string, packet []byte) *DissectResult
 }
 
@@ -37,10 +39,11 @@ type Wirego struct {
 	lock           sync.Mutex
 
 	//Fetched and duplicated from plugin, to trick gc
-	pluginName             string
-	pluginFilter           string
-	pluginDissectorFilters []DissectorFilter
-	pluginFields           []WiresharkField
+	pluginName                       string
+	pluginFilter                     string
+	pluginDetectionHeuristicsParents []string
+	pluginDetectionFilters           []DetectionFilter
+	pluginFields                     []WiresharkField
 }
 
 // We use a static "object" here
@@ -99,15 +102,15 @@ type DissectResult struct {
 	Fields   []DissectField
 }
 
-type DissectorFilterType int
+type DetectionFilterType int
 
 const (
-	DissectorFilterTypeInt    DissectorFilterType = iota
-	DissectorFilterTypeString DissectorFilterType = iota
+	DetectionFilterTypeInt    DetectionFilterType = iota
+	DetectionFilterTypeString DetectionFilterType = iota
 )
 
-type DissectorFilter struct {
-	FilterType  DissectorFilterType
+type DetectionFilter struct {
+	FilterType  DetectionFilterType
 	Name        string
 	ValueInt    int
 	ValueString string
@@ -156,8 +159,11 @@ func wirego_setup() C.int {
 	wg.pluginFilter = wg.listener.GetFilter()
 	pinner.Pin(&wg.pluginFilter)
 
-	wg.pluginDissectorFilters = wg.listener.GetDissectorFilter()
-	pinner.Pin(&wg.pluginDissectorFilters)
+	wg.pluginDetectionHeuristicsParents = wg.listener.GetDetectionHeuristicsParents()
+	pinner.Pin(&wg.pluginDetectionHeuristicsParents)
+
+	wg.pluginDetectionFilters = wg.listener.GetDetectionFilters()
+	pinner.Pin(&wg.pluginDetectionFilters)
 
 	wg.pluginFields = wg.listener.GetFields()
 	pinner.Pin(&wg.pluginFields)
@@ -187,19 +193,29 @@ func wirego_version_minor() C.int {
 
 //export wirego_plugin_name
 func wirego_plugin_name() *C.char {
+	if wg.listener == nil {
+		return nil
+	}
 	return C.CString(wg.pluginName)
 }
 
 //export wirego_plugin_filter
 func wirego_plugin_filter() *C.char {
+	if wg.listener == nil {
+		return nil
+	}
 	return C.CString(wg.pluginFilter)
 }
 
 //export wirego_detect_int
 func wirego_detect_int(matchValue *C.int, idx C.int) *C.char {
+	if wg.listener == nil {
+		return nil
+	}
+
 	cnt := 0
-	for _, f := range wg.pluginDissectorFilters {
-		if f.FilterType == DissectorFilterTypeInt {
+	for _, f := range wg.pluginDetectionFilters {
+		if f.FilterType == DetectionFilterTypeInt {
 			if cnt == int(idx) {
 				*matchValue = C.int(f.ValueInt)
 				name := C.CString(f.Name)
@@ -215,10 +231,13 @@ func wirego_detect_int(matchValue *C.int, idx C.int) *C.char {
 
 //export wirego_detect_string
 func wirego_detect_string(matchValue **C.char, idx C.int) *C.char {
+	if wg.listener == nil {
+		return nil
+	}
 
 	cnt := 0
-	for _, f := range wg.pluginDissectorFilters {
-		if f.FilterType == DissectorFilterTypeString {
+	for _, f := range wg.pluginDetectionFilters {
+		if f.FilterType == DetectionFilterTypeString {
 			if cnt == int(idx) {
 
 				*matchValue = C.CString(f.ValueString)
@@ -233,8 +252,25 @@ func wirego_detect_string(matchValue **C.char, idx C.int) *C.char {
 	return nil
 }
 
+//export wirego_detect_heuristic
+func wirego_detect_heuristic(idx C.int) *C.char {
+	if wg.listener == nil {
+		return nil
+	}
+
+	if idx >= C.int(len(wg.pluginDetectionHeuristicsParents)) {
+		return nil
+	}
+
+	return C.CString(wg.pluginDetectionHeuristicsParents[idx])
+}
+
 //export wirego_get_fields_count
 func wirego_get_fields_count() C.int {
+	if wg.listener == nil {
+		return 0
+	}
+
 	return C.int(len(wg.pluginFields))
 }
 
@@ -246,7 +282,7 @@ func wirego_get_field(index int, wiregoFieldId *C.int, name **C.char, filter **C
 	*valueType = -1
 	*display = -1
 
-	if (index < 0) || (index >= len(wg.pluginFields)) {
+	if (wg.listener == nil) || (index < 0) || (index >= len(wg.pluginFields)) {
 		return C.int(-1)
 	}
 
@@ -260,6 +296,24 @@ func wirego_get_field(index int, wiregoFieldId *C.int, name **C.char, filter **C
 	*display = C.int(f.DisplayMode)
 
 	return C.int(0)
+}
+
+//export wirego_detection_heuristic
+func wirego_detection_heuristic(packetNumber C.int, src *C.char, dst *C.char, layer *C.char, packet *C.char, packetSize C.int) C.int {
+	if wg.listener == nil {
+		return C.int(-1)
+	}
+
+	if (src == nil) || (dst == nil) || (layer == nil) || (packet == nil) || packetSize == 0 {
+		return C.int(-1)
+	}
+
+	result := wg.listener.DetectionHeuristic(int(packetNumber), C.GoString(src), C.GoString(dst), C.GoString(layer), C.GoBytes(unsafe.Pointer(packet), packetSize))
+
+	if result {
+		return 1
+	}
+	return 0
 }
 
 /*

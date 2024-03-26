@@ -57,16 +57,35 @@ func (WiregoExample) GetFields() []wirego.WiresharkField {
 	return fields
 }
 
-// GetDissectorFilter returns a wireshark filter that will select which packets
+// GetDetectionFilters returns a wireshark filter that will select which packets
 // will be sent to your dissector for parsing.
 // Two types of filters can be defined: Integers or Strings
-func (WiregoExample) GetDissectorFilter() []wirego.DissectorFilter {
-	var filters []wirego.DissectorFilter
+func (WiregoExample) GetDetectionFilters() []wirego.DetectionFilter {
+	var filters []wirego.DetectionFilter
 
-	filters = append(filters, wirego.DissectorFilter{FilterType: wirego.DissectorFilterTypeInt, Name: "udp.port", ValueInt: 137})
-	filters = append(filters, wirego.DissectorFilter{FilterType: wirego.DissectorFilterTypeString, Name: "bluetooth.uuid", ValueString: "1234"})
+	filters = append(filters, wirego.DetectionFilter{FilterType: wirego.DetectionFilterTypeInt, Name: "udp.port", ValueInt: 137})
+	filters = append(filters, wirego.DetectionFilter{FilterType: wirego.DetectionFilterTypeString, Name: "bluetooth.uuid", ValueString: "1234"})
 
 	return filters
+}
+
+// GetDissectorFilterHeuristics returns a list of protocols on top of which detection heuristic
+// should be called.
+func (WiregoExample) GetDetectionHeuristicsParents() []string {
+	//We want to apply our detection heuristic on all tcp payloads
+	return []string{"udp"}
+}
+
+func (WiregoExample) DetectionHeuristic(packetNumber int, src string, dst string, layer string, packet []byte) bool {
+	if len(packet) == 0 {
+		return false
+	}
+
+	//All packets starting with 0x00 should be passed to our dissector
+	if packet[0] == 0x00 {
+		return true
+	}
+	return false
 }
 
 // DissectPacket provides the packet payload to be parsed.

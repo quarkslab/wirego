@@ -38,7 +38,8 @@ For **step 2**, you will basically just have to __import "wirego"__ and implemen
       GetFilter() string
       Setup() error
       GetFields() []WiresharkField
-      GetDissectorFilter() []DissectorFilter
+      GetDetectionFilters() []DetectionFilterType
+    	GetDetectionHeuristicsParent() []string
       DissectPacket(packetNumber int, src string, dst string, stack string, packet []byte) *DissectResult
     }
 ```

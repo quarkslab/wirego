@@ -22,8 +22,10 @@ char* (*wirego_plugin_name_cb)(void) = NULL;
 char* (*wirego_plugin_filter_cb)(void) = NULL;
 char* (*wirego_detect_int_cb)(int*, int) = NULL;
 char* (*wirego_detect_string_cb)(char**, int) = NULL;
+char* (*wirego_detect_heuristic_cb)(int) = NULL;
 int (*wirego_get_fields_count_cb)(void) = NULL;
 int (*wirego_get_field_cb)(int, int*, char**, char**, int *, int*) = NULL;
+int (*wirego_detection_heuristic_cb)(int, char *, char*, char*, char*, int) = NULL;
 int (*wirego_dissect_packet_cb)(int, char *, char*, char*, char*, int) = NULL;
 char* (*wirego_result_get_protocol_cb)(int) = NULL;
 char* (*wirego_result_get_info_cb)(int) = NULL;
@@ -91,6 +93,11 @@ int wirego_load_plugin(char *plugin_path) {
     return wirego_load_failure_helper("Failed to find symbol wirego_detect_string");
   }
 
+  wirego_detect_heuristic_cb = (char* (*) (int)) GetProcAddress(plugin_h, "wirego_detect_heuristic");
+  if (wirego_detect_heuristic_cb == NULL) {
+    return wirego_load_failure_helper("Failed to find symbol wirego_detect_heuristic");
+  }
+
   wirego_get_fields_count_cb = (int (*) (void)) GetProcAddress(plugin_h, "wirego_get_fields_count");
   if (wirego_get_fields_count_cb == NULL) {
     return wirego_load_failure_helper("Failed to find symbol wirego_get_fields_count");
@@ -99,6 +106,11 @@ int wirego_load_plugin(char *plugin_path) {
   wirego_get_field_cb = (int (*) (int, int*, char**, char**, int*, int*)) GetProcAddress(plugin_h, "wirego_get_field");
   if (wirego_get_field_cb == NULL) {
     return wirego_load_failure_helper("Failed to find symbol wirego_get_field");
+  }
+
+  wirego_detection_heuristic_cb = (int (*) (int, char*, char*, char *, char*, int)) GetProcAddress(plugin_h, "wirego_detection_heuristic");
+  if (wirego_detection_heuristic_cb == NULL) {
+    return wirego_load_failure_helper("Failed to find symbol wirego_detection_heuristic");
   }
 
   wirego_dissect_packet_cb = (int (*) (int, char*, char*, char *, char*, int)) GetProcAddress(plugin_h, "wirego_dissect_packet");
@@ -204,6 +216,11 @@ int wirego_load_plugin(char *plugin_path) {
     return wirego_load_failure_helper("Failed to find symbol wirego_detect_string");
   }
 
+  wirego_detect_heuristic_cb = (char* (*) (int)) dlsym(plugin_h, "wirego_detect_heuristic");
+  if (wirego_detect_heuristic_cb == NULL) {
+    return wirego_load_failure_helper("Failed to find symbol wirego_detect_heuristic");
+  }
+
   wirego_get_fields_count_cb = (int (*) (void)) dlsym(plugin_h, "wirego_get_fields_count");
   if (wirego_get_fields_count_cb == NULL) {
     return wirego_load_failure_helper("Failed to find symbol wirego_get_fields_count");
@@ -212,6 +229,11 @@ int wirego_load_plugin(char *plugin_path) {
   wirego_get_field_cb = (int (*) (int, int*, char**, char**, int*, int*)) dlsym(plugin_h, "wirego_get_field");
   if (wirego_get_field_cb == NULL) {
     return wirego_load_failure_helper("Failed to find symbol wirego_get_field");
+  }
+
+  wirego_detection_heuristic_cb = (int (*) (int, char*, char*, char *, char*, int)) dlsym(plugin_h, "wirego_detection_heuristic");
+  if (wirego_detection_heuristic_cb == NULL) {
+    return wirego_load_failure_helper("Failed to find symbol wirego_detection_heuristic");
   }
 
   wirego_dissect_packet_cb = (int (*) (int, char*, char*, char *, char*, int)) dlsym(plugin_h, "wirego_dissect_packet");
