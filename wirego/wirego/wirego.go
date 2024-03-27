@@ -19,18 +19,6 @@ import (
 	"unsafe"
 )
 
-// WiregoInterface is implemented by the actual wirego plugin
-type WiregoInterface interface {
-	GetName() string
-	GetFilter() string
-	Setup() error
-	GetFields() []WiresharkField
-	GetDetectionFilters() []DetectionFilter
-	GetDetectionHeuristicsParents() []string
-	DetectionHeuristic(packetNumber int, src string, dst string, stack string, packet []byte) bool
-	DissectPacket(packetNumber int, src string, dst string, stack string, packet []byte) *DissectResult
-}
-
 // Just a simple holder
 type Wirego struct {
 	listener       WiregoInterface
@@ -48,74 +36,6 @@ type Wirego struct {
 
 // We use a static "object" here
 var wg Wirego
-
-// Fields types
-type ValueType int
-
-const (
-	ValueTypeNone ValueType = 0x01
-	ValueTypeBool ValueType = 0x02
-
-	ValueTypeUInt8 ValueType = 0x03
-	ValueTypeInt8  ValueType = 0x04
-
-	ValueTypeUInt16 ValueType = 0x05
-	ValueTypeInt16  ValueType = 0x06
-
-	ValueTypeUInt32 ValueType = 0x07
-	ValueTypeInt32  ValueType = 0x08
-
-	ValueTypeCString ValueType = 0x09
-	ValueTypeString  ValueType = 0x10
-)
-
-// Display types
-type DisplayMode int
-
-const (
-	DisplayModeNone        DisplayMode = 0x01
-	DisplayModeDecimal     DisplayMode = 0x02
-	DisplayModeHexadecimal DisplayMode = 0x03
-)
-
-// A field descriptor, to be provided by the actual plugin
-type FieldId int
-type WiresharkField struct {
-	WiregoFieldId FieldId
-	Name          string
-	Filter        string
-	ValueType     ValueType
-	DisplayMode   DisplayMode
-}
-
-// A field, as returned by the dissector
-type DissectField struct {
-	WiregoFieldId FieldId
-	Offset        int
-	Length        int
-	SubFields     []DissectField
-}
-
-// A dissector result is a protocol name, an info string and a list of extracted fields
-type DissectResult struct {
-	Protocol string
-	Info     string
-	Fields   []DissectField
-}
-
-type DetectionFilterType int
-
-const (
-	DetectionFilterTypeInt    DetectionFilterType = iota
-	DetectionFilterTypeString DetectionFilterType = iota
-)
-
-type DetectionFilter struct {
-	FilterType  DetectionFilterType
-	Name        string
-	ValueInt    int
-	ValueString string
-}
 
 var resultatsCacheEnable bool = true
 
@@ -206,64 +126,6 @@ func wirego_plugin_filter() *C.char {
 		return nil
 	}
 	return C.CString(wg.pluginFilter)
-}
-
-//export wirego_detect_int
-func wirego_detect_int(matchValue *C.int, idx C.int) *C.char {
-	if wg.listener == nil {
-		return nil
-	}
-
-	cnt := 0
-	for _, f := range wg.pluginDetectionFilters {
-		if f.FilterType == DetectionFilterTypeInt {
-			if cnt == int(idx) {
-				*matchValue = C.int(f.ValueInt)
-				name := C.CString(f.Name)
-				return name
-			}
-			cnt++
-		}
-	}
-
-	*matchValue = 0
-	return nil
-}
-
-//export wirego_detect_string
-func wirego_detect_string(matchValue **C.char, idx C.int) *C.char {
-	if wg.listener == nil {
-		return nil
-	}
-
-	cnt := 0
-	for _, f := range wg.pluginDetectionFilters {
-		if f.FilterType == DetectionFilterTypeString {
-			if cnt == int(idx) {
-
-				*matchValue = C.CString(f.ValueString)
-				name := C.CString(f.Name)
-				return name
-			}
-			cnt++
-		}
-	}
-
-	*matchValue = nil
-	return nil
-}
-
-//export wirego_detect_heuristic
-func wirego_detect_heuristic(idx C.int) *C.char {
-	if wg.listener == nil {
-		return nil
-	}
-
-	if idx >= C.int(len(wg.pluginDetectionHeuristicsParents)) {
-		return nil
-	}
-
-	return C.CString(wg.pluginDetectionHeuristicsParents[idx])
 }
 
 //export wirego_get_fields_count
