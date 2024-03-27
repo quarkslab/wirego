@@ -93,6 +93,7 @@ type DissectField struct {
 	WiregoFieldId FieldId
 	Offset        int
 	Length        int
+	SubFields     []DissectField
 }
 
 // A dissector result is a protocol name, an info string and a list of extracted fields

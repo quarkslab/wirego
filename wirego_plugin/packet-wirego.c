@@ -321,7 +321,10 @@ dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _
         wireshark_field_id = get_wireshark_field_id_from_wirego_field_id(wirego_field_id);
         //Add tree entry
         if (wireshark_field_id != -1) {
-          proto_tree_add_item(wirego_tree, wireshark_field_id, tvb, offset, length, ENC_BIG_ENDIAN);
+          proto_item *sub = proto_tree_add_item(wirego_tree, wireshark_field_id, tvb, offset, length, ENC_BIG_ENDIAN);
+          proto_tree *subsub = proto_item_add_subtree(sub, ett_wirego);
+          proto_tree_add_item(subsub, wireshark_field_id, tvb, offset, length, ENC_BIG_ENDIAN);
+
         }
       }    
     }
