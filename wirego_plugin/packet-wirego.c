@@ -26,25 +26,22 @@
 
 #include "plugin-loader.h"
 #include "packet-wirego.h"
+#include "preferences.h"
 
 void proto_register_wirego(void);
 void proto_reg_handoff_wirego(void);
 static int dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree _U_, void *data _U_);
 void register_preferences_menu(void);
-char * get_plugin_path(void);
 enum ftenum field_value_type_to_ws(int vtype);
 field_display_e field_display_type_to_ws(int dtype);
 int get_wireshark_field_id_from_wirego_field_id(int wirego_field_id);
 char * compile_network_stack(packet_info *pinfo);
-void pinfo_to_proto_stack(packet_info *pinfo, char *src, char *dst);
+void extract_adresses_from_packet_info(packet_info *pinfo, char *src, char *dst);
 
 static int proto_wirego = -1;
 
 //WireGo's subtree
 static int ett_wirego  = -1;
-
-//Plugin path
-static const gchar* pref_wirego_config_filename = "";
 
 
 
@@ -157,7 +154,7 @@ static gboolean wirego_heuristic_check(tvbuff_t *tvb, packet_info *pinfo, proto_
 
   src[0] = 0x00;
   dst[0] = 0x00;
-  pinfo_to_proto_stack(pinfo, src, dst);
+  extract_adresses_from_packet_info(pinfo, src, dst);
 
 
   full_layer = compile_network_stack(pinfo);
@@ -266,7 +263,7 @@ dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _
 
   src[0] = 0x00;
   dst[0] = 0x00;
-  pinfo_to_proto_stack(pinfo, src, dst);
+  extract_adresses_from_packet_info(pinfo, src, dst);
 
 
   full_layer = compile_network_stack(pinfo);
@@ -336,199 +333,11 @@ DONE:
 
 
 
-char * get_plugin_path(void) {
-  char config_path[1024];
-  static char plugin_path[1024];
-  FILE * f;
-  memset(plugin_path, 0x00, 1024);
-  char * home = getenv("HOME");
-
-  if (!home) 
-    return "";
-
-  snprintf(config_path, 1024, "%s/.wirego", home);
-  f = fopen(config_path, "r");
-  if (!f)
-    return "";
-
-  unsigned long r = fread(plugin_path, 1, 1024, f);
-  fclose(f);
-  if (r && plugin_path[r-1] == 0x0a)
-    plugin_path[r-1] = 0x00;
-  return plugin_path;
-}
-
-int save_plugin_path(const char * path) {
-  FILE * f;
-  char config_path[1024];
-  char * home = getenv("HOME");
-  snprintf(config_path, 1024, "%s/.wirego", home);
-  f = fopen(config_path, "w");
-  if (!f)
-    return -1;
-  fwrite(path, 1, strlen(path), f);
-  fclose(f);
-  return 0;
-}
-
-void preferences_apply_cb(void) {
-  if (strcmp(get_plugin_path(), pref_wirego_config_filename)) {
-    save_plugin_path(pref_wirego_config_filename);
-    ws_warning("Wirego: Updated plugin path to %s\n",pref_wirego_config_filename);
-  }
-}
-
-// Define the Wirego preferences panel
-void register_preferences_menu(void) {
-  module_t *wirego_module;
-  int proto_main_wirego = proto_register_protocol("Wirego", "Wirego", "wirego");
-  wirego_module = prefs_register_protocol(proto_main_wirego, preferences_apply_cb);
-
-	prefs_register_filename_preference(wirego_module, "pluginpath",
-					   "Wirego plugin path",
-					   "The fullpath to the wirego plugin, written in Go",
-					   &pref_wirego_config_filename, FALSE);
-
-  prefs_register_static_text_preference(wirego_module, "helper",
-        "You will need to restart Wireshark after changing the plugin path.",
-        "");
-
-}
 
 
-enum ftenum field_value_type_to_ws(int vtype) {
-  switch (vtype) {
-    case 0x01:
-      return FT_NONE;
-    break;
-    case 0x02:
-      return FT_BOOLEAN;
-    break;
-    case 0x03:
-      return FT_UINT8;
-    break;
-    case 0x04:
-      return FT_INT8;
-    break;
-    case 0x05:
-      return FT_UINT16;
-    break;
-    case 0x06:
-      return FT_INT16;
-    break;
-    case 0x07:
-      return FT_UINT32;
-    break;
-    case 0x08:
-      return FT_INT32;
-    break;
-    case 0x09:
-      return FT_STRINGZ;
-    break;
-    case 0x10:
-      return FT_STRING;   
-    break;             
-    default:
-      return FT_NONE;
-  };
-  return FT_NONE;
-}
 
-field_display_e field_display_type_to_ws(int dtype) {
-  switch (dtype) {
-    case 0x01:
-      return BASE_NONE;
-    break;
-    case 0x02:
-      return BASE_DEC;
-    break;
-    case 0x03:
-      return BASE_HEX;
-    break;
-    default:
-      return BASE_NONE;
-    break;
-  }
-  return BASE_NONE;
-}
-
-
-void pinfo_to_proto_stack(packet_info *pinfo, char *src, char *dst) {
-  //Very suboptimal, FIXME.
-
-  src[0] = 0x00;
-  dst[0] = 0x00;
-
-  if (!pinfo || !pinfo->net_src.data || !pinfo->net_dst.data)
-    return;
-
-  switch (pinfo->net_src.type) {
-    case AT_IPv4:
-      ip_to_str_buf((const guint8*)pinfo->net_src.data, src, 255);
-    break;
-    case AT_IPv6:
-      ip6_to_str_buf((const ws_in6_addr *)pinfo->net_src.data, src, 255);
-    break;
-    case AT_ETHER:
-      sprintf(src, "%02x:%02x:%02x:%02x:%02x:%02x", 
-        ((const char*)pinfo->net_src.data)[0]&0xFF, 
-        ((const char*)pinfo->net_src.data)[1]&0xFF,
-        ((const char*)pinfo->net_src.data)[2]&0xFF,
-        ((const char*)pinfo->net_src.data)[3]&0xFF,
-        ((const char*)pinfo->net_src.data)[4]&0xFF,
-        ((const char*)pinfo->net_src.data)[5]&0xFF);
-    break;
-  }
-  switch (pinfo->net_dst.type) {
-    case AT_IPv4:
-      ip_to_str_buf((const guint8*)pinfo->net_dst.data, dst, 255);
-      break;
-    case AT_IPv6:
-      ip6_to_str_buf((const ws_in6_addr *)pinfo->net_dst.data, dst, 255);
-    break;
-    case AT_ETHER:
-      sprintf(dst, "%02x:%02x:%02x:%02x:%02x:%02x",
-      ((const char*)pinfo->net_dst.data)[0]&0xFF, 
-      ((const char*)pinfo->net_dst.data)[1]&0xFF,
-      ((const char*)pinfo->net_dst.data)[2]&0xFF,
-      ((const char*)pinfo->net_dst.data)[3]&0xFF,
-      ((const char*)pinfo->net_dst.data)[4]&0xFF,
-      ((const char*)pinfo->net_dst.data)[5]&0xFF);
-    break;
-  }
-}
-
-char * compile_network_stack(packet_info *pinfo) {
-  unsigned int full_layer_size = 512;
-  char * full_layer = calloc(full_layer_size, sizeof(char));
-	wmem_list_frame_t *protos;
-	int	    proto_id;
-	const char *name;
-
-  if (!pinfo || !pinfo->layers)
-    return full_layer;
-
-  protos = wmem_list_head(pinfo->layers);
-	while (protos != NULL)
-	{
-		proto_id = GPOINTER_TO_INT(wmem_list_frame_data(protos));
-		name = proto_get_protocol_filter_name(proto_id);
-
-    if (strlen(full_layer) + 1 + strlen(name) + 1 >= full_layer_size) {
-      full_layer_size += 512 + 1 + strlen(name);
-      full_layer = realloc(full_layer, full_layer_size);
-    }
-		strcat(full_layer, name);
-    strcat(full_layer, ".");
-		protos = wmem_list_frame_next(protos);
-	}
-  //Strip trailing '.'
-  if (strlen(full_layer))
-    full_layer[strlen(full_layer) - 1] = 0x00;
-
-  return full_layer;
-}
-
+//Convert a field id, as provided by the Golang plugin to a Wireshark filed id,
+//as returned by wireshark backend during declaration
 int get_wireshark_field_id_from_wirego_field_id(int wirego_field_id) {
   for (int idx = 0; idx < fields_count; idx++) {
     if (fields_mapping[idx].wirego_field_id == wirego_field_id) {

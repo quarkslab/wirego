@@ -14,6 +14,8 @@ set_module_info(wirego 0 1 0 0)
 
 set(DISSECTOR_SRC
 	plugin-loader.c
+	helpers.c
+	preferences.c
 	packet-wirego.c
 )
 
