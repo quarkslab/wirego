@@ -1,6 +1,6 @@
 #include "helpers.h"
 #include <wsutil/to_str.h>
-
+#include "packet-wirego.h"
 
 //Extract src and dst addresses from packet_info structure. It can be an IPv4, IPv6 or Ethernet address
 void extract_adresses_from_packet_info(packet_info *pinfo, char *src, char *dst) {
@@ -137,4 +137,15 @@ field_display_e field_display_type_to_ws(int dtype) {
     break;
   }
   return BASE_NONE;
+}
+
+//Convert a field id, as provided by the Golang plugin to a Wireshark filed id,
+//as returned by wireshark backend during declaration
+int get_wireshark_field_id_from_wirego_field_id(int wirego_field_id) {
+  for (int idx = 0; idx < fields_count; idx++) {
+    if (fields_mapping[idx].wirego_field_id == wirego_field_id) {
+      return fields_mapping[idx].wireshark_field_id;
+    }
+  }
+  return -1;  
 }

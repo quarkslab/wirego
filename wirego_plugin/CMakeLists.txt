@@ -16,6 +16,7 @@ set(DISSECTOR_SRC
 	plugin-loader.c
 	helpers.c
 	preferences.c
+	dissect.c
 	packet-wirego.c
 )
 
