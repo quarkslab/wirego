@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/hex"
 	"fmt"
 
 	"github.com/quarkslab/wirego/wirego/wirego"
@@ -110,7 +109,7 @@ func (WiregoExample) DissectPacket(packetNumber int, src string, dst string, lay
 	res.Fields = append(res.Fields, field)
 
 	//Dump packet contents
-	fmt.Println(layer, " ", src, " to ", dst)
-	fmt.Println(hex.Dump(packet))
+	//fmt.Println(layer, " ", src, " to ", dst)
+	//fmt.Println(hex.Dump(packet))
 	return &res
 }

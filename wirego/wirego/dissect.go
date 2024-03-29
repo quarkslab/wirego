@@ -6,6 +6,18 @@ import (
 	"unsafe"
 )
 
+type DissectResultFlattenEntry struct {
+	Protocol string
+	Info     string
+	fields   []DissectResultFlatten
+}
+type DissectResultFlatten struct {
+	parentIdx     int
+	wiregoFieldId FieldId
+	offset        int
+	length        int
+}
+
 /*
   Note: there's probably a way to return the complete DissectResult structure
 	to the C environment. At the end of the day, this would be super opaque so for now
@@ -52,10 +64,27 @@ func wirego_dissect_packet(packetNumber C.int, src *C.char, dst *C.char, layer *
 		}
 	}
 
+	//Flatten results to a simple list with parenIdx pointing to parent's entry
+	var flatten DissectResultFlattenEntry
+	flatten.Info = result.Info
+	flatten.Protocol = result.Protocol
+	for _, r := range result.Fields {
+		addFieldsRec(&flatten, -1, &r)
+	}
+
 	//Add to cache
-	pinner.Pin(&result)
+	pinner.Pin(&flatten)
 	wg.lock.Lock()
 	defer wg.lock.Unlock()
-	wg.resultsCache[packetNumber] = result
+	wg.resultsCache[packetNumber] = &flatten
 	return packetNumber
+}
+
+func addFieldsRec(flatten *DissectResultFlattenEntry, parentIdx int, field *DissectField) {
+	flatten.fields = append(flatten.fields, DissectResultFlatten{parentIdx: parentIdx, wiregoFieldId: field.WiregoFieldId, offset: field.Offset, length: field.Length})
+	newParentIdx := len(flatten.fields) - 1
+
+	for _, sub := range field.SubFields {
+		addFieldsRec(flatten, newParentIdx, &sub)
+	}
 }

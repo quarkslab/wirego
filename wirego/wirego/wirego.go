@@ -23,7 +23,7 @@ import (
 type Wirego struct {
 	listener       WiregoInterface
 	wiregoFieldIds map[int]bool
-	resultsCache   map[C.int]*DissectResult
+	resultsCache   map[C.int]*DissectResultFlattenEntry
 	lock           sync.Mutex
 
 	//Fetched and duplicated from plugin, to trick gc
@@ -70,7 +70,7 @@ func wirego_setup() C.int {
 		return C.int(-1)
 	}
 
-	wg.resultsCache = make(map[C.int]*DissectResult)
+	wg.resultsCache = make(map[C.int]*DissectResultFlattenEntry)
 	wg.wiregoFieldIds = make(map[int]bool)
 
 	//Preload all "static" values to bypass the GC and keep local copies
@@ -223,12 +223,12 @@ func wirego_result_get_fields_count(h C.int) C.int {
 	if !found {
 		return C.int(0)
 	}
-
-	return C.int(len(desc.Fields))
+	return C.int(len(desc.fields))
 }
 
 //export wirego_result_get_field
-func wirego_result_get_field(h C.int, idx C.int, wiregoFieldId *C.int, offset *C.int, length *C.int) {
+func wirego_result_get_field(h C.int, idx C.int, parentIdx *C.int, wiregoFieldId *C.int, offset *C.int, length *C.int) {
+	*parentIdx = -1
 	*wiregoFieldId = -1
 	*offset = -1
 	*length = -1
@@ -245,12 +245,13 @@ func wirego_result_get_field(h C.int, idx C.int, wiregoFieldId *C.int, offset *C
 		return
 	}
 
-	if idx >= C.int(len(desc.Fields)) {
+	if idx >= C.int(len(desc.fields)) {
 		return
 	}
-	*wiregoFieldId = C.int(desc.Fields[idx].WiregoFieldId)
-	*offset = C.int(desc.Fields[idx].Offset)
-	*length = C.int(desc.Fields[idx].Length)
+	*parentIdx = C.int(desc.fields[idx].parentIdx)
+	*wiregoFieldId = C.int(desc.fields[idx].wiregoFieldId)
+	*offset = C.int(desc.fields[idx].offset)
+	*length = C.int(desc.fields[idx].length)
 }
 
 //export wirego_result_release

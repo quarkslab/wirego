@@ -7,6 +7,5 @@ void extract_adresses_from_packet_info(packet_info *pinfo, char *src, char *dst)
 char * compile_network_stack(packet_info *pinfo);
 field_display_e field_display_type_to_ws(int dtype);
 enum ftenum field_value_type_to_ws(int vtype);
-int get_wireshark_field_id_from_wirego_field_id(int wirego_field_id);
 
 #endif

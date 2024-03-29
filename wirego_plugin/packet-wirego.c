@@ -32,12 +32,31 @@
 
 void proto_register_wirego(void);
 void proto_reg_handoff_wirego(void);
-int get_wireshark_field_id_from_wirego_field_id(int wirego_field_id);
 void extract_adresses_from_packet_info(packet_info *pinfo, char *src, char *dst);
 
 
+//WireGo's subtree
+int ett_wirego  = -1;
+int fields_count = -1;
+field_id_to_plugin_field_id_t * fields_mapping = NULL;
 
 
+//Convert a field id, as provided by the Golang plugin to a Wireshark filed id,
+//as returned by wireshark backend during declaration
+int get_wireshark_field_id_from_wirego_field_id(int wirego_field_id) {
+  ws_warning("looking for wirego id %d in %d items", wirego_field_id, fields_count);
+
+  for (int idx = 0; idx < fields_count; idx++) {
+    if (fields_mapping[idx].wirego_field_id == wirego_field_id) {
+      return fields_mapping[idx].wireshark_field_id;
+    }
+  }
+  return -1; 
+}
+
+int get_wireshark_subtree() {
+  return ett_wirego;
+}
 
 //Register protocol when plugin is loaded.
 void proto_register_wirego(void) {
@@ -115,7 +134,7 @@ void proto_register_wirego(void) {
   //Don't release name and filter, since those are used by wireshark's internals
   //Register our custom fields
   proto_register_field_array(proto_wirego, hfx, fields_count);
-
+ws_warning("registered %d fields", fields_count);
   //Register the protocol subtree
   proto_register_subtree_array(ett, array_length(ett));
 }
