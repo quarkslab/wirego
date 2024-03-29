@@ -3,6 +3,7 @@
 #include "helpers.h"
 #include "plugin-loader.h"
 #include "packet-wirego.h"
+void tree_add_item(proto_item *parent_node, int dissectHandle, tvbuff_t *tvb,  int idx, int count);
 
 int dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _U_)
 {
@@ -72,56 +73,83 @@ int dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *da
 
   //During the first pass, tree can eventually be NULL
   //Wireshark does not ask the plugin to fill detailed structures
-  if (tree) {
-    //How many custom fields did the plugin return?
-    int result_fields_count = wirego_result_get_fields_count_cb(dissectHandle);
+  if (!tree)
+    goto DONE;
 
-    if (result_fields_count != 0) {
-    
-      //Add a subtree on this packet
-      proto_item *ti = proto_tree_add_item(tree, proto_wirego, tvb, 0, -1, ENC_BIG_ENDIAN);
-      if (!ti) {
-        goto DONE;
-      }
-      proto_tree *wirego_tree = proto_item_add_subtree(ti, get_wireshark_subtree());
-      if (!wirego_tree) {
-        goto DONE;
-      }
+  //How many custom fields did the plugin return?
+  int result_fields_count = wirego_result_get_fields_count_cb(dissectHandle);
 
-      //Process all custom fields
-      for (int i = 0; i < result_fields_count; i++) {
-        int wireshark_field_id = -1;
-        int parent_idx;
-        int wirego_field_id;
-        int offset;
-        int length;
+  if (result_fields_count == 0)
+    goto DONE;
 
-        //Ask plugin for result
-        wirego_result_get_field_cb(dissectHandle, i, &parent_idx, &wirego_field_id, &offset, &length);
-
-        //Convert plugin field id to wireshark id
-        wireshark_field_id = get_wireshark_field_id_from_wirego_field_id(wirego_field_id);
-        //Add tree entry
-        if (wireshark_field_id != -1) {
-
-          proto_item *sub = proto_tree_add_item(wirego_tree, wireshark_field_id, tvb, offset, length, ENC_BIG_ENDIAN);
-
-          //FIXME
-          //Test subtrees
-          proto_tree *subsub = proto_item_add_subtree(sub, ett_wirego);
-          proto_tree_add_item(subsub, wireshark_field_id, tvb, offset, length, ENC_BIG_ENDIAN);
-        }  else {
-          ws_warning("Wirego plugin returned unknown field id %d, cannot map to Wireshark field id", wirego_field_id);
-        }
-      }    
-    }
+  //Add a subtree on this packet
+  proto_item *ti = proto_tree_add_item(tree, proto_wirego, tvb, 0, -1, ENC_BIG_ENDIAN);
+  if (!ti) {
+    goto DONE;
   }
+  proto_tree *wirego_tree = proto_item_add_subtree(ti, ett_wirego);
+  if (!wirego_tree) {
+    goto DONE;
+  }
+
+  //Process all custom fields
+
+for (int i = 0; i < result_fields_count; i++) {
+  int wireshark_field_id = -1;
+  int parent_idx;
+  int wirego_field_id;
+  int offset;
+  int length;
+
+
+  //Ask plugin for result
+  wirego_result_get_field_cb(dissectHandle, i, &parent_idx, &wirego_field_id, &offset, &length);
+
+if (parent_idx == -1)
+    tree_add_item(wirego_tree, dissectHandle, tvb, i,result_fields_count);
+}
+
 DONE:
   wirego_result_release_cb(dissectHandle);
   return tvb_captured_length(tvb);
 }
 
+void tree_add_item(proto_item *parent_node, int dissectHandle, tvbuff_t *tvb,  int idx, int count) {
+  int wireshark_field_id = -1;
+  int parent_idx;
+  int wirego_field_id;
+  int offset;
+  int length;
 
+
+  //Ask plugin for result
+  wirego_result_get_field_cb(dissectHandle, idx, &parent_idx, &wirego_field_id, &offset, &length);
+
+  //Convert plugin field id to wireshark id
+  wireshark_field_id = get_wireshark_field_id_from_wirego_field_id(wirego_field_id);
+
+  //Add tree entry
+  if (wireshark_field_id == -1) {
+    ws_warning("Wirego plugin returned unknown field id %d, cannot map to Wireshark field id", wirego_field_id);
+  return;
+  }
+
+  proto_item *sub = proto_tree_add_item(parent_node, wireshark_field_id, tvb, offset, length, ENC_BIG_ENDIAN);
+
+
+  //look for childs
+  proto_tree *subsub = NULL;
+
+  for (int i = 0; i < count; i++) {
+    wirego_result_get_field_cb(dissectHandle, i, &parent_idx, &wirego_field_id, &offset, &length);
+    if (parent_idx == idx) {
+      if (!subsub)
+        subsub = proto_item_add_subtree(sub, ett_wirego);
+      tree_add_item(sub, dissectHandle, tvb, i, count);
+    }
+  }
+  
+}
 
 
 

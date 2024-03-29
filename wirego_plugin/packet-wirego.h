@@ -9,7 +9,6 @@
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
 
-static int proto_wirego = -1;
 
 
 //Map our go plugin internal field identifiers to the ones provided by Wireshark
@@ -19,7 +18,10 @@ typedef struct {
 } field_id_to_plugin_field_id_t;
 
 int get_wireshark_field_id_from_wirego_field_id(int wirego_field_id);
-int get_wireshark_subtree(void);
+
+extern int ett_wirego;
+extern int proto_wirego;
+
 
 
 /*
