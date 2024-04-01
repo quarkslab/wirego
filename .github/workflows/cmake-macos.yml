@@ -18,7 +18,7 @@ jobs:
         run: echo "OUTPUT_PATH=${VERSION//./-}" >> $GITHUB_ENV
 
       - name: "Debug output path"
-        run: echo ${{ env.OUTPUT_PATH }}
+        run: echo $OUTPUT_PATH
 
       - name: Install deps
         run: brew install c-ares glib libgcrypt pcre2 speexdsp
@@ -61,4 +61,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: WiregoPlugin-macOS-for-Wireshark-${{ matrix.wireshark_version }}
-          path: ${{ github.workspace }}/build/run/Wireshark.app/Contents/PlugIns/wireshark/${{ env.OUTPUT_PATH }}/epan/wirego.so
+          path: ${{ github.workspace }}/build/run/Wireshark.app/Contents/PlugIns/wireshark/$OUTPUT_PATH/epan/wirego.so
