@@ -23,7 +23,7 @@ jobs:
         run: >
           echo $VERSION
           echo $OUTPUT_PATH
-          echo ${{ OUTPUT_PATH }}
+          echo ${{ env.OUTPUT_PATH }}
 
       - name: Install deps
         run: brew install c-ares glib libgcrypt pcre2 speexdsp
