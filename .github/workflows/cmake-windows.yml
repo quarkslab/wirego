@@ -1,5 +1,8 @@
 name: Wirego plugin build on Windows
 
+env:
+  WIRESHARK_VERSION: 4.2
+
 on:
   push:
     branches: [ "main" ]
@@ -28,7 +31,7 @@ jobs:
         with:
           repository: wireshark/wireshark
           path: ${{ github.workspace }}\wireshark
-          ref: release-4.2
+          ref: release-$WIRESHARK_VERSION
           
       - name: Clone Wirego plugin
         uses: actions/checkout@v3
@@ -58,5 +61,5 @@ jobs:
       - name: Export plugin
         uses: actions/upload-artifact@v4
         with:
-          name: WiregoPlugin-Windows
-          path: ${{ github.workspace }}\build\run\RelWithDebInfo\plugins\4.2\epan\wirego.dll
+          name: WiregoPlugin-Windows-for-Wireshark-$WIRESHARK_VERSION
+          path: ${{ github.workspace }}\build\run\RelWithDebInfo\plugins\$WIRESHARK_VERSION\epan\wirego.dll
