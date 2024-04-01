@@ -12,7 +12,7 @@ jobs:
     runs-on: macos-latest
     strategy:
       matrix:
-        wireshark_version: ["3.6", "4.0", "4.2"]
+        wireshark_version: ["4.0", "4.2"]
     steps:
       - name: Install deps
         run: brew install c-ares glib libgcrypt pcre2 speexdsp
