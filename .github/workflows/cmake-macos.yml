@@ -63,4 +63,4 @@ jobs:
           run: echo "OUTPUT_PATH=${VERSION//./-}" >> $GITHUB_ENV
         with:
           name: WiregoPlugin-macOS-for-Wireshark-${{ matrix.wireshark_version }}
-          path: ${{ github.workspace }}/build/run/Wireshark.app/Contents/PlugIns/wireshark/$OUTPUT_PATH/epan/wirego.so
+          path: ${{ github.workspace }}/build/run/Wireshark.app/Contents/PlugIns/wireshark/${{ env.OUTPUT_PATH }}/epan/wirego.so
