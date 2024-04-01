@@ -10,6 +10,20 @@
  */
 
 
+
+//Map our go plugin internal field identifiers to the ones provided by Wireshark
+typedef struct {
+  int wirego_field_id;
+  int wireshark_field_id;
+} field_id_to_plugin_field_id_t;
+
+int get_wireshark_field_id_from_wirego_field_id(int wirego_field_id);
+
+extern int ett_wirego;
+extern int proto_wirego;
+
+
+
 /*
  * Editor modelines  -  https://www.wireshark.org/tools/modelines.html
  *
