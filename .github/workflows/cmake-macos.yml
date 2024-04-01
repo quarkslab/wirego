@@ -1,9 +1,5 @@
 name: Wirego plugin build on macos
 
-env:
-  WIRESHARK_VERSION: 4.2
-  WIRESHARK_BUILD_FOLDER: 4-2
-
 on:
   push:
     branches: [ "main" ]
@@ -14,6 +10,9 @@ jobs:
   macos:
     name: Build
     runs-on: macos-latest
+    strategy:
+      matrix:
+        wireshark_version: [3.6, 4.0, 4.2]
     steps:
       - name: Install deps
         run: brew install c-ares glib libgcrypt pcre2 speexdsp
@@ -28,7 +27,7 @@ jobs:
         with:
           repository: wireshark/wireshark
           path: ${{ github.workspace }}/wireshark
-          ref: release-4.2
+          ref: release-${{ matrix.wireshark_version }}
 
       - name: Create plugin link
         run: ln -s ${{ github.workspace }}/wirego/wirego_plugin ${{ github.workspace }}/wireshark/plugins/epan/wirego
@@ -52,8 +51,12 @@ jobs:
       - name: Debug ls
         run: ls -R ${{ github.workspace }}/build
 
+      - name: Set output folder
+        run:
+          VERSION=${{ matrix.wireshark_version }}
+          OUTPUT_PATH="${VERSION//./-}"
       - name: Export plugin
         uses: actions/upload-artifact@v4
         with:
-          name: WiregoPlugin-macOS-for-Wireshark-$WIRESHARK_VERSION
-          path: ${{ github.workspace }}/build/run/Wireshark.app/Contents/PlugIns/wireshark/$WIRESHARK_BUILD_FOLDER/epan/wirego.so
+          name: WiregoPlugin-macOS-for-Wireshark-${{ matrix.wireshark_version }}
+          path: ${{ github.workspace }}/build/run/Wireshark.app/Contents/PlugIns/wireshark/$OUTPUT_PATH/epan/wirego.so

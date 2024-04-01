@@ -1,8 +1,5 @@
 name: Wirego plugin build on Linux
 
-env:
-  WIRESHARK_VERSION: 4.2
-
 on:
   push:
     branches: [ "main" ]
@@ -13,6 +10,9 @@ jobs:
   linux:
     name: Build
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        wireshark_version: [3.6, 4.0, 4.2]
     steps:
       - name: Install wireshark deps on linux
         run: sudo apt-get install -y git build-essential cmake libgcrypt-dev libpcap-dev libgcrypt20-dev libglib2.0-dev flex bison libpcre2-dev libnghttp2-dev libc-ares-dev libspeexdsp-dev
@@ -27,7 +27,7 @@ jobs:
         with:
           repository: wireshark/wireshark
           path: ${{ github.workspace }}/wireshark
-          ref: release-$WIRESHARK_VERSION
+          ref: release-${{ matrix.wireshark_version }}
 
       - name: Create plugin link
         run: ln -s ${{ github.workspace }}/wirego/wirego_plugin ${{ github.workspace }}/wireshark/plugins/epan/wirego
@@ -54,5 +54,5 @@ jobs:
       - name: Export plugin
         uses: actions/upload-artifact@v4
         with:
-          name: WiregoPlugin-Ubuntu-for-Wireshark-$WIRESHARK_VERSION
-          path: ${{ github.workspace }}/build/run/plugins/$WIRESHARK_VERSION/epan/wirego.so
+          name: WiregoPlugin-Ubuntu-for-Wireshark-${{ matrix.wireshark_version }}
+          path: ${{ github.workspace }}/build/run/plugins/${{ matrix.wireshark_version }}/epan/wirego.so
