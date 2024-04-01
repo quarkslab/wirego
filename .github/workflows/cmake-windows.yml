@@ -10,6 +10,9 @@ jobs:
   windows:
     name: Build
     runs-on: windows-2022
+    strategy:
+      matrix:
+        wireshark_version: ["4.0", "4.2"]
     env:
       PLATFORM: x64
       WIRESHARK_BASE_DIR: C:\Development
@@ -28,7 +31,7 @@ jobs:
         with:
           repository: wireshark/wireshark
           path: ${{ github.workspace }}\wireshark
-          ref: release-4.2
+          ref: release-${{ matrix.wireshark_version }}
           
       - name: Clone Wirego plugin
         uses: actions/checkout@v3
@@ -58,5 +61,5 @@ jobs:
       - name: Export plugin
         uses: actions/upload-artifact@v4
         with:
-          name: WiregoPlugin-Windows
-          path: ${{ github.workspace }}\build\run\RelWithDebInfo\plugins\4.2\epan\wirego.dll
+          name: WiregoPlugin-Windows-for-Wireshark-${{ matrix.wireshark_version }}
+          path: ${{ github.workspace }}\build\run\RelWithDebInfo\plugins\${{ matrix.wireshark_version }}\epan\wirego.dll
