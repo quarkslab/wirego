@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        wireshark_version: [3.6, 4.0, 4.2]
+        wireshark_version: ["3.6", "4.0", "4.2"]
     steps:
       - name: Install wireshark deps on linux
         run: sudo apt-get install -y git build-essential cmake libgcrypt-dev libpcap-dev libgcrypt20-dev libglib2.0-dev flex bison libpcre2-dev libnghttp2-dev libc-ares-dev libspeexdsp-dev
