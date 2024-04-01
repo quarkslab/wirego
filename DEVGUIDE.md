@@ -132,6 +132,11 @@ func (WiregoExample) DissectPacket(packetNumber int, src string, dst string, lay
   //Add a few fields and refer to them using our own "internalId"
   res.Fields = append(res.Fields, wirego.DissectField{WiregoFieldId: FieldIdCustom1, Offset: 0, Length: 2})
   res.Fields = append(res.Fields, wirego.DissectField{WiregoFieldId: FieldIdCustom2, Offset: 2, Length: 4})
+
+  //And add a field "Custom 1" with a sub-field "Custom 2"
+  subField := wirego.DissectField{WiregoFieldId: FieldIdCustom2, Offset: 8, Length: 2}
+  res.Fields = append(res.Fields, wirego.DissectField{WiregoFieldId: FieldIdCustom1, Offset: 0, Length: 2, SubFields: []wirego.DissectField{subField})
+
   return &res
 }
 ```
