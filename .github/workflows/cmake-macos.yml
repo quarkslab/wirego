@@ -15,9 +15,9 @@ jobs:
         wireshark_version: ["4.0", "4.2"]
     steps:
       - name: Set output folder
-        run: echo "OUTPUT_PATH=${VERSION//./-}" >> $GITHUB_ENV
-
-      - name: "Debug output path"
+        env:
+          VERSION: ${{ matrix.wireshark_version }}
+          OUTPUT_PATH: ${VERSION//./-}
         run: echo $OUTPUT_PATH
 
       - name: Install deps
