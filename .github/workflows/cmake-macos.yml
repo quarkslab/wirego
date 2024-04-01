@@ -15,13 +15,8 @@ jobs:
         wireshark_version: ["4.0", "4.2"]
     steps:
       - name: Set output folder
-        run:
-          VERSION=${{ matrix.wireshark_version }}
-        env:
-          OUTPUT_PATH: "${VERSION//./-}"
+        run: echo "OUTPUT_PATH=${VERSION//./-}" >> $GITHUB_ENV
 
-      - name: "Debug output path"
-        run: echo $OUTPUT_PATH
       - name: "Debug output path"
         run: echo ${{ env.OUTPUT_PATH }}
 
