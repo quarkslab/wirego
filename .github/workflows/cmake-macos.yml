@@ -14,6 +14,17 @@ jobs:
       matrix:
         wireshark_version: ["4.0", "4.2"]
     steps:
+      - name: Set output folder
+        run:
+          VERSION=${{ matrix.wireshark_version }}
+        env:
+          OUTPUT_PATH: "${VERSION//./-}"
+
+      - name: "Debug output path"
+        run: echo $OUTPUT_PATH
+      - name: "Debug output path"
+        run: echo ${{ env.OUTPUT_PATH }}
+
       - name: Install deps
         run: brew install c-ares glib libgcrypt pcre2 speexdsp
 
@@ -51,12 +62,8 @@ jobs:
       - name: Debug ls
         run: ls -R ${{ github.workspace }}/build
 
-      - name: Set output folder
-        run:
-          VERSION=${{ matrix.wireshark_version }}
-          OUTPUT_PATH="${VERSION//./-}"
       - name: Export plugin
         uses: actions/upload-artifact@v4
         with:
           name: WiregoPlugin-macOS-for-Wireshark-${{ matrix.wireshark_version }}
-          path: ${{ github.workspace }}/build/run/Wireshark.app/Contents/PlugIns/wireshark/$OUTPUT_PATH/epan/wirego.so
+          path: ${{ github.workspace }}/build/run/Wireshark.app/Contents/PlugIns/wireshark/${{ env.OUTPUT_PATH }}/epan/wirego.so
