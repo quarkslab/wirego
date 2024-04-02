@@ -37,7 +37,7 @@ type Wirego struct {
 // We use a static "object" here
 var wg Wirego
 
-var resultatsCacheEnable bool = true
+var resultsCacheEnable bool = true
 
 var pinner runtime.Pinner
 
@@ -53,10 +53,10 @@ func Register(listener WiregoInterface) error {
 	return nil
 }
 
-// ResultatsCacheEnable enables or disables the results cache. By default, the results cache is enabled.
+// ResultsCacheEnable enables or disables the results cache. By default, the results cache is enabled.
 // If re-analyzing a packet makes sense for your protocol, disable this feature.
-func ResultatsCacheEnable(enable bool) {
-	resultatsCacheEnable = enable
+func ResultsCacheEnable(enable bool) {
+	resultsCacheEnable = enable
 }
 
 //export wirego_setup
@@ -256,7 +256,7 @@ func wirego_result_get_field(h C.int, idx C.int, parentIdx *C.int, wiregoFieldId
 
 //export wirego_result_release
 func wirego_result_release(h C.int) {
-	if !resultatsCacheEnable {
+	if !resultsCacheEnable {
 		delete(wg.resultsCache, h)
 	}
 }
