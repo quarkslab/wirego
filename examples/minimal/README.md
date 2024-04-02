@@ -8,7 +8,7 @@ During **init**, which is called at package initialization (hence when the plugi
 
 The **Setup** is not used here, it's a very basic example and we don't have anything to initialize.
 
-**GetName** returns thje name of our dummy example plugin and **GetFilter** defines the string that we will use to filter the packets matching our protocol in Wireshark.
+**GetName** returns the name of our dummy example plugin and **GetFilter** defines the string that we will use to filter the packets matching our protocol in Wireshark.
 
 
 The **GetFields** function is used to declare three distinct custom fields that may be returned to Wireshark after the dissect operation.

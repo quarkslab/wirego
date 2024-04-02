@@ -12,7 +12,37 @@ import (
 	"github.com/quarkslab/wirego/wirego/wirego"
 )
 
-//[{"cmd":"Login","action":0,"param":{"User":{"userName":"admin","password":"myp4ssw0rd!"}}}]
+type AuthStatus int
+
+const (
+	AuthStatusValid   AuthStatus = iota
+	AuthStatusInvalid AuthStatus = iota
+	AuthStatusUnknown AuthStatus = iota
+)
+
+type RequestCacheEntry struct {
+	packetNumber int
+	user         string
+	password     string
+	status       AuthStatus
+	req          *http.Request
+}
+
+/*
+	Requests have the following format:
+
+	[
+		{
+			"cmd":"Login",
+			"action":0,
+			"param":{
+				"User":{
+					"userName":"admin","password":"myp4ssw0rd!"
+				}
+			}
+		}
+	]
+*/
 
 type ReolinkAuthUser struct {
 	UserName string `json:"userName"`
@@ -31,12 +61,13 @@ type ReolinkAuthRequest struct {
 
 // Define here enum identifiers, used to refer to a specific field
 const (
-	FieldIdCustom1             wirego.FieldId = 1
-	FieldIdCustom2             wirego.FieldId = 2
-	FieldIdCustomWithSubFields wirego.FieldId = 3
+	FieldIdUser       wirego.FieldId = 1
+	FieldIdPassword   wirego.FieldId = 2
+	FieldIdAuthResult wirego.FieldId = 3
 )
 
 /*
+Responses have the following format:
 [
    {
       "cmd" : "Login",
@@ -64,6 +95,8 @@ type ReolinkAuthResponse struct {
 type WiregoReolinkCreds struct {
 }
 
+var requestsCache []RequestCacheEntry
+
 // Unused (but mandatory)
 func main() {}
 
@@ -89,7 +122,7 @@ func (WiregoReolinkCreds) GetName() string {
 
 // This function shall return the wireshark filter
 func (WiregoReolinkCreds) GetFilter() string {
-	return "wgreolinkcreds"
+	return "reolink"
 }
 
 // GetFields returns the list of fields descriptor that we may eventually return
@@ -98,9 +131,9 @@ func (WiregoReolinkCreds) GetFields() []wirego.WiresharkField {
 	var fields []wirego.WiresharkField
 
 	//Setup our wireshark custom fields
-	fields = append(fields, wirego.WiresharkField{WiregoFieldId: FieldIdCustom1, Name: "Custom1", Filter: "wirego.custom01", ValueType: wirego.ValueTypeUInt8, DisplayMode: wirego.DisplayModeHexadecimal})
-	fields = append(fields, wirego.WiresharkField{WiregoFieldId: FieldIdCustom2, Name: "Custom2", Filter: "wirego.custom02", ValueType: wirego.ValueTypeUInt16, DisplayMode: wirego.DisplayModeDecimal})
-	fields = append(fields, wirego.WiresharkField{WiregoFieldId: FieldIdCustomWithSubFields, Name: "CustomWith Subs", Filter: "wirego.custom_subs", ValueType: wirego.ValueTypeUInt32, DisplayMode: wirego.DisplayModeHexadecimal})
+	fields = append(fields, wirego.WiresharkField{WiregoFieldId: FieldIdUser, Name: "User", Filter: "reolink.user", ValueType: wirego.ValueTypeString, DisplayMode: wirego.DisplayModeNone})
+	fields = append(fields, wirego.WiresharkField{WiregoFieldId: FieldIdPassword, Name: "Password", Filter: "reolink.password", ValueType: wirego.ValueTypeString, DisplayMode: wirego.DisplayModeNone})
+	fields = append(fields, wirego.WiresharkField{WiregoFieldId: FieldIdAuthResult, Name: "Authentication result", Filter: "reolink.authresult", ValueType: wirego.ValueTypeString, DisplayMode: wirego.DisplayModeNone})
 
 	return fields
 }
@@ -125,45 +158,79 @@ func (WiregoReolinkCreds) DetectionHeuristic(packetNumber int, src string, dst s
 	return false
 }
 
-var lastReq *http.Request
-
 func (WiregoReolinkCreds) DissectRequest(packetNumber int, src string, dst string, layer string, req *http.Request, packet []byte) *wirego.DissectResult {
 	var res wirego.DissectResult
 	var authRequest []ReolinkAuthRequest
 
+	res.Protocol = "Reolink Creds"
+
+	// Check if already seen and fetch response result
+	requestResult := ""
+	cacheFound := false
+	for i := 0; i < len(requestsCache); i++ {
+		if requestsCache[i].packetNumber == packetNumber {
+			switch requestsCache[i].status {
+			case AuthStatusValid:
+				requestResult = " [VALID]"
+				cacheFound = true
+			case AuthStatusInvalid:
+				requestResult = " [INVALID]"
+				cacheFound = true
+			case AuthStatusUnknown:
+				cacheFound = true
+			}
+		}
+	}
+
+	//Late detection heuristic
 	if !strings.HasPrefix(req.RequestURI, "/cgi-bin/api.cgi?cmd=Login") {
 		return &res
 	}
 
+	//Parse http body as a json payload
 	body, err := io.ReadAll(req.Body)
 	if err != nil {
 		return &res
 	}
-
 	err = json.Unmarshal(body, &authRequest)
 	if err != nil {
 		return &res
 	}
 
+	//Make sure we've parsed something that looks like a Reolink authentication request
 	if len(authRequest) == 0 {
 		return &res
 	}
-
 	if (authRequest[0].Cmd != "Login") || (len(authRequest[0].Param.User.UserName) == 0) || (len(authRequest[0].Param.User.Password) == 0) {
 		return &res
 	}
 
-	//This string will appear on the packet being parsed
+	//Set Protocol and info fields
 	res.Protocol = "Reolink Creds"
+	res.Info = fmt.Sprintf("Authentication request %s:%s"+requestResult, authRequest[0].Param.User.UserName, authRequest[0].Param.User.Password)
 
-	//This (optional) string will appear in the info section
-	res.Info = fmt.Sprintf("Authentication request %s:%s", authRequest[0].Param.User.UserName, authRequest[0].Param.User.Password)
+	//Offsets sent to Wireshark must refer to the "packet" data sent to the dissector
+	//Since we've registered on top of TCP port 80, it's quite hard to predict where the user and passwords fields
+	//are located. We use a simple strategy here (this will obviously fail if the password is, for example "cgi-bin")
+	userOffset := bytes.Index(packet, []byte(authRequest[0].Param.User.UserName))
+	if userOffset != -1 {
+		res.Fields = append(res.Fields, wirego.DissectField{WiregoFieldId: FieldIdUser, Offset: userOffset, Length: len(authRequest[0].Param.User.UserName)})
+	}
 
-	lastReq = req
+	passwordOffset := bytes.Index(packet, []byte(authRequest[0].Param.User.Password))
+	if passwordOffset != -1 {
+		res.Fields = append(res.Fields, wirego.DissectField{WiregoFieldId: FieldIdPassword, Offset: passwordOffset, Length: len(authRequest[0].Param.User.Password)})
+	}
+
+	//Add to cache for next pass
+	if !cacheFound {
+		requestsCache = append(requestsCache, RequestCacheEntry{packetNumber: packetNumber, user: authRequest[0].Param.User.UserName, password: authRequest[0].Param.User.Password, status: AuthStatusUnknown, req: req})
+	}
+
 	return &res
 }
 
-func (WiregoReolinkCreds) DissectResponse(packetNumber int, src string, dst string, layer string, resp *http.Response, packet []byte) *wirego.DissectResult {
+func (WiregoReolinkCreds) DissectResponse(packetNumber int, src string, dst string, layer string, resp *http.Response, requestCacheIdx int, packet []byte) *wirego.DissectResult {
 	var res wirego.DissectResult
 	var authResponse []ReolinkAuthResponse
 
@@ -185,18 +252,26 @@ func (WiregoReolinkCreds) DissectResponse(packetNumber int, src string, dst stri
 		return &res
 	}
 
-	//This string will appear on the packet being parsed
+	//Update Protocol and Info fields
 	res.Protocol = "Reolink Creds"
-
 	if authResponse[0].Code == 1 {
 		res.Info = "Invalid auth"
+		requestsCache[requestCacheIdx].status = AuthStatusInvalid
 	} else if authResponse[0].Code == 0 {
 		res.Info = "Valid auth"
+		requestsCache[requestCacheIdx].status = AuthStatusValid
 	} else {
 		res.Info = "Unknown result"
+		requestsCache[requestCacheIdx].status = AuthStatusUnknown
 	}
 
-	lastReq = nil
+	//Point to the authentication result
+	detectString := "\"code\" : "
+	resultOffset := bytes.Index(packet, []byte(detectString))
+	if resultOffset != -1 {
+		resultOffset += len(detectString)
+		res.Fields = append(res.Fields, wirego.DissectField{WiregoFieldId: FieldIdAuthResult, Offset: resultOffset, Length: 1})
+	}
 
 	return &res
 }
@@ -207,6 +282,8 @@ func (w WiregoReolinkCreds) DissectPacket(packetNumber int, src string, dst stri
 
 	r := bytes.NewReader(packet)
 	buf := bufio.NewReader(r)
+
+	//Try to parse as a request
 	req, err := http.ReadRequest(buf)
 	if err == nil {
 		return w.DissectRequest(packetNumber, src, dst, layer, req, packet)
@@ -214,9 +291,24 @@ func (w WiregoReolinkCreds) DissectPacket(packetNumber int, src string, dst stri
 
 	r.Seek(0, io.SeekStart)
 	buf.Reset(r)
-	resp, err := http.ReadResponse(buf, lastReq)
+
+	//Maybe a response
+
+	//Look for associated http request
+	closestRequestIdx := -1
+	for i := 0; i < len(requestsCache); i++ {
+		if requestsCache[i].packetNumber >= packetNumber {
+			break
+		}
+		closestRequestIdx = i
+	}
+	if closestRequestIdx == -1 {
+		return &res
+	}
+
+	resp, err := http.ReadResponse(buf, requestsCache[closestRequestIdx].req)
 	if err == nil {
-		return w.DissectResponse(packetNumber, src, dst, layer, resp, packet)
+		return w.DissectResponse(packetNumber, src, dst, layer, resp, closestRequestIdx, packet)
 	}
 	return &res
 }
