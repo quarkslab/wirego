@@ -95,7 +95,6 @@ int dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *da
   //Process all custom fields
 
 for (int i = 0; i < result_fields_count; i++) {
-  int wireshark_field_id = -1;
   int parent_idx;
   int wirego_field_id;
   int offset;

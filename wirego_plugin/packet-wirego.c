@@ -76,7 +76,7 @@ void proto_register_wirego(void) {
     return;
   }
 
-  ws_warning("Wirego version: %d.%d\n", wirego_version_major_cb(), wirego_version_minor_cb());
+  ws_warning("Wirego version: %d.%d", wirego_version_major_cb(), wirego_version_minor_cb());
 
   //Setup a list of "header fields" (hf)
   static hf_register_info *hfx;
@@ -131,7 +131,7 @@ void proto_register_wirego(void) {
   //Don't release name and filter, since those are used by wireshark's internals
   //Register our custom fields
   proto_register_field_array(proto_wirego, hfx, fields_count);
-ws_warning("registered %d fields", fields_count);
+
   //Register the protocol subtree
   proto_register_subtree_array(ett, array_length(ett));
 }
@@ -216,13 +216,22 @@ void proto_reg_handoff_wirego(void) {
   //Set dissector heuristic
   idx = 0;
   while (1) {
+    char name[64];
+    char display_name[128];
     char* parent_protocol_str;
     parent_protocol_str = wirego_detect_heuristic_cb(idx);
     if (parent_protocol_str == NULL)
       break;
-    heur_dissector_add(parent_protocol_str, wirego_heuristic_check, "Wirego", "wirego_tcp", proto_wirego, HEURISTIC_ENABLE);
+
+
+    snprintf(name, 64, "wirego_heur_%d", idx);
+    snprintf(display_name, 128, "%s over %s", wirego_plugin_name_cb(), parent_protocol_str);
+
+    heur_dissector_add(parent_protocol_str, wirego_heuristic_check, display_name, name, proto_wirego, HEURISTIC_ENABLE);
     free(parent_protocol_str);
     idx++;
   }
 
+//FIXME DEBUG
+  //dissector_dump_heur_decodes();
 }
