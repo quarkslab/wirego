@@ -2,12 +2,12 @@
 
 Writing a Wirego plugin is quite simple.
 
-A fully working example can be found [here](./wirego/example/wirego_example.go)
+A minimalistic example can be found here: [minimalistic](./examples/minimal/)
 This guide actually just provides some details on how this example works under the hood.
 
 Before going any further, you should build the example and try to load it with the wirego Wireshark plugin.
 
-    cd wirego/example/
+    cd examples/minimal/
     make
 
 
