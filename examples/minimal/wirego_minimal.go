@@ -26,7 +26,7 @@ func init() {
 
 	//Register to the wirego package
 	wirego.Register(wge)
-	wirego.ResultatsCacheEnable(false)
+	wirego.ResultsCacheEnable(false)
 }
 
 // This function is called when the plugin is loaded.
