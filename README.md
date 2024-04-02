@@ -11,7 +11,6 @@ Writing plugins for Wireshark in C/C++ can be opaque: the APIs are quite powerfu
 
 Another alternative is to use LUA, but first of all you need to know this language. So again, you'll spend more time trying to learn that new language than actually writing this quick and dirty plugin.
 
-
 Wirego is a plugin for Wireshark, written in C that actually loads a plugin written in Go language.
 
 You basically don't have to touch the Wirego plugin and you will be given a dummy empty golang plugin to start with.
@@ -50,6 +49,14 @@ The full documentation can be found [here](DEVGUIDE.md).
 
 Now it's time for **step 3**: [install the Wirego plugin and start Wireshark](RUNNING.md)!
 
+## Examples
+
+A few plugin examples are available :
+
+  - [minimal](./examples/minimal/) ; a minimalistic example showing the basic usage of Wirego
+  - [Reolink Credentials light](./examples/reolinkcredslight/) : a lightweight version of a Reolink camera credentials parser
+  - [Reolink Credentials](./examples/reolinkcreds/) : a advanced version of a Reolink camera credentials parser
+
 
 ## Next steps
 
@@ -57,7 +64,6 @@ That project is still under development, many things needs to be improved.
 Here's a partial list:
 
   - The fields type list is incomplete
-  - The current API only allows one and only one node to be created for a given packet
   - Support payload split into several packets
 
 ## Additional notes

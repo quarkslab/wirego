@@ -14,7 +14,7 @@ const (
 )
 
 // Since we implement the wirego.WiregoInterface we need some structure to hold it.
-type WiregoExample struct {
+type WiregoMinimalExample struct {
 }
 
 // Unused (but mandatory)
@@ -22,7 +22,7 @@ func main() {}
 
 // Called at golang environment initialization (you should probably not touch this)
 func init() {
-	var wge WiregoExample
+	var wge WiregoMinimalExample
 
 	//Register to the wirego package
 	wirego.Register(wge)
@@ -30,24 +30,24 @@ func init() {
 }
 
 // This function is called when the plugin is loaded.
-func (WiregoExample) Setup() error {
+func (WiregoMinimalExample) Setup() error {
 
 	return nil
 }
 
 // This function shall return the plugin name
-func (WiregoExample) GetName() string {
-	return "Wirego Example"
+func (WiregoMinimalExample) GetName() string {
+	return "Wirego Minimal Example"
 }
 
 // This function shall return the wireshark filter
-func (WiregoExample) GetFilter() string {
-	return "wgexample"
+func (WiregoMinimalExample) GetFilter() string {
+	return "wgminexample"
 }
 
 // GetFields returns the list of fields descriptor that we may eventually return
 // when dissecting a packet payload
-func (WiregoExample) GetFields() []wirego.WiresharkField {
+func (WiregoMinimalExample) GetFields() []wirego.WiresharkField {
 	var fields []wirego.WiresharkField
 
 	//Setup our wireshark custom fields
@@ -61,7 +61,7 @@ func (WiregoExample) GetFields() []wirego.WiresharkField {
 // GetDetectionFilters returns a wireshark filter that will select which packets
 // will be sent to your dissector for parsing.
 // Two types of filters can be defined: Integers or Strings
-func (WiregoExample) GetDetectionFilters() []wirego.DetectionFilter {
+func (WiregoMinimalExample) GetDetectionFilters() []wirego.DetectionFilter {
 	var filters []wirego.DetectionFilter
 
 	filters = append(filters, wirego.DetectionFilter{FilterType: wirego.DetectionFilterTypeInt, Name: "udp.port", ValueInt: 137})
@@ -72,12 +72,12 @@ func (WiregoExample) GetDetectionFilters() []wirego.DetectionFilter {
 
 // GetDissectorFilterHeuristics returns a list of protocols on top of which detection heuristic
 // should be called.
-func (WiregoExample) GetDetectionHeuristicsParents() []string {
+func (WiregoMinimalExample) GetDetectionHeuristicsParents() []string {
 	//We want to apply our detection heuristic on all tcp payloads
 	return []string{"udp"}
 }
 
-func (WiregoExample) DetectionHeuristic(packetNumber int, src string, dst string, layer string, packet []byte) bool {
+func (WiregoMinimalExample) DetectionHeuristic(packetNumber int, src string, dst string, layer string, packet []byte) bool {
 	if len(packet) == 0 {
 		return false
 	}
@@ -90,7 +90,7 @@ func (WiregoExample) DetectionHeuristic(packetNumber int, src string, dst string
 }
 
 // DissectPacket provides the packet payload to be parsed.
-func (WiregoExample) DissectPacket(packetNumber int, src string, dst string, layer string, packet []byte) *wirego.DissectResult {
+func (WiregoMinimalExample) DissectPacket(packetNumber int, src string, dst string, layer string, packet []byte) *wirego.DissectResult {
 	var res wirego.DissectResult
 
 	//This string will appear on the packet being parsed
