@@ -1,9 +1,10 @@
 # Wirego plugin development guide - Minimalistic
 
-Writing a Wirego plugin is quite simple.
-
 The complete code of this example can be found [here](./)
 
+In this example you will learn how to create a simple plugin displayed as follow in Wireshark:
+
+![screenshot.png](screenshot.png)
 
 Before going any further, you should build this example and try to load it with the wirego Wireshark plugin.
 
