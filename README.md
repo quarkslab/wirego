@@ -15,6 +15,7 @@ Wirego is a plugin for Wireshark, written in C that actually loads a plugin writ
 
 You basically don't have to touch the Wirego plugin and you will be given a dummy empty golang plugin to start with.
 
+![screenshot](./examples/minimal/screenshot.png)
 
 ## Overview
 
@@ -44,16 +45,13 @@ For **step 2**, you will basically just have to __import "wirego"__ and implemen
     }
 ```
 
-The full documentation can be found [here](DEVGUIDE.md).
-
-
 Now it's time for **step 3**: [install the Wirego plugin and start Wireshark](RUNNING.md)!
 
 ## Examples
 
 A few plugin examples are available :
 
-  - [minimal](./examples/minimal/) ; a minimalistic example showing the basic usage of Wirego
+  - [Minimal](./examples/minimal/) ; a minimalistic example showing the basic usage of Wirego
   - [Reolink Credentials light](./examples/reolinkcredslight/) : a lightweight version of a Reolink camera credentials parser
   - [Reolink Credentials](./examples/reolinkcreds/) : a advanced version of a Reolink camera credentials parser
 

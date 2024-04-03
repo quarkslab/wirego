@@ -74,16 +74,12 @@ func (WiregoMinimalExample) GetDetectionFilters() []wirego.DetectionFilter {
 // should be called.
 func (WiregoMinimalExample) GetDetectionHeuristicsParents() []string {
 	//We want to apply our detection heuristic on all tcp payloads
-	return []string{"udp"}
+	return []string{"udp", "http"}
 }
 
 func (WiregoMinimalExample) DetectionHeuristic(packetNumber int, src string, dst string, layer string, packet []byte) bool {
-	if len(packet) == 0 {
-		return false
-	}
-
-	//All packets starting with 0x00 should be passed to our dissector
-	if packet[0] == 0x00 {
+	//All packets starting with 0x00 should be passed to our dissector (super advanced heuristic)
+	if len(packet) != 0 && packet[0] == 0x00 {
 		return true
 	}
 	return false
