@@ -1,7 +1,7 @@
 # Reolink Credentials example plugin
 
-The complete code of this example can be found [here](./wirego_reolinkcreds.go)
-Before getting deep in this example, you should probably take a look at the [minimalist](../examples/minimal/README.md) example.
+The complete code of this example can be found [here](./wirego_reolinkcreds_light.go)
+Before getting deep in this example, you should probably take a look at the [minimalist](../minimal/README.md) example.
 
 ## Introduction
 
