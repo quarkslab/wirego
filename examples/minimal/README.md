@@ -1,26 +1,31 @@
-# Reolink Credentials Light example plugin
+# Wirego plugin development guide - Minimalistic
 
-The complete code of this example can be found [here](./wirego_reolinkcredslight.go)
-Before getting deep in this example, you should probably take a look at the [minimalist](../examples/minimal/README.md) example.
+Writing a Wirego plugin is quite simple.
 
-## Introduction
-
-This simple plugin parses authentication requests made to a Reolink network camera.
-Traffic is sent in clear form, over HTTP on port 80.
-An example pcap can be found [here](./reolink_sample.pcapng).
-
-This plugin extracts credentials passed to the camera and uses the response to detect wether those were valid or not.
-Credentials and response are transmitted using simple JSON structures over HTTP.
+The complete code of this example can be found [here](./wirego_minimal.go)
 
 ![screenshot](./screenshot.png)
 
 
-## Implementation
+Before going any further, you should build this example and try to load it with the wirego Wireshark plugin.
 
-During **init**, which is called at package initialization (hence when the plugin is loaded), we register to the Wirego package. As previously explained, the cache is disabled: in order to flag the requests as "valid" or "invalid" we need to be able to update the http request result.
+    cd examples/minimal/
+    make
+
+
+Our plugin in Go will need to import the "wirego" package and register to wirego during init():
 
 ```golang
-type WiregoReolinkCreds struct {
+package main
+
+import (
+  "encoding/hex"
+  "fmt"
+  "wirego/wirego"
+)
+
+// Since we implement the wirego.WiregoInterface we need some structure to hold it.
+type WiregoExample struct {
 }
 
 // Unused (but mandatory)
@@ -28,163 +33,157 @@ func main() {}
 
 // Called at golang environment initialization (you should probably not touch this)
 func init() {
-	var wge WiregoReolinkCreds
+  var wge WiregoExample
 
-	//Register to the wirego package
-	wirego.Register(wge)
+  //Register to the wirego package
+  wirego.Register(wge)
 
   //Enable the Wirego cache, so that Wireshark will not ask us to parse the same packet multiple times
-	wirego.ResultsCacheEnable(false)
+  wirego.ResultsCacheEnable(false)
 }
 ```
+Now we just need to implement the WiregoInterface interface.
 
-The **Setup** is not used here, we don't have anything to initialize.
+
+The first function to implement is **Setup**, that is where we can initialize our plugin if needed.
+Since this is a simple example, we don't have anything to initialize.
 
 ```golang
 // This function is called when the plugin is loaded.
-func (WiregoReolinkCreds) Setup() error {
+func (WiregoMinimalExample) Setup() error {
+
 	return nil
 }
 ```
 
-**GetName** returns the name of our plugin.
+**GetName** returns the name of our example plugin and **GetFilter** defines the string that we will use to filter the packets matching our protocol in Wireshark.
 
-**GetFilter** defines the string that we will use to filter the packets matching our protocol in Wireshark.
 
 ```golang
 // This function shall return the plugin name
-func (WiregoReolinkCreds) GetName() string {
-	return "Wirego Reolink Credentials"
+func (WiregoExample) GetName() string {
+  return "Wirego Example"
 }
 
 // This function shall return the wireshark filter
-func (WiregoReolinkCreds) GetFilter() string {
-	return "reolink"
+func (WiregoExample) GetFilter() string {
+  return "wgexample"
 }
 ```
 
+During initialization, a plugin has to declare all the **fields** that may eventually be returned (so that Wireshark can setup the GUI).
+In this example we declare three fields:
 
-The **GetFields** function is used to declare tree distinct custom fields pointing to the user, password and authentication result code. We define first associated "enums" and then for each field how we want it to be displayed and called inside Wireshark.
+  - a first one, named "Custom1" which is an uint8, displayed in hexadeciaml
+  - a second one, named "Custom2" which is an uint16, displayed in decimal
+  - and a third one, named "CustomWith Subs" which is an uint32, displayed in decimal
+
+During parsing ("dissection" in Wireshark's terminology), when a field has been found, we will refer to it using the defined "WiregoFieldId".
 
 ```golang
-
 // Define here enum identifiers, used to refer to a specific field
 const (
-	FieldIdUser       wirego.FieldId = 1
-	FieldIdPassword   wirego.FieldId = 2
-	FieldIdAuthResult wirego.FieldId = 3
+	FieldIdCustom1             wirego.FieldId = 1
+	FieldIdCustom2             wirego.FieldId = 2
+	FieldIdCustomWithSubFields wirego.FieldId = 3
 )
+
 
 // GetFields returns the list of fields descriptor that we may eventually return
 // when dissecting a packet payload
-func (WiregoReolinkCreds) GetFields() []wirego.WiresharkField {
-	var fields []wirego.WiresharkField
+func (WiregoExample) GetFields() []wirego.WiresharkField {
+  var fields []wirego.WiresharkField
+  fields = append(fields, wirego.WiresharkField{WiregoFieldId: FieldIdCustom1, Name: "Custom1", Filter: "wirego.custom01", ValueType: wirego.ValueTypeUInt8, DisplayMode: wirego.DisplayModeHexadecimal})
+  fields = append(fields, wirego.WiresharkField{WiregoFieldId: FieldIdCustom2, Name: "Custom2", Filter: "wirego.custom02", ValueType: wirego.ValueTypeUInt16, DisplayMode: wirego.DisplayModeDecimal})
 
-	//Setup our wireshark custom fields
-	fields = append(fields, wirego.WiresharkField{WiregoFieldId: FieldIdUser, Name: "User", Filter: "reolink.user", ValueType: wirego.ValueTypeString, DisplayMode: wirego.DisplayModeNone})
-	fields = append(fields, wirego.WiresharkField{WiregoFieldId: FieldIdPassword, Name: "Password", Filter: "reolink.password", ValueType: wirego.ValueTypeString, DisplayMode: wirego.DisplayModeNone})
-	fields = append(fields, wirego.WiresharkField{WiregoFieldId: FieldIdAuthResult, Name: "Authentication result", Filter: "reolink.authresult", ValueType: wirego.ValueTypeString, DisplayMode: wirego.DisplayModeNone})
+	fields = append(fields, wirego.WiresharkField{WiregoFieldId: FieldIdCustomWithSubFields, Name: "CustomWith Subs", Filter: "wirego.custom_subs", ValueType: wirego.ValueTypeUInt32, DisplayMode: wirego.DisplayModeHexadecimal, })
 
-	return fields
+  return fields
 }
 ```
 
-As previously explained, detection will be performed using a filter on TCP port 80. This filter is defined in **GetDetectionFilters**.
+
+In order to tell Wireshark which packets should be sent to your dissector, two methods are available:
+
+  - use Wireshark **filters** to match on a given traffic (ex. udp.port == 137)
+  - register a **heuristic** detection function which will be called on a given protocol (ex. "apply my heuristic function on all TCP payloads")
+
+The first method is faster but not always relevant. If your protocol works on a given HTTP traffic, you probably don't want to redirect all TCP port 80 to your dissector.
+The second option lets you register on HTTP traffic and apply an heuristic function to detect if this packet should be redirected to your dissector or not.
+You can use both method at the same time, but need to used at least one.
+
+Let's start with the **filter** method:
 
 ```golang
 // GetDetectionFilters returns a wireshark filter that will select which packets
 // will be sent to your dissector for parsing.
 // Two types of filters can be defined: Integers or Strings
-func (WiregoReolinkCreds) GetDetectionFilters() []wirego.DetectionFilter {
-	var filters []wirego.DetectionFilter
-	filters = append(filters, wirego.DetectionFilter{FilterType: wirego.DetectionFilterTypeInt, Name: "tcp.port", ValueInt: 80})
+func (WiregoExample) GetDetectionFilters() []wirego.DetectionFilter {
+  var filters []wirego.DetectionFilter
 
-	return filters
+  filters = append(filters, wirego.DetectionFilter{FilterType: wirego.DetectionFilterTypeInt, Name: "udp.port", ValueInt: 137})
+  filters = append(filters, wirego.DetectionFilter{FilterType: wirego.DetectionFilterTypeString, Name: "bluetooth.uuid", ValueString: "1234"})
+
+  return filters
 }
 ```
 
 
-Since we can't use heuristics, **GetDetectionHeuristicsParents** and **DetectionHeuristic** are left empty.
+When using detection **heuristics** mode, if a packet matches the "heuristics parent" previously defined, a detection function will be called. Return true if the packet is ours and false otherwise.
 
 ```golang
-// GetDissectorFilterHeuristics returns a list of protocols on top of which detection heuristic
+// GetDetectionHeuristicsParents returns a list of protocols on top of which detection heuristic
 // should be called.
-func (WiregoReolinkCreds) GetDetectionHeuristicsParents() []string {
-	return []string{}
+func (WiregoExample) GetDetectionHeuristicsParents() []string {
+	//We want to apply our detection heuristic on all tcp and http payloads
+	return []string{"udp", "http"}
 }
 
-func (WiregoReolinkCreds) DetectionHeuristic(packetNumber int, src string, dst string, layer string, packet []byte) bool {
+func (WiregoExample) DetectionHeuristic(packetNumber int, src string, dst string, layer string, packet []byte) bool {
+	//All packets starting with 0x00 should be passed to our dissector (super advanced heuristic)
+	if len(packet) != 0 && packet[0] == 0x00 {
+		return true
+	}
 	return false
 }
 ```
 
-The protocol dissection occurs in **DissectPacket**:
 
-  - we first try to parse the TCP payload as an HTTP request
-  - if this fails, we try to parse it as an http response
+The most interesting part is the DissectPacket function, where we will implement our parser:
 
 ```golang
 // DissectPacket provides the packet payload to be parsed.
-func (w WiregoReolinkCreds) DissectPacket(packetNumber int, src string, dst string, layer string, packet []byte) *wirego.DissectResult {
+func (WiregoMinimalExample) DissectPacket(packetNumber int, src string, dst string, layer string, packet []byte) *wirego.DissectResult {
 	var res wirego.DissectResult
 
-	//Create a bufio.Reader from the packet slice
-	r := bytes.NewReader(packet)
-	buf := bufio.NewReader(r)
+	//This string will appear on the packet being parsed
+	res.Protocol = "Protocol name example"
 
-	//Try to parse as an http request
-	req, err := http.ReadRequest(buf)
-	if err == nil {
-		//Success? Call the dissect request function
-		return w.DissectRequest(packetNumber, src, dst, layer, req, packet)
-	}
+	//This (optional) string will appear in the info section
+	res.Info = fmt.Sprintf("Info example pkt %d", packetNumber)
 
-	//This failed, rewing the buffer and retry as a Response
-	r.Seek(0, io.SeekStart)
-	buf.Reset(r)
+	//Add a few fields and refer to them using our own "internalId"
+	res.Fields = append(res.Fields, wirego.DissectField{WiregoFieldId: FieldIdCustom1, Offset: 0, Length: 2})
+	res.Fields = append(res.Fields, wirego.DissectField{WiregoFieldId: FieldIdCustom2, Offset: 2, Length: 4})
 
-	//Look for associated http request
-	closestRequestIdx := -1
-	for i := 0; i < len(requestsCache); i++ {
-		if requestsCache[i].packetNumber >= packetNumber {
-			break
-		}
-		closestRequestIdx = i
-	}
-	//No previous request found, abort
-	if closestRequestIdx == -1 {
-		return &res
-	}
+	//Add a field with two sub field
+	subField1 := wirego.DissectField{WiregoFieldId: FieldIdCustom1, Offset: 6, Length: 2}
+	subField2 := wirego.DissectField{WiregoFieldId: FieldIdCustom1, Offset: 8, Length: 2}
+	field := wirego.DissectField{WiregoFieldId: FieldIdCustomWithSubFields, Offset: 6, Length: 4, SubFields: []wirego.DissectField{subField1, subField2}}
+	res.Fields = append(res.Fields, field)
 
-	//Parse as an http response
-	resp, err := http.ReadResponse(buf, requestsCache[closestRequestIdx].req)
-	if err == nil {
-		//Success? Call the dissect response function
-		return w.DissectResponse(packetNumber, src, dst, layer, resp, closestRequestIdx, packet)
-	}
+	//Dump packet contents
+	//fmt.Println(layer, " ", src, " to ", dst)
+	//fmt.Println(hex.Dump(packet))
 	return &res
 }
 ```
 
-I won't copy paste the code for the two last functions since this is generic code not really related to Wirego.
+The last step is to build our plugin using:
 
+      go build -o wirego_minimalistic.so -buildmode=c-shared
 
-The **request dissector** parses the TCP payload using the golang "http" package and then applies what could have been our detection heuristic: check if the URI is *"/cgi-bin/api.cgi?cmd=Login"*.
-If this late detection succeeds, the HTTP payload is parsed using the golang "json" package and credentials are extracted.
+And... that's all!
 
-In order to parse an http response, the golang "http" package requires the associated request. We update a cache containing all requests and their packet number.
-
-The **response dissector** will look into the requests cache for a matching request (the closest lower packet number). The http payload is parsed using the golang "json" package and the authentication result is retrieved. The requests cache is updated with the authentication result.
-
-
-
-## Multiple pass management
-
-Wireshark uses a multiple pass strategy.
-When a pcap is loaded, all packets are passed to the dissectors following the capture order.
-
-Atfter this first pass, dissectors are called again depending on the Wireshark's window focus.
-At this point, there's no guarantee that the passed packets follows any order, this totally depends on what is displayed.
-
-In our plugin, after the first pass the requests dissector will not be able to tell if the request was successfull or not. During later passes, the cache has been updated by the results dissector.
+Run Wireshark, to go Preferences -> Wirego and point to your freshly built Golang plugin.
 
