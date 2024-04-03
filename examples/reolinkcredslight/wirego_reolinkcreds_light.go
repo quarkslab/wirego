@@ -20,14 +20,6 @@ const (
 	AuthStatusUnknown AuthStatus = iota
 )
 
-type RequestCacheEntry struct {
-	packetNumber int
-	user         string
-	password     string
-	status       AuthStatus
-	req          *http.Request
-}
-
 /*
 	Requests have the following format:
 
@@ -95,7 +87,7 @@ type ReolinkAuthResponse struct {
 type WiregoReolinkCreds struct {
 }
 
-var requestsCache []RequestCacheEntry
+var lastSeenRequest *http.Request
 
 // Unused (but mandatory)
 func main() {}
@@ -106,12 +98,14 @@ func init() {
 
 	//Register to the wirego package
 	wirego.Register(wge)
-	wirego.ResultsCacheEnable(false)
+
+	//Enable the Wirego cache, so that Wireshark will not ask us to parse the same packet multiple times
+	wirego.ResultsCacheEnable(true)
 }
 
 // This function is called when the plugin is loaded.
 func (WiregoReolinkCreds) Setup() error {
-
+	lastSeenRequest = nil
 	return nil
 }
 
@@ -162,25 +156,7 @@ func (WiregoReolinkCreds) DissectRequest(packetNumber int, src string, dst strin
 	var res wirego.DissectResult
 	var authRequest []ReolinkAuthRequest
 
-	res.Protocol = "Reolink Creds"
-
-	// Check if already seen and fetch response result
-	requestResult := ""
-	cacheFound := false
-	for i := 0; i < len(requestsCache); i++ {
-		if requestsCache[i].packetNumber == packetNumber {
-			switch requestsCache[i].status {
-			case AuthStatusValid:
-				requestResult = " [VALID]"
-				cacheFound = true
-			case AuthStatusInvalid:
-				requestResult = " [INVALID]"
-				cacheFound = true
-			case AuthStatusUnknown:
-				cacheFound = true
-			}
-		}
-	}
+	res.Protocol = "Reolink Creds Light"
 
 	//Late detection heuristic
 	if !strings.HasPrefix(req.RequestURI, "/cgi-bin/api.cgi?cmd=Login") {
@@ -207,7 +183,7 @@ func (WiregoReolinkCreds) DissectRequest(packetNumber int, src string, dst strin
 
 	//Set Protocol and info fields
 	res.Protocol = "Reolink Creds"
-	res.Info = fmt.Sprintf("Authentication request %s:%s"+requestResult, authRequest[0].Param.User.UserName, authRequest[0].Param.User.Password)
+	res.Info = fmt.Sprintf("Authentication request %s:%s", authRequest[0].Param.User.UserName, authRequest[0].Param.User.Password)
 
 	//Offsets sent to Wireshark must refer to the "packet" data sent to the dissector
 	//Since we've registered on top of TCP port 80, it's quite hard to predict where the user and passwords fields
@@ -222,15 +198,12 @@ func (WiregoReolinkCreds) DissectRequest(packetNumber int, src string, dst strin
 		res.Fields = append(res.Fields, wirego.DissectField{WiregoFieldId: FieldIdPassword, Offset: passwordOffset, Length: len(authRequest[0].Param.User.Password)})
 	}
 
-	//Add to cache for next pass
-	if !cacheFound {
-		requestsCache = append(requestsCache, RequestCacheEntry{packetNumber: packetNumber, user: authRequest[0].Param.User.UserName, password: authRequest[0].Param.User.Password, status: AuthStatusUnknown, req: req})
-	}
+	lastSeenRequest = req
 
 	return &res
 }
 
-func (WiregoReolinkCreds) DissectResponse(packetNumber int, src string, dst string, layer string, resp *http.Response, requestCacheIdx int, packet []byte) *wirego.DissectResult {
+func (WiregoReolinkCreds) DissectResponse(packetNumber int, src string, dst string, layer string, resp *http.Response, packet []byte) *wirego.DissectResult {
 	var res wirego.DissectResult
 	var authResponse []ReolinkAuthResponse
 
@@ -256,13 +229,10 @@ func (WiregoReolinkCreds) DissectResponse(packetNumber int, src string, dst stri
 	res.Protocol = "Reolink Creds"
 	if authResponse[0].Code == 1 {
 		res.Info = "Invalid auth"
-		requestsCache[requestCacheIdx].status = AuthStatusInvalid
 	} else if authResponse[0].Code == 0 {
 		res.Info = "Valid auth"
-		requestsCache[requestCacheIdx].status = AuthStatusValid
 	} else {
 		res.Info = "Unknown result"
-		requestsCache[requestCacheIdx].status = AuthStatusUnknown
 	}
 
 	//Point to the authentication result
@@ -294,21 +264,14 @@ func (w WiregoReolinkCreds) DissectPacket(packetNumber int, src string, dst stri
 
 	//Maybe a response
 
-	//Look for associated http request
-	closestRequestIdx := -1
-	for i := 0; i < len(requestsCache); i++ {
-		if requestsCache[i].packetNumber >= packetNumber {
-			break
-		}
-		closestRequestIdx = i
-	}
-	if closestRequestIdx == -1 {
+	//No previous request seen
+	if lastSeenRequest == nil {
 		return &res
 	}
 
-	resp, err := http.ReadResponse(buf, requestsCache[closestRequestIdx].req)
+	resp, err := http.ReadResponse(buf, lastSeenRequest)
 	if err == nil {
-		return w.DissectResponse(packetNumber, src, dst, layer, resp, closestRequestIdx, packet)
+		return w.DissectResponse(packetNumber, src, dst, layer, resp, packet)
 	}
 	return &res
 }

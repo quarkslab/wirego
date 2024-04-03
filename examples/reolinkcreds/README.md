@@ -1,9 +1,12 @@
 # Reolink Credentials example plugin
 
+The complete code of this example can be found [here](./wirego_reolinkcreds.go)
+Before getting deep in this example, you should probably take a look at the [minimalist](../examples/minimal/README.md) and [ReolinkCreds Light)()../examples/reolinkcredslight/README.md) examples.
+
 ## Introduction
 
 This simple plugin parses authentication requests made to a Reolink network camera.
-Traffic occurs in clear form, over HTTP on port 80.
+Traffic is sent in clear form, over HTTP on port 80.
 An example pcap can be found [here](./reolink_sample.pcapng).
 
 This plugin extracts credentials passed to the camera and uses the response to detect wether those were valid or not.
@@ -15,12 +18,15 @@ In order to provide an interesting example, we want to display the credentials v
   - once we seen the response, we can update our own cache with the request result
   - during the second pass, we are now able to display on the request pass if the provided credentials are valid
 
+![screenshot](./screenshot.png)
+
 ## Detection strategy & Wireshark limitations
 
 Our traffic is seen over HTTP, port 80.
 
 In an ideal world, we would simply register an heuristic function on top of "http" as follow:
 
+```golang
     func (WiregoReolinkCreds) GetDetectionHeuristicsParents() []string {
       return []string{"http"}
     }
@@ -32,6 +38,7 @@ In an ideal world, we would simply register an heuristic function on top of "htt
         return false
       }
     }
+```
 
 We would have the opportunity to flag a generic HTTP traffic as something more specific. If our heuristic fails, we eventually let some other plugin take care of this packet.
 Sadly this doesn't work, Wireshark http plugin seems to perform an early detection on the HTTP payload and marks it as "json". The registered heuristics are not called because the embeded "protocol" is already known.
@@ -49,27 +56,157 @@ The http plugin does the same and uses fields to register on top of tcp port 80.
 
 ## Implementation
 
-
-
 During **init**, which is called at package initialization (hence when the plugin is loaded), we register to the Wirego package. As previously explained, the cache is disabled: in order to flag the requests as "valid" or "invalid" we need to be able to update the http request result.
 
+```golang
+type WiregoReolinkCreds struct {
+}
+
+// Unused (but mandatory)
+func main() {}
+
+// Called at golang environment initialization (you should probably not touch this)
+func init() {
+	var wge WiregoReolinkCreds
+
+	//Register to the wirego package
+	wirego.Register(wge)
+
+  //Disable the Wirego cache
+	wirego.ResultsCacheEnable(false)
+}
+```
+
 The **Setup** is not used here, we don't have anything to initialize.
+
+```golang
+// This function is called when the plugin is loaded.
+func (WiregoReolinkCreds) Setup() error {
+	return nil
+}
+```
 
 **GetName** returns the name of our plugin.
 
 **GetFilter** defines the string that we will use to filter the packets matching our protocol in Wireshark.
 
+```golang
+// This function shall return the plugin name
+func (WiregoReolinkCreds) GetName() string {
+	return "Wirego Reolink Credentials"
+}
 
-The **GetFields** function is used to declare two distinct custom fields pointing to thje user and password on the authentication request.
+// This function shall return the wireshark filter
+func (WiregoReolinkCreds) GetFilter() string {
+	return "reolink"
+}
+```
+
+
+The **GetFields** function is used to declare tree distinct custom fields pointing to the user, password and authentication result code. We define first associated "enums" and then for each field how we want it to be displayed and called inside Wireshark.
+
+```golang
+
+// Define here enum identifiers, used to refer to a specific field
+const (
+	FieldIdUser       wirego.FieldId = 1
+	FieldIdPassword   wirego.FieldId = 2
+	FieldIdAuthResult wirego.FieldId = 3
+)
+
+// GetFields returns the list of fields descriptor that we may eventually return
+// when dissecting a packet payload
+func (WiregoReolinkCreds) GetFields() []wirego.WiresharkField {
+	var fields []wirego.WiresharkField
+
+	//Setup our wireshark custom fields
+	fields = append(fields, wirego.WiresharkField{WiregoFieldId: FieldIdUser, Name: "User", Filter: "reolink.user", ValueType: wirego.ValueTypeString, DisplayMode: wirego.DisplayModeNone})
+	fields = append(fields, wirego.WiresharkField{WiregoFieldId: FieldIdPassword, Name: "Password", Filter: "reolink.password", ValueType: wirego.ValueTypeString, DisplayMode: wirego.DisplayModeNone})
+	fields = append(fields, wirego.WiresharkField{WiregoFieldId: FieldIdAuthResult, Name: "Authentication result", Filter: "reolink.authresult", ValueType: wirego.ValueTypeString, DisplayMode: wirego.DisplayModeNone})
+
+	return fields
+}
+```
 
 As previously explained, detection will be performed using a filter on TCP port 80. This filter is defined in **GetDetectionFilters**.
 
+```golang
+// GetDetectionFilters returns a wireshark filter that will select which packets
+// will be sent to your dissector for parsing.
+// Two types of filters can be defined: Integers or Strings
+func (WiregoReolinkCreds) GetDetectionFilters() []wirego.DetectionFilter {
+	var filters []wirego.DetectionFilter
+	filters = append(filters, wirego.DetectionFilter{FilterType: wirego.DetectionFilterTypeInt, Name: "tcp.port", ValueInt: 80})
+
+	return filters
+}
+```
+
+
 Since we can't use heuristics, **GetDetectionHeuristicsParents** and **DetectionHeuristic** are left empty.
+
+```golang
+// GetDissectorFilterHeuristics returns a list of protocols on top of which detection heuristic
+// should be called.
+func (WiregoReolinkCreds) GetDetectionHeuristicsParents() []string {
+	return []string{}
+}
+
+func (WiregoReolinkCreds) DetectionHeuristic(packetNumber int, src string, dst string, layer string, packet []byte) bool {
+	return false
+}
+```
 
 The protocol dissection occurs in **DissectPacket**:
 
   - we first try to parse the TCP payload as an HTTP request
   - if this fails, we try to parse it as an http response
+
+```golang
+// DissectPacket provides the packet payload to be parsed.
+func (w WiregoReolinkCreds) DissectPacket(packetNumber int, src string, dst string, layer string, packet []byte) *wirego.DissectResult {
+	var res wirego.DissectResult
+
+	//Create a bufio.Reader from the packet slice
+	r := bytes.NewReader(packet)
+	buf := bufio.NewReader(r)
+
+	//Try to parse as an http request
+	req, err := http.ReadRequest(buf)
+	if err == nil {
+		//Success? Call the dissect request function
+		return w.DissectRequest(packetNumber, src, dst, layer, req, packet)
+	}
+
+	//This failed, rewing the buffer and retry as a Response
+	r.Seek(0, io.SeekStart)
+	buf.Reset(r)
+
+	//Look for associated http request
+	closestRequestIdx := -1
+	for i := 0; i < len(requestsCache); i++ {
+		if requestsCache[i].packetNumber >= packetNumber {
+			break
+		}
+		closestRequestIdx = i
+	}
+	//No previous request found, abort
+	if closestRequestIdx == -1 {
+		return &res
+	}
+
+	//Parse as an http response
+	resp, err := http.ReadResponse(buf, requestsCache[closestRequestIdx].req)
+	if err == nil {
+		//Success? Call the dissect response function
+		return w.DissectResponse(packetNumber, src, dst, layer, resp, closestRequestIdx, packet)
+	}
+	return &res
+}
+```
+
+I won't copy paste the code for the two last functions since this is generic code not really related to Wirego.
+
 
 The **request dissector** parses the TCP payload using the golang "http" package and then applies what could have been our detection heuristic: check if the URI is *"/cgi-bin/api.cgi?cmd=Login"*.
 If this late detection succeeds, the HTTP payload is parsed using the golang "json" package and credentials are extracted.
@@ -77,6 +214,8 @@ If this late detection succeeds, the HTTP payload is parsed using the golang "js
 In order to parse an http response, the golang "http" package requires the associated request. We update a cache containing all requests and their packet number.
 
 The **response dissector** will look into the requests cache for a matching request (the closest lower packet number). The http payload is parsed using the golang "json" package and the authentication result is retrieved. The requests cache is updated with the authentication result.
+
+
 
 ## Multiple pass management
 
