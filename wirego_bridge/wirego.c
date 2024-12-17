@@ -29,7 +29,7 @@
 #include "wirego.h"
 #include "preferences.h"
 #include "zmq_relay.h"
-
+#include "version.h"
 
 static wirego_t wirego_h;
 
@@ -53,25 +53,35 @@ void proto_register_wirego(void) {
   }
 
   wirego_h.zctx = zmq_ctx_new();
-  wirego_h.zsock = zmq_socket(wirego_h.zctx, ZMQ_CLIENT);
+  wirego_h.zsock = zmq_socket(wirego_h.zctx, ZMQ_REQ);
   if (wirego_h.zsock == NULL) {
     ws_warning("Wirego: failed to create ZMQ socket (%s)\n",zmq_strerror (errno));
     return;
   }
 
-  int ret = zmq_bind (wirego_h.zsock, wirego_h.zmq_endpoint);  
+  //Connect to remote Wirego plugin
+  int ret = zmq_connect(wirego_h.zsock, wirego_h.zmq_endpoint);
   if (ret != 0) {
-    ws_warning("Wirego: failed to bind to ZMQ endpoint (%s)\n",zmq_strerror (errno));
+    ws_warning("Wirego: failed to connect to ZMQ endpoint (%s)\n",zmq_strerror (errno));
     return;
   }
 
+  //Let's ping using ZMQ
   ret = wirego_zmq_ping(&wirego_h);
   if (ret != 0) {
-    ws_warning("Wirego: failed to contact ZMQ endpoint (%s)\n",zmq_strerror (errno));
+    ws_warning("Wirego: failed to contact ZMQ endpoint (ping)");
     return;
   }
-  ws_warning("Wirego version: %d.%d", wirego_version_major_cb(), wirego_version_minor_cb());
+  ws_warning("Wirego: ping success");
 
+  //Check API version
+  int vmajor = wirego_version_major_cb(&wirego_h);
+  int vminor = wirego_version_minor_cb(&wirego_h);
+  ws_warning("Remote Wirego version: %d.%d", vmajor, vminor);
+
+  if ((vmajor != WIREGO_VERSION_MAJOR) || (vminor != WIREGO_VERSION_MINOR)) {
+    ws_warning("Wireshark plugin (%d.%d) and remote Wirego versions differs (%d.%d)", WIREGO_VERSION_MAJOR, WIREGO_VERSION_MINOR, vmajor, vminor);
+  }
 }
 
 void proto_reg_handoff_wirego(void) {

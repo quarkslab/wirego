@@ -4,7 +4,6 @@ package wirego
 type WiregoInterface interface {
 	GetName() string
 	GetFilter() string
-	Setup() error
 	GetFields() []WiresharkField
 	GetDetectionFilters() []DetectionFilter
 	GetDetectionHeuristicsParents() []string

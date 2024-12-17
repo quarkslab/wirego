@@ -11,20 +11,23 @@ package wirego
 	Trust me.
 */
 
-import "C"
 import (
+	"context"
 	"fmt"
-	"runtime"
-	"sync"
-	"unsafe"
+
+	zmq "github.com/go-zeromq/zmq4"
 )
 
 // Just a simple holder
 type Wirego struct {
-	listener       WiregoInterface
-	wiregoFieldIds map[int]bool
-	resultsCache   map[C.int]*DissectResultFlattenEntry
-	lock           sync.Mutex
+	listener           WiregoInterface
+	resultsCacheEnable bool
+	wiregoFieldIds     map[int]bool
+
+	//ZMQ
+	zqmEndpoint string
+	zmqContext  context.Context
+	zmqSocket   zmq.Socket
 
 	//Fetched and duplicated from plugin, to trick gc
 	pluginName                       string
@@ -37,71 +40,45 @@ type Wirego struct {
 // We use a static "object" here
 var wg Wirego
 
-var resultsCacheEnable bool = true
-
-var pinner runtime.Pinner
-
-// Register registers a listener implementing the WiregoInterface interface
-func Register(listener WiregoInterface) error {
+func New(zqmEndpoint string, listener WiregoInterface) (*Wirego, error) {
+	var err error
 	wg.listener = listener
+	wg.zqmEndpoint = zqmEndpoint
+	wg.resultsCacheEnable = true
 
-	//Disable GC.
-	//This fixes any problem with the garbage collector!
-	//debug.SetGCPercent(-1)
-	//debug.SetMemoryLimit(math.MaxInt64)
-
-	return nil
-}
-
-// ResultsCacheEnable enables or disables the results cache. By default, the results cache is enabled.
-// If re-analyzing a packet makes sense for your protocol, disable this feature.
-func ResultsCacheEnable(enable bool) {
-	resultsCacheEnable = enable
-}
-
-//export wirego_setup
-func wirego_setup() C.int {
-	if wg.listener == nil {
-		return C.int(-1)
-	}
-	err := wg.listener.Setup()
-
-	if err != nil {
-		return C.int(-1)
-	}
-
-	wg.resultsCache = make(map[C.int]*DissectResultFlattenEntry)
 	wg.wiregoFieldIds = make(map[int]bool)
 
 	//Preload all "static" values to bypass the GC and keep local copies
 	wg.pluginName = wg.listener.GetName()
-	pinner.Pin(&wg.pluginName)
-
 	wg.pluginFilter = wg.listener.GetFilter()
-	pinner.Pin(&wg.pluginFilter)
-
 	wg.pluginDetectionHeuristicsParents = wg.listener.GetDetectionHeuristicsParents()
-	pinner.Pin(&wg.pluginDetectionHeuristicsParents)
-
 	wg.pluginDetectionFilters = wg.listener.GetDetectionFilters()
-	pinner.Pin(&wg.pluginDetectionFilters)
-
 	wg.pluginFields = wg.listener.GetFields()
-	pinner.Pin(&wg.pluginFields)
 
 	//Checks fields for duplicates
 	for _, f := range wg.pluginFields {
 		_, duplicate := wg.wiregoFieldIds[int(f.WiregoFieldId)]
 		if duplicate {
-			fmt.Printf("Failed to add wirego fields, duplicated WiregoFieldId: %d\n", f.WiregoFieldId)
-			return C.int(-1)
+			return nil, fmt.Errorf("failed to add wirego fields, duplicated WiregoFieldId: %d", f.WiregoFieldId)
 		}
 		wg.wiregoFieldIds[int(f.WiregoFieldId)] = true
 	}
 
-	return C.int(0)
+	//Setup ZMQ
+	err = wg.zmqSetup()
+	if err != nil {
+		return nil, err
+	}
+	return &wg, nil
 }
 
+// ResultsCacheEnable enables or disables the results cache. By default, the results cache is enabled.
+// If re-analyzing a packet makes sense for your protocol, disable this feature.
+func (wg *Wirego) ResultsCacheEnable(enable bool) {
+	wg.resultsCacheEnable = enable
+}
+
+/*
 //export wirego_version_major
 func wirego_version_major() C.int {
 	return WIREGO_VERSION_MAJOR
@@ -260,3 +237,4 @@ func wirego_result_release(h C.int) {
 		delete(wg.resultsCache, h)
 	}
 }
+*/
