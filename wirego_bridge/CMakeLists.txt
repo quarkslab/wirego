@@ -14,6 +14,7 @@ set_module_info(wirego 0 2 0 0)
 
 set(DISSECTOR_SRC
 	zmq_relay.c
+	helpers.c
 	preferences.c
 	wirego.c
 )
