@@ -75,8 +75,17 @@ void proto_register_wirego(void) {
   ws_warning("Wirego: ping success");
 
   //Check API version
+  int vmajor, vminor;
+  ret = wirego_version_cb(&wirego_h, &vmajor, &vminor);
+  if (ret != 0) {
+    ws_warning("Wirego: failed to retrieve remote version");
+    return;
+  }
+
+/*
   int vmajor = wirego_version_major_cb(&wirego_h);
   int vminor = wirego_version_minor_cb(&wirego_h);
+  */
   ws_warning("Remote Wirego version: %d.%d", vmajor, vminor);
 
   if ((vmajor != WIREGO_VERSION_MAJOR) || (vminor != WIREGO_VERSION_MINOR)) {

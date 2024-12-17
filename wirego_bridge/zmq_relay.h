@@ -4,11 +4,11 @@
 #include "wirego.h"
 
 
+//Utility ZMQ functions
 int wirego_zmq_ping(wirego_t *wirego_h);
+int wirego_version_cb(wirego_t *wirego_h, int *major, int*minor);
 
 //ZMQ relay commands to Wirego plugin
-int wirego_version_major_cb(wirego_t *wirego_h);
-int wirego_version_minor_cb(wirego_t *wirego_h);
 
 
 #endif

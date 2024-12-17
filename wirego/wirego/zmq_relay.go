@@ -8,6 +8,8 @@ import (
 	zmq "github.com/go-zeromq/zmq4"
 )
 
+type ZMQCommand func(msg *zmq.Msg) error
+
 const (
 	WiregoVersionMajor = 2
 	WiregoVersionMinor = 0
@@ -26,6 +28,13 @@ func (wg *Wirego) zmqSetup() error {
 }
 
 func (wg *Wirego) Listen() {
+
+	dispatcher := make(map[string]ZMQCommand)
+
+	//Utility commands, not dispatched to the Wirego plugin interface
+	dispatcher["ping"] = wg.processPing
+	dispatcher["version"] = wg.processVersion
+
 	for {
 		fmt.Println("Wait...")
 
@@ -40,29 +49,18 @@ func (wg *Wirego) Listen() {
 
 		//Frame 0 contains the command. Get rid of trailing /x00 C-string
 		cmd := string(msg.Frames[0][:len(msg.Frames[0])-1])
-		switch cmd {
-		case "ping":
-			err = wg.processPing(&msg)
-			if err != nil {
-				fmt.Println(err)
-			} else {
-				fmt.Println("Response sent")
-			}
-		case "version_major":
-			err = wg.processVersionMajor(&msg)
-			if err != nil {
-				fmt.Println(err)
-			}
-		case "version_minor":
-			err = wg.processVersionMinor(&msg)
-			if err != nil {
-				fmt.Println(err)
-			}
-		default:
+		cb, found := dispatcher[cmd]
+		if !found {
 			fmt.Println("Unknown command: '" + cmd + "'")
+		} else {
+			fmt.Println("Processing command", cmd, "...")
+			err = cb(&msg)
+			if err != nil {
+				fmt.Println("-> Failed:", err)
+			} else {
+				fmt.Println("-> Success.")
+			}
 		}
-		fmt.Println(msg.String())
-		fmt.Println(cmd)
 	}
 }
 
@@ -71,12 +69,7 @@ func (wg *Wirego) processPing(msg *zmq.Msg) error {
 	return wg.zmqSocket.Send(response)
 }
 
-func (wg *Wirego) processVersionMajor(msg *zmq.Msg) error {
-	response := zmq.NewMsg([]byte{byte(WiregoVersionMajor)})
-	return wg.zmqSocket.Send(response)
-}
-
-func (wg *Wirego) processVersionMinor(msg *zmq.Msg) error {
-	response := zmq.NewMsg([]byte{byte(WiregoVersionMinor)})
+func (wg *Wirego) processVersion(msg *zmq.Msg) error {
+	response := zmq.NewMsgFrom([]byte{byte(WiregoVersionMajor)}, []byte{byte(WiregoVersionMinor)})
 	return wg.zmqSocket.Send(response)
 }
