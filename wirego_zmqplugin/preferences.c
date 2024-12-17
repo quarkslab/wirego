@@ -10,6 +10,14 @@
 static const gchar* pref_wirego_zmq_endpoint = "";
 
 
+/*
+  Since we need to connect to the Wirego plugin in order to fetch several parameters 
+  during initialization, we can't simply rely on the Wireshark parameters mechanism.
+  Parameters are loaded once all plugins are initialized, hence the ZMQ endpoint value 
+  will be made available too late.
+
+  The last configured value in the parameters is saved on a local hidden file.
+*/
 
 
 char * get_zmq_endpoint(void) {
@@ -52,11 +60,12 @@ int save_zmq_endpoint(const char * zmq_endpoint) {
 void preferences_apply_cb(void) {
   char * zmq_endpoint = get_zmq_endpoint();
 
-  if (strstr(zmq_endpoint, "zmq:\\\\") != zmq_endpoint) {
-    ws_warning("ZMQ Endpoint must start with zmq:\\\\");
-    return;
+  //Set default value
+  if (strlen(zmq_endpoint) == 0) {
+    save_zmq_endpoint("tcp://localhost:1234");
   }
 
+  //If value loaded from wireshark's prefs is different than ours, update
   if (strcmp(zmq_endpoint, pref_wirego_zmq_endpoint)) {
     save_zmq_endpoint(pref_wirego_zmq_endpoint);
     ws_warning("Wirego: Updated zmq_endpoint to %s\n",pref_wirego_zmq_endpoint);

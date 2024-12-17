@@ -36,7 +36,7 @@ register_plugin_files(plugin.c
 
 add_wireshark_plugin_library(wirego epan)
 
-target_link_libraries(wirego epan czmq zmq)
+target_link_libraries(wirego epan zmq)
 
 install_plugin(wirego epan)
 
