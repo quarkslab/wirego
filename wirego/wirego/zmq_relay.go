@@ -17,6 +17,15 @@ const (
 	WiregoVersionMinor = 0
 )
 
+func getStringFromFrame(frame []byte) string {
+	//Make sure it's a C string
+	if frame[len(frame)-1] != 0x00 {
+		return ""
+	}
+
+	return string(frame[:len(frame)-1])
+}
+
 func (wg *Wirego) zmqSetup() error {
 	wg.zmqContext = context.Background()
 	wg.zmqSocket = zmq.NewRep(wg.zmqContext, zmq.WithDialerRetry(time.Second))
@@ -47,6 +56,8 @@ func (wg *Wirego) Listen() {
 	dispatcher["get_field"] = wg.processGetField
 	dispatcher["detect_int"] = wg.processDetectInt
 	dispatcher["detect_string"] = wg.processDetectString
+	dispatcher["detect_heuristic_parent"] = wg.processDetectHeuristicParent
+	dispatcher["detection_heuristic"] = wg.processDetectionHeuristic
 
 	for {
 		fmt.Println("Wait...")
@@ -61,7 +72,7 @@ func (wg *Wirego) Listen() {
 		}
 
 		//Frame 0 contains the command. Get rid of trailing /x00 C-string
-		cmd := string(msg.Frames[0][:len(msg.Frames[0])-1])
+		cmd := getStringFromFrame(msg.Frames[0])
 		cb, found := dispatcher[cmd]
 		if !found {
 			fmt.Println("Unknown command: '" + cmd + "'")
@@ -208,16 +219,13 @@ func (wg *Wirego) processDetectString(msg *zmq.Msg) error {
 	return wg.zmqSocket.Send(response)
 }
 
-func (wg *Wirego) processDetectHeuristics(msg *zmq.Msg) error {
-	var matchValue string
-	var filterString string
-
+func (wg *Wirego) processDetectHeuristicParent(msg *zmq.Msg) error {
 	//Frame one contains index
 	if len(msg.Frames) != 2 {
-		return errors.New("detect_heuristics failed, index missing from request")
+		return errors.New("detect_heuristic_parent failed, index missing from request")
 	}
 	if len(msg.Frames[1]) != 4 {
-		return errors.New("detect_heuristics failed, index too short")
+		return errors.New("detect_heuristic_parent failed, index too short")
 	}
 	idx := binary.LittleEndian.Uint32(msg.Frames[1])
 
@@ -229,4 +237,34 @@ func (wg *Wirego) processDetectHeuristics(msg *zmq.Msg) error {
 	//Response
 	response := zmq.NewMsg(append([]byte(wg.pluginDetectionHeuristicsParents[idx]), 0x00))
 	return wg.zmqSocket.Send(response)
+}
+
+func (wg *Wirego) processDetectionHeuristic(msg *zmq.Msg) error {
+	var packetNumber uint32
+	var src string
+	var dst string
+	var layer string
+	var packet []byte
+
+	if len(msg.Frames) != 6 {
+		return errors.New("detection_heuristic failed, missing arguments")
+	}
+	if len(msg.Frames[1]) != 4 {
+		return errors.New("detection_heuristic failed, packet_number too short")
+	}
+	packetNumber = binary.LittleEndian.Uint32(msg.Frames[1])
+	src = getStringFromFrame(msg.Frames[2])
+	dst = getStringFromFrame(msg.Frames[3])
+	layer = getStringFromFrame(msg.Frames[4])
+	packet = msg.Frames[5]
+
+	result := wg.listener.DetectionHeuristic(int(packetNumber), src, dst, layer, packet)
+
+	if result {
+		response := zmq.NewMsg([]byte{0x01})
+		return wg.zmqSocket.Send(response)
+	} else {
+		response := zmq.NewMsg([]byte{0x00})
+		return wg.zmqSocket.Send(response)
+	}
 }

@@ -9,7 +9,7 @@ typedef struct {
 
 
 typedef struct _wirego {
-  bool loaded;
+  int loaded;
   char * zmq_endpoint;
   void * zctx;
   void * zsock;
@@ -23,4 +23,6 @@ typedef struct _wirego {
 } wirego_t;
 
 wirego_t * get_wirego_h(void);
+int get_wireshark_field_id_from_wirego_field_id(int wirego_field_id);
+
 #endif

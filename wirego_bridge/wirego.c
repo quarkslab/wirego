@@ -35,18 +35,17 @@
 
 static wirego_t wirego_h;
 
-int get_wireshark_field_id_from_wirego_field_id(int wirego_field_id);
 int wirego_is_plugin_loaded(void);
 static gboolean wirego_heuristic_check(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data);
 
-wirego_t * get_wirego_h() {
+wirego_t * get_wirego_h(void) {
   return &wirego_h;
 }
 
 //Register protocol when plugin is loaded.
 void proto_register_wirego(void) {
   memset(&wirego_h, 0x00, sizeof(wirego_t));
-  wirego_h.loaded = false;
+  wirego_h.loaded = 0;
   wirego_h.ett_wirego  = -1;
   wirego_h.fields_count = -1;
   wirego_h.proto_wirego = -1;
@@ -161,7 +160,7 @@ void proto_register_wirego(void) {
   proto_register_subtree_array(ett, array_length(ett));
 
   // Everything is fine, mark as ready for handoff
-  wirego_h.loaded = true;
+  wirego_h.loaded = 1;
 }
 
 
@@ -180,7 +179,7 @@ void proto_reg_handoff_wirego(void) {
   int idx = 0;
   while (1) {
     int filter_value;
-    filter_name = wirego_detect_int_cb(&filter_value, idx);
+    filter_name = wirego_detect_int_cb(&wirego_h, &filter_value, idx);
 
     if (filter_name == NULL)
       break;
@@ -193,7 +192,7 @@ void proto_reg_handoff_wirego(void) {
   idx = 0;
   while (1) {
     char* filter_value_str;
-    filter_name = wirego_detect_string_cb(&filter_value_str, idx);
+    filter_name = wirego_detect_string_cb(&wirego_h, &filter_value_str, idx);
     if (filter_name == NULL)
       break;
     dissector_add_string(filter_name, filter_value_str, wirego_handle);
@@ -208,7 +207,7 @@ void proto_reg_handoff_wirego(void) {
     char name[64];
     char display_name[128];
     char* parent_protocol_str;
-    parent_protocol_str = wirego_detect_heuristic_cb(idx);
+    parent_protocol_str = wirego_detect_heuristic_parent_cb(&wirego_h, idx);
     if (parent_protocol_str == NULL)
       break;
 
@@ -267,7 +266,7 @@ static gboolean wirego_heuristic_check(tvbuff_t *tvb, packet_info *pinfo, proto_
   //Pass everything to the golang plugin
   golang_buff = (char*) malloc(pdu_len);
   tvb_memcpy(tvb, golang_buff, 0, pdu_len);
-  detected = wirego_detection_heuristic_cb(pinfo->num, src, dst, full_layer, golang_buff, pdu_len);
+  detected = wirego_detection_heuristic_cb(&wirego_h, pinfo->num, src, dst, full_layer, golang_buff, pdu_len);
   free(golang_buff);
   golang_buff = NULL;
   free(full_layer);

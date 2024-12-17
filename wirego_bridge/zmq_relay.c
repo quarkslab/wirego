@@ -254,12 +254,11 @@ int wirego_get_field_cb(wirego_t *wirego_h, int idx, int *wirego_field_id, char*
 }
 
 //wirego_detect_int_cb asks the remote ZMQ endpoint for the detection filter of type "int" with given index
-char* wirego_detect_int_cb(int *filter_value, int idx) {
+char* wirego_detect_int_cb(wirego_t *wirego_h, int *filter_value, int idx) {
   const char cmd[] = "detect_int";
   char * resp;
   int size;
   zmq_msg_t msg;
-  int ret = -1;
 
   char * filter = NULL;
   *filter_value = -1;
@@ -267,10 +266,10 @@ char* wirego_detect_int_cb(int *filter_value, int idx) {
   ws_warning("sending detect_int request ...");
   
   if (zmq_send(wirego_h->zsock, (void*)(cmd), sizeof(cmd), ZMQ_SNDMORE) == -1) {
-    return -1;
+    return NULL;
   }
   if (zmq_send(wirego_h->zsock, &idx, sizeof(int), 0) == -1) {
-    return -1;
+    return NULL;
   }
   ws_warning("waiting detect_int response...");
 
@@ -280,7 +279,7 @@ char* wirego_detect_int_cb(int *filter_value, int idx) {
   resp = zmq_msg_data(&msg);
   if ((size == 0) || (resp[size-1] != 0x00)) {
     zmq_msg_close (&msg);
-    return -1;
+    return NULL;
   }
   filter = (char*) calloc(size, 1);
   strcpy(filter, resp);
@@ -291,24 +290,21 @@ char* wirego_detect_int_cb(int *filter_value, int idx) {
   resp = zmq_msg_data(&msg);
   if (size != 4) {
     zmq_msg_close (&msg);
-    return -1;
+    return NULL;
   }
   *filter_value = *(int*)resp;
   zmq_msg_close (&msg);
 
   ws_warning("wirego_detect_int(%d) %s = %d", idx, filter, *filter_value);
 
-  ret = 0;
-
-  return ret;
+  return filter;
 }
 
-char* wirego_detect_string_cb(char**filter_value, int idx) {
+char* wirego_detect_string_cb(wirego_t *wirego_h,  char **filter_value, int idx) {
   const char cmd[] = "detect_string";
   char * resp;
   int size;
   zmq_msg_t msg;
-  int ret = -1;
 
   char * filter = NULL;
   *filter_value = NULL;
@@ -316,10 +312,10 @@ char* wirego_detect_string_cb(char**filter_value, int idx) {
   ws_warning("sending detect_string request ...");
   
   if (zmq_send(wirego_h->zsock, (void*)(cmd), sizeof(cmd), ZMQ_SNDMORE) == -1) {
-    return -1;
+    return NULL;
   }
   if (zmq_send(wirego_h->zsock, &idx, sizeof(int), 0) == -1) {
-    return -1;
+    return NULL;
   }
   ws_warning("waiting detect_string response...");
 
@@ -329,7 +325,7 @@ char* wirego_detect_string_cb(char**filter_value, int idx) {
   resp = zmq_msg_data(&msg);
   if ((size == 0) || (resp[size-1] != 0x00)) {
     zmq_msg_close (&msg);
-    return -1;
+    return NULL;
   }
   filter = (char*) calloc(size, 1);
   strcpy(filter, resp);
@@ -340,36 +336,33 @@ char* wirego_detect_string_cb(char**filter_value, int idx) {
   resp = zmq_msg_data(&msg);
   if ((size == 0) || (resp[size-1] != 0x00)) {
     zmq_msg_close (&msg);
-    return -1;
+    return NULL;
   }
   *filter_value = (char*) calloc(size, 1);
-  strcpy(filter_value, resp);
+  strcpy(*filter_value, resp);
 
   ws_warning("wirego_detect_string(%d) %s = %s", idx, filter, *filter_value);
 
-  ret = 0;
-
-  return ret;
+  return filter;
 }
 
-char* wirego_detect_heuristic_cb(int) {
-  const char cmd[] = "detect_heuristic";
+char* wirego_detect_heuristic_parent_cb(wirego_t *wirego_h, int idx) {
+  const char cmd[] = "detect_heuristic_parent";
   char * resp;
   int size;
   zmq_msg_t msg;
-  int ret = -1;
 
   char * parent_protocol = NULL;
   
-  ws_warning("sending detect_heuristic request ...");
+  ws_warning("sending detect_heuristic_parent request ...");
   
   if (zmq_send(wirego_h->zsock, (void*)(cmd), sizeof(cmd), ZMQ_SNDMORE) == -1) {
-    return -1;
+    return NULL;
   }
   if (zmq_send(wirego_h->zsock, &idx, sizeof(int), 0) == -1) {
-    return -1;
+    return NULL;
   }
-  ws_warning("waiting detect_heuristic response...");
+  ws_warning("waiting detect_heuristic_parent response...");
 
   //Frame 0 contains parent_protocol (string)
   zmq_msg_init (&msg);
@@ -377,15 +370,91 @@ char* wirego_detect_heuristic_cb(int) {
   resp = zmq_msg_data(&msg);
   if ((size == 0) || (resp[size-1] != 0x00)) {
     zmq_msg_close (&msg);
-    return -1;
+    return NULL;
   }
   parent_protocol = (char*) calloc(size, 1);
   strcpy(parent_protocol, resp);
 
 
-  ws_warning("detect_heuristic(%d) %s", idx, parent_protocol);
-
-  ret = 0;
-
-  return ret;
+  ws_warning("detect_heuristic_parent(%d) %s", idx, parent_protocol);
+  return parent_protocol;
 }
+
+
+int wirego_detection_heuristic_cb(wirego_t *wirego_h, int packet_number, char * src, char * dst, char* layer, char* packet, int packet_size) {
+  if (src == NULL || dst == NULL || layer == NULL || packet == NULL || packet_size == 0) {
+    return -1;
+  }
+
+  const char cmd[] = "detection_heuristic";
+  char * resp;
+  int size;
+  zmq_msg_t msg;
+  int detection_result = -1;
+ 
+  
+  ws_warning("sending detection_heuristic request ...");
+  
+  if (zmq_send(wirego_h->zsock, (void*)(cmd), sizeof(cmd), ZMQ_SNDMORE) == -1) {
+    return -1;
+  }
+  if (zmq_send(wirego_h->zsock, &packet_number, sizeof(int), ZMQ_SNDMORE) == -1) {
+    return -1;
+  }
+  if (zmq_send(wirego_h->zsock, src, sizeof(src), ZMQ_SNDMORE) == -1) {
+    return -1;
+  }
+  if (zmq_send(wirego_h->zsock, dst, sizeof(dst), ZMQ_SNDMORE) == -1) {
+    return -1;
+  }
+  if (zmq_send(wirego_h->zsock, layer, sizeof(layer), ZMQ_SNDMORE) == -1) {
+    return -1;
+  }
+  if (zmq_send(wirego_h->zsock, packet, packet_size, 0) == -1) {
+    return -1;
+  }
+  ws_warning("waiting detection_heuristic response...");
+
+  //Frame 0 contains detection result (byte)
+  zmq_msg_init (&msg);
+	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
+  resp = zmq_msg_data(&msg);
+  if (size != 1) {
+    zmq_msg_close (&msg);
+    return -1;
+  }
+  detection_result = resp[0];
+  zmq_msg_close (&msg);
+
+
+  ws_warning("detection_heuristic %d", detection_result);
+  return detection_result;
+
+}
+
+int wirego_dissect_packet_cb(wirego_t *wirego_h, int, char *, char *, char*, char*, int){
+
+}
+
+
+char* wirego_result_get_protocol_cb(wirego_t *wirego_h, int){
+
+}
+
+char* wirego_result_get_info_cb(wirego_t *wirego_h, int){
+
+}
+
+int wirego_result_get_fields_count_cb(wirego_t *wirego_h, int){
+
+}
+
+void wirego_result_get_field_cb(wirego_t *wirego_h, int, int, int*, int*, int*, int*){
+
+}
+
+void wirego_result_release_cb(wirego_t *wirego_h, int){
+
+}
+
+
