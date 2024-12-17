@@ -31,15 +31,22 @@
 #include "zmq_relay.h"
 #include "version.h"
 #include "helpers.h"
+#include "dissect.h"
 
 static wirego_t wirego_h;
 
 int get_wireshark_field_id_from_wirego_field_id(int wirego_field_id);
+int wirego_is_plugin_loaded(void);
+static gboolean wirego_heuristic_check(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data);
+
+wirego_t * get_wirego_h() {
+  return &wirego_h;
+}
 
 //Register protocol when plugin is loaded.
 void proto_register_wirego(void) {
   memset(&wirego_h, 0x00, sizeof(wirego_t));
-
+  wirego_h.loaded = false;
   wirego_h.ett_wirego  = -1;
   wirego_h.fields_count = -1;
   wirego_h.proto_wirego = -1;
@@ -96,8 +103,7 @@ void proto_register_wirego(void) {
     ws_warning("Wireshark plugin (%d.%d) and remote Wirego versions differs (%d.%d)", WIREGO_VERSION_MAJOR, WIREGO_VERSION_MINOR, vmajor, vminor);
   }
 
-  //---
-    //Setup a list of "header fields" (hf)
+  //Setup a list of "header fields" (hf)
   static hf_register_info *hfx;
 
   //Ask plugin how many custom fields are declared
@@ -153,10 +159,67 @@ void proto_register_wirego(void) {
 
   //Register the protocol subtree
   proto_register_subtree_array(ett, array_length(ett));
+
+  // Everything is fine, mark as ready for handoff
+  wirego_h.loaded = true;
 }
 
-void proto_reg_handoff_wirego(void) {
 
+void proto_reg_handoff_wirego(void) {
+  static dissector_handle_t wirego_handle;
+  char *filter_name;
+
+  //Make sure register succeeded
+  if (!wirego_is_plugin_loaded()) 
+    return;
+  
+  //Register dissector
+  wirego_handle = create_dissector_handle(dissect_wirego, wirego_h.proto_wirego);
+
+  //Set dissector filter (int)
+  int idx = 0;
+  while (1) {
+    int filter_value;
+    filter_name = wirego_detect_int_cb(&filter_value, idx);
+
+    if (filter_name == NULL)
+      break;
+    dissector_add_uint(filter_name, filter_value, wirego_handle);
+    free(filter_name);
+    idx++;
+  }
+
+  //Set dissector filter (string)
+  idx = 0;
+  while (1) {
+    char* filter_value_str;
+    filter_name = wirego_detect_string_cb(&filter_value_str, idx);
+    if (filter_name == NULL)
+      break;
+    dissector_add_string(filter_name, filter_value_str, wirego_handle);
+    free(filter_value_str);
+    free(filter_name);
+    idx++;
+  }
+
+  //Set dissector heuristic
+  idx = 0;
+  while (1) {
+    char name[64];
+    char display_name[128];
+    char* parent_protocol_str;
+    parent_protocol_str = wirego_detect_heuristic_cb(idx);
+    if (parent_protocol_str == NULL)
+      break;
+
+
+    snprintf(name, 64, "wirego_heur_%d", idx);
+    snprintf(display_name, 128, "%s over %s", wirego_get_name_cb(&wirego_h), parent_protocol_str);
+
+    heur_dissector_add(parent_protocol_str, wirego_heuristic_check, display_name, name, wirego_h.proto_wirego, HEURISTIC_ENABLE);
+    free(parent_protocol_str);
+    idx++;
+  }
 }
 
 
@@ -169,4 +232,50 @@ int get_wireshark_field_id_from_wirego_field_id(int wirego_field_id) {
     }
   }
   return -1; 
+}
+
+
+
+int wirego_is_plugin_loaded(void) {
+  return wirego_h.loaded?1:0;
+}
+
+
+static gboolean wirego_heuristic_check(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data)
+{
+  int pdu_len;
+  char * golang_buff = NULL;
+  char src[255];
+  char dst[255];
+  char * full_layer = NULL;
+  int detected;
+
+  if (!tvb || !pinfo)
+    return -1;
+
+  pdu_len = tvb_reported_length(tvb);
+  if (pdu_len <= 0)
+    return 0;
+
+  src[0] = 0x00;
+  dst[0] = 0x00;
+  extract_adresses_from_packet_info(pinfo, src, dst);
+
+
+  full_layer = compile_network_stack(pinfo);
+
+  //Pass everything to the golang plugin
+  golang_buff = (char*) malloc(pdu_len);
+  tvb_memcpy(tvb, golang_buff, 0, pdu_len);
+  detected = wirego_detection_heuristic_cb(pinfo->num, src, dst, full_layer, golang_buff, pdu_len);
+  free(golang_buff);
+  golang_buff = NULL;
+  free(full_layer);
+  full_layer = NULL;
+
+  if (detected == 0)
+    return FALSE;
+  
+  dissect_wirego(tvb, pinfo, tree, data);
+  return TRUE;
 }

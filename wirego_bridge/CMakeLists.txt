@@ -16,6 +16,7 @@ set(DISSECTOR_SRC
 	zmq_relay.c
 	helpers.c
 	preferences.c
+	dissect.c
 	wirego.c
 )
 

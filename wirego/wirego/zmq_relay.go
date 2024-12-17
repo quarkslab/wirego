@@ -45,6 +45,8 @@ func (wg *Wirego) Listen() {
 	dispatcher["get_plugin_filter"] = wg.processGetFilter
 	dispatcher["get_fields_count"] = wg.processGetFieldsCount
 	dispatcher["get_field"] = wg.processGetField
+	dispatcher["detect_int"] = wg.processDetectInt
+	dispatcher["detect_string"] = wg.processDetectString
 
 	for {
 		fmt.Println("Wait...")
@@ -137,5 +139,94 @@ func (wg *Wirego) processGetField(msg *zmq.Msg) error {
 	binary.LittleEndian.PutUint32(displayMode, uint32(f.DisplayMode))
 
 	response := zmq.NewMsgFrom(wiregoFieldId, append([]byte(name), 0x00), append([]byte(filter), 0x00), valueType, displayMode)
+	return wg.zmqSocket.Send(response)
+}
+
+func (wg *Wirego) processDetectInt(msg *zmq.Msg) error {
+	var matchValue int
+	var filterString string
+	matchValue = -1
+
+	//Frame one contains index
+	if len(msg.Frames) != 2 {
+		return errors.New("detect_int failed, index missing from request")
+	}
+	if len(msg.Frames[1]) != 4 {
+		return errors.New("detect_int failed, index too short")
+	}
+	idx := binary.LittleEndian.Uint32(msg.Frames[1])
+
+	//Search for detection filter of type "int" with index idx
+	cnt := 0
+	for _, f := range wg.pluginDetectionFilters {
+		if f.FilterType == DetectionFilterTypeInt {
+			if cnt == int(idx) {
+				matchValue = f.ValueInt
+				filterString = f.Name
+				break
+			}
+			cnt++
+		}
+	}
+
+	//Response
+	matchValueSlc := make([]byte, 4)
+	binary.LittleEndian.PutUint32(matchValueSlc, uint32(matchValue))
+
+	response := zmq.NewMsgFrom(append([]byte(filterString), 0x00), matchValueSlc)
+	return wg.zmqSocket.Send(response)
+}
+
+func (wg *Wirego) processDetectString(msg *zmq.Msg) error {
+	var matchValue string
+	var filterString string
+
+	//Frame one contains index
+	if len(msg.Frames) != 2 {
+		return errors.New("detect_string failed, index missing from request")
+	}
+	if len(msg.Frames[1]) != 4 {
+		return errors.New("detect_string failed, index too short")
+	}
+	idx := binary.LittleEndian.Uint32(msg.Frames[1])
+
+	//Search for detection filter of type "int" with index idx
+	cnt := 0
+	for _, f := range wg.pluginDetectionFilters {
+		if f.FilterType == DetectionFilterTypeString {
+			if cnt == int(idx) {
+				matchValue = f.ValueString
+				filterString = f.Name
+				break
+			}
+			cnt++
+		}
+	}
+
+	//Response
+	response := zmq.NewMsgFrom(append([]byte(filterString), 0x00), append([]byte(matchValue), 0x00))
+	return wg.zmqSocket.Send(response)
+}
+
+func (wg *Wirego) processDetectHeuristics(msg *zmq.Msg) error {
+	var matchValue string
+	var filterString string
+
+	//Frame one contains index
+	if len(msg.Frames) != 2 {
+		return errors.New("detect_heuristics failed, index missing from request")
+	}
+	if len(msg.Frames[1]) != 4 {
+		return errors.New("detect_heuristics failed, index too short")
+	}
+	idx := binary.LittleEndian.Uint32(msg.Frames[1])
+
+	if idx >= uint32(len(wg.pluginDetectionHeuristicsParents)) {
+		response := zmq.NewMsg([]byte{})
+		return wg.zmqSocket.Send(response)
+	}
+
+	//Response
+	response := zmq.NewMsg(append([]byte(wg.pluginDetectionHeuristicsParents[idx]), 0x00))
 	return wg.zmqSocket.Send(response)
 }
