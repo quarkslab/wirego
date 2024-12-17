@@ -11,7 +11,7 @@ Use the following Dockerfile:
     FROM golang:latest
 
     # Install build tools and Wireshark dependencies
-    RUN DEBIAN_FRONTEND=noninteractive apt update && apt -y install git build-essential cmake libgcrypt-dev qt6-base-dev qt6-multimedia-dev qt6-tools-dev qt6-tools-dev-tools qt6-l10n-tools libqt6core5compat6-dev libpcap-dev libgcrypt20-dev libglib2.0-dev flex bison libpcre2-dev libnghttp2-dev libc-ares-dev libspeexdsp-dev
+    RUN DEBIAN_FRONTEND=noninteractive apt update && apt -y install git build-essential cmake libgcrypt-dev qt6-base-dev qt6-multimedia-dev qt6-tools-dev qt6-tools-dev-tools qt6-l10n-tools libqt6core5compat6-dev libpcap-dev libgcrypt20-dev libglib2.0-dev flex bison libpcre2-dev libnghttp2-dev libc-ares-dev libspeexdsp-dev zmq
     # Take a fresh version of Wireshark
     RUN git clone https://gitlab.com/wireshark/wireshark.git
     # Take a fresh version of Wirego

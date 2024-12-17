@@ -11,7 +11,12 @@ Writing plugins for Wireshark in C/C++ can be opaque: the APIs are quite powerfu
 
 Another alternative is to use LUA, but first of all you need to know this language. So again, you'll spend more time trying to learn that new language than actually writing this quick and dirty plugin.
 
-Wirego is a plugin for Wireshark, written in C that actually loads a plugin written in Go language.
+Wirego is a composed of:
+
+  - a Wireshark plugin (wirego_bridge), written in C that will transmit all calls from Wireshark to a remote ZMQ endpoint
+  - A set of package for several languages receiving those ZMQ calls and converting them to a simple API
+
+As a starter, a **golang** package is provided and more languages will come later.
 
 You basically don't have to touch the Wirego plugin and you will be given a dummy empty golang plugin to start with.
 
@@ -21,9 +26,9 @@ You basically don't have to touch the Wirego plugin and you will be given a dumm
 
 In order to setup Wirego, you will need follow 3 steps:
 
-  1. Install or build the Wirego plugin for Wireshark
+  1. Install or build the Wirego bridge plugin for Wireshark
   2. Develop your own plugin, using the "wirego" Go package
-  3. Start Wireshark and tell Wirego where your plugin is
+  3. Start Wireshark and tell the Wirego bridge where your ZMQ endpoint is
 
 You may use prebuilt binaries for **step 1**, those can be downloaded [here](https://github.com/quarkslab/wirego/releases).
 If prefer building the plugin (or if prebuilt binaries fails), refer to the following documentation [here](BUILD_WIREGO.md)
@@ -36,7 +41,6 @@ For **step 2**, you will basically just have to __import "wirego"__ and implemen
     type WiregoInterface interface {
       GetName() string
       GetFilter() string
-      Setup() error
       GetFields() []WiresharkField
       GetDetectionFilters() []DetectionFilterType
       GetDetectionHeuristicsParent() []string
@@ -69,4 +73,4 @@ Here's a partial list:
 When the path to your plugin in Go is modified, you will be required to restart Wireshark, here's why:
 
   - we need to setup everything (plugin name, fields..) during the proto_register_wirego call
-  - preferences values are only loaded during the proto_reg_handoff_wirego call, which is too late for us
+  - preferences values, hence the ZMQ endpoint, are only loaded during the proto_reg_handoff_wirego call, which is too late for us
