@@ -62,7 +62,7 @@ Now build Wireshark (see README.xxx), but basically it's just:
     cmake ../
     make -j
 
-You may also just build the Wirego plugin (and now the full Wireshark program):
+You may also just build the Wirego plugin (and not the full Wireshark program):
 
     mkdir build && cd build
     cmake -DBUILD_wireshark=OFF -DCUSTOM_PLUGIN_SRC_DIR=../../wireshark/plugins/epan/wirego ..
