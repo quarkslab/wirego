@@ -58,6 +58,7 @@ func (wg *Wirego) Listen() {
 	dispatcher["detect_string"] = wg.processDetectString
 	dispatcher["detect_heuristic_parent"] = wg.processDetectHeuristicParent
 	dispatcher["detection_heuristic"] = wg.processDetectionHeuristic
+	dispatcher["dissect_packet"] = wg.processDissectPacket
 
 	for {
 		fmt.Println("Wait...")
@@ -267,4 +268,75 @@ func (wg *Wirego) processDetectionHeuristic(msg *zmq.Msg) error {
 		response := zmq.NewMsg([]byte{0x00})
 		return wg.zmqSocket.Send(response)
 	}
+}
+
+func (wg *Wirego) processDissectPacket(msg *zmq.Msg) error {
+	var packetNumber uint32
+	var src string
+	var dst string
+	var layer string
+	var packet []byte
+
+	if len(msg.Frames) != 6 {
+		return errors.New("dissect_packet failed, missing arguments")
+	}
+	if len(msg.Frames[1]) != 4 {
+		return errors.New("dissect_packet failed, packet_number too short")
+	}
+	packetNumber = binary.LittleEndian.Uint32(msg.Frames[1])
+	src = getStringFromFrame(msg.Frames[2])
+	dst = getStringFromFrame(msg.Frames[3])
+	layer = getStringFromFrame(msg.Frames[4])
+	packet = msg.Frames[5]
+
+	result := wg.listener.DissectPacket(int(packetNumber), src, dst, layer, packet)
+
+	if result == nil {
+		res := make([]byte, 4)
+		binary.LittleEndian.PutUint32(res, 0)
+		response := zmq.NewMsg(res)
+		return wg.zmqSocket.Send(response)
+	}
+
+	//Check results
+	for _, r := range result.Fields {
+		if r.Offset >= len(packet) {
+			fmt.Printf("Wirego plugin did return an invalid Offset : %d (packet size is %d bytes)\n", r.Offset, len(packet))
+			res := make([]byte, 4)
+			binary.LittleEndian.PutUint32(res, 0)
+			response := zmq.NewMsg(res)
+			return wg.zmqSocket.Send(response)
+		}
+		if r.Offset+r.Length > len(packet) {
+			fmt.Printf("Wirego plugin did return an invalid Length : %d (offset is %d and packet size is %d bytes)\n", r.Length, r.Offset, len(packet))
+			res := make([]byte, 4)
+			binary.LittleEndian.PutUint32(res, 0)
+			response := zmq.NewMsg(res)
+			return wg.zmqSocket.Send(response)
+		}
+		_, found := wg.wiregoFieldIds[int(r.WiregoFieldId)]
+		if !found {
+			fmt.Printf("Wirego plugin did return an invalid WiregoFieldId : %d\n", r.WiregoFieldId)
+			res := make([]byte, 4)
+			binary.LittleEndian.PutUint32(res, 0)
+			response := zmq.NewMsg(res)
+			return wg.zmqSocket.Send(response)
+		}
+	}
+
+	//Flatten results to a simple list with parenIdx pointing to parent's entry
+	var flatten DissectResultFlattenEntry
+	flatten.Info = result.Info
+	flatten.Protocol = result.Protocol
+	for _, r := range result.Fields {
+		wg.addFieldsRec(&flatten, -1, &r)
+	}
+
+	//Add to cache
+	wg.resultsCache[int(packetNumber)] = &flatten
+
+	res := make([]byte, 4)
+	binary.LittleEndian.PutUint32(res, packetNumber)
+	response := zmq.NewMsg(res)
+	return wg.zmqSocket.Send(response)
 }

@@ -18,11 +18,24 @@ import (
 	zmq "github.com/go-zeromq/zmq4"
 )
 
+type DissectResultFlattenEntry struct {
+	Protocol string
+	Info     string
+	fields   []DissectResultFlatten
+}
+type DissectResultFlatten struct {
+	parentIdx     int
+	wiregoFieldId FieldId
+	offset        int
+	length        int
+}
+
 // Just a simple holder
 type Wirego struct {
 	listener           WiregoInterface
 	resultsCacheEnable bool
 	wiregoFieldIds     map[int]bool
+	resultsCache       map[int]*DissectResultFlattenEntry
 
 	//ZMQ
 	zqmEndpoint string
@@ -47,6 +60,7 @@ func New(zqmEndpoint string, listener WiregoInterface) (*Wirego, error) {
 	wg.resultsCacheEnable = true
 
 	wg.wiregoFieldIds = make(map[int]bool)
+	wg.resultsCache = make(map[int]*DissectResultFlattenEntry)
 
 	//Preload all "static" values to bypass the GC and keep local copies
 	wg.pluginName = wg.listener.GetName()
@@ -238,3 +252,12 @@ func wirego_result_release(h C.int) {
 	}
 }
 */
+
+func (wg *Wirego) addFieldsRec(flatten *DissectResultFlattenEntry, parentIdx int, field *DissectField) {
+	flatten.fields = append(flatten.fields, DissectResultFlatten{parentIdx: parentIdx, wiregoFieldId: field.WiregoFieldId, offset: field.Offset, length: field.Length})
+	newParentIdx := len(flatten.fields) - 1
+
+	for _, sub := range field.SubFields {
+		wg.addFieldsRec(flatten, newParentIdx, &sub)
+	}
+}
