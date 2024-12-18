@@ -61,6 +61,9 @@ func (wg *Wirego) Listen() {
 	dispatcher["dissect_packet"] = wg.processDissectPacket
 	dispatcher["result_get_protocol"] = wg.processResultGetProtocol
 	dispatcher["result_get_info"] = wg.processResultGetInfo
+	dispatcher["result_get_fields_count"] = wg.processResultGetFieldsCount
+	dispatcher["result_get_field"] = wg.processResultGetField
+	dispatcher["result_release"] = wg.processResultRelease
 
 	for {
 		fmt.Println("Wait...")
@@ -382,5 +385,92 @@ func (wg *Wirego) processResultGetInfo(msg *zmq.Msg) error {
 
 	//Response
 	response := zmq.NewMsg(append([]byte(desc.Info), 0x00))
+	return wg.zmqSocket.Send(response)
+}
+
+func (wg *Wirego) processResultGetFieldsCount(msg *zmq.Msg) error {
+	//Frame one contains index
+	if len(msg.Frames) != 2 {
+		return errors.New("result_get_fields_count failed, dissect_handle missing from request")
+	}
+	if len(msg.Frames[1]) != 4 {
+		return errors.New("result_get_fields_count failed, dissectHandle too short")
+	}
+	dissectHandle := binary.LittleEndian.Uint32(msg.Frames[1])
+
+	desc, found := wg.resultsCache[int(dissectHandle)]
+	if !found {
+		response := zmq.NewMsg([]byte{0x00, 0x00, 0x00, 0x00})
+		return wg.zmqSocket.Send(response)
+	}
+
+	//Response
+	b := make([]byte, 4)
+	binary.LittleEndian.PutUint32(b, uint32(len(desc.fields)))
+	response := zmq.NewMsg(b)
+	return wg.zmqSocket.Send(response)
+}
+
+func (wg *Wirego) processResultGetField(msg *zmq.Msg) error {
+	if len(msg.Frames) != 3 {
+		return errors.New("result_get_field failed, missing args from request")
+	}
+	//Frame 1 contains dissect_handle
+	if len(msg.Frames[1]) != 4 {
+		return errors.New("result_get_field failed, dissectHandle too short")
+	}
+	dissectHandle := binary.LittleEndian.Uint32(msg.Frames[1])
+
+	//Frame 2 contains index
+	if len(msg.Frames) != 2 {
+		return errors.New("result_get_field failed, index missing from request")
+	}
+	if len(msg.Frames[1]) != 4 {
+		return errors.New("result_get_field failed, index too short")
+	}
+	idx := binary.LittleEndian.Uint32(msg.Frames[2])
+
+	desc, found := wg.resultsCache[int(dissectHandle)]
+	if !found {
+		response := zmq.NewMsg([]byte{0x00})
+		return wg.zmqSocket.Send(response)
+	}
+
+	if idx >= uint32(len(desc.fields)) {
+		response := zmq.NewMsg([]byte{0x00})
+		return wg.zmqSocket.Send(response)
+	}
+	field := desc.fields[idx]
+
+	//Response
+	parentIdx := make([]byte, 4)
+	binary.LittleEndian.PutUint32(parentIdx, uint32(field.parentIdx))
+	wiregoFieldId := make([]byte, 4)
+	binary.LittleEndian.PutUint32(wiregoFieldId, uint32(field.wiregoFieldId))
+	offset := make([]byte, 4)
+	binary.LittleEndian.PutUint32(parentIdx, uint32(field.offset))
+	length := make([]byte, 4)
+	binary.LittleEndian.PutUint32(parentIdx, uint32(field.length))
+
+	response := zmq.NewMsgFrom(parentIdx, wiregoFieldId, offset, length)
+	return wg.zmqSocket.Send(response)
+}
+
+func (wg *Wirego) processResultRelease(msg *zmq.Msg) error {
+	//Frame one contains index
+	if len(msg.Frames) != 2 {
+		return errors.New("result_release failed, dissect_handle missing from request")
+	}
+	if len(msg.Frames[1]) != 4 {
+		return errors.New("result_release failed, dissectHandle too short")
+	}
+	dissectHandle := binary.LittleEndian.Uint32(msg.Frames[1])
+
+	if !wg.resultsCacheEnable {
+		delete(wg.resultsCache, int(dissectHandle))
+	}
+
+	//Response
+	response := zmq.NewMsg([]byte{0x00})
 	return wg.zmqSocket.Send(response)
 }

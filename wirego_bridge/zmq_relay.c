@@ -512,7 +512,7 @@ char* wirego_result_get_protocol_cb(wirego_t* wirego_h, int dissect_handle){
   strcpy(protocol, resp);
 
 
-  ws_warning("result_get_protocol(%d) %s", idx, protocol);
+  ws_warning("result_get_protocol(%d) %s", dissect_handle, protocol);
   return protocol;
 }
 
@@ -546,19 +546,146 @@ char* wirego_result_get_info_cb(wirego_t* wirego_h, int dissect_handle){
   strcpy(info, resp);
 
 
-  ws_warning("result_get_info(%d) %s", idx, info);
-  return protocol;
+  ws_warning("result_get_info(%d) %s", dissect_handle, info);
+  return info;
 }
 
 int wirego_result_get_fields_count_cb(wirego_t* wirego_h, int dissect_handle){
+const char cmd[] = "result_get_fields_count";
+  char* resp;
+  int size;
+  zmq_msg_t msg;
 
+  int count = -1;
+  
+  ws_warning("sending result_get_fields_count request ...");
+  
+  if (zmq_send(wirego_h->zsock, (void*)(cmd), sizeof(cmd), ZMQ_SNDMORE) == -1) {
+    return -1;
+  }
+  if (zmq_send(wirego_h->zsock, &dissect_handle, sizeof(int), 0) == -1) {
+    return -1;
+  }
+  ws_warning("waiting result_get_fields_count response...");
+
+  //Frame 0 contains info (string)
+  zmq_msg_init (&msg);
+	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
+  resp = zmq_msg_data(&msg);
+  if (size != 4) {
+    zmq_msg_close (&msg);
+    return -1;
+  }
+  count = *((int*)(resp));
+  zmq_msg_close (&msg);
+
+
+  ws_warning("result_get_fields_count(%d) %d", dissect_handle, count);
+  return count;
 }
 
 void wirego_result_get_field_cb(wirego_t* wirego_h, int dissect_handle, int idx, int* parent_idx, int* wirego_field_id, int* offset, int* length) {
+  const char cmd[] = "result_get_field";
+  char* resp;
+  int size;
+  zmq_msg_t msg;
 
+  *parent_idx = -1;
+  *wirego_field_id = -1;
+  *offset = -1;
+  *length = -1;
+  
+  ws_warning("sending result_get_field request ...");
+  
+  if (zmq_send(wirego_h->zsock, (void*)(cmd), sizeof(cmd), ZMQ_SNDMORE) == -1) {
+    return;
+  }
+  if (zmq_send(wirego_h->zsock, &dissect_handle, sizeof(int), ZMQ_SNDMORE) == -1) {
+    return;
+  }  if (zmq_send(wirego_h->zsock, &idx, sizeof(int), 0) == -1) {
+    return;
+  }
+  ws_warning("waiting result_get_field response...");
+
+  //Frame 0 contains field parent_idx (int)
+  zmq_msg_init (&msg);
+	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
+  resp = zmq_msg_data(&msg);
+  if (size != 4) {
+    zmq_msg_close (&msg);
+    return;
+  }
+  *parent_idx = *(int*)resp;
+  zmq_msg_close (&msg);
+
+  //Frame 1 contains field wirego_field_id (int)
+  zmq_msg_init (&msg);
+	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
+  resp = zmq_msg_data(&msg);
+  if (size != 4) {
+    zmq_msg_close (&msg);
+    return;
+  }
+  *wirego_field_id = *(int*)resp;
+  zmq_msg_close (&msg);
+
+  //Frame 2 contains field offset (int)
+  zmq_msg_init (&msg);
+	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
+  resp = zmq_msg_data(&msg);
+  if (size != 4) {
+    zmq_msg_close (&msg);
+    return;
+  }
+  *offset = *(int*)resp;
+  zmq_msg_close (&msg);
+
+ 
+  //Frame 2 contains field length (int)
+  zmq_msg_init (&msg);
+	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
+  resp = zmq_msg_data(&msg);
+  if (size != 4) {
+    zmq_msg_close (&msg);
+    return;
+  }
+  *length = *(int*)resp;
+  zmq_msg_close (&msg);
+
+
+  ws_warning("result_get_field(%d, %d) parent_idx %d wirego_field_id %d offs %d length %d", dissect_handle, idx, *parent_idx, *wirego_field_id, *offset, *length);
+  return;
 }
 
 void wirego_result_release_cb(wirego_t* wirego_h, int dissect_handle){
+  const char cmd[] = "result_release";
+  char* resp;
+  int size;
+  zmq_msg_t msg;
+  
+  ws_warning("sending result_release request ...");
+  
+  if (zmq_send(wirego_h->zsock, (void*)(cmd), sizeof(cmd), ZMQ_SNDMORE) == -1) {
+    return;
+  }
+  if (zmq_send(wirego_h->zsock, &dissect_handle, sizeof(int), 0) == -1) {
+    return;
+  }
+  ws_warning("waiting result_release response...");
 
+  //Frame 0 contains dummy result
+  zmq_msg_init (&msg);
+	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
+  resp = zmq_msg_data(&msg);
+  if (size != 1) {
+    zmq_msg_close (&msg);
+    return;
+  }
+  int res = resp[0];
+  zmq_msg_close (&msg);
+
+
+  ws_warning("result_release(%d) %d", dissect_handle, res);
+  return ;
 }
 
