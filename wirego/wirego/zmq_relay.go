@@ -59,6 +59,8 @@ func (wg *Wirego) Listen() {
 	dispatcher["detect_heuristic_parent"] = wg.processDetectHeuristicParent
 	dispatcher["detection_heuristic"] = wg.processDetectionHeuristic
 	dispatcher["dissect_packet"] = wg.processDissectPacket
+	dispatcher["result_get_protocol"] = wg.processResultGetProtocol
+	dispatcher["result_get_info"] = wg.processResultGetInfo
 
 	for {
 		fmt.Println("Wait...")
@@ -338,5 +340,47 @@ func (wg *Wirego) processDissectPacket(msg *zmq.Msg) error {
 	res := make([]byte, 4)
 	binary.LittleEndian.PutUint32(res, packetNumber)
 	response := zmq.NewMsg(res)
+	return wg.zmqSocket.Send(response)
+}
+
+func (wg *Wirego) processResultGetProtocol(msg *zmq.Msg) error {
+	//Frame one contains index
+	if len(msg.Frames) != 2 {
+		return errors.New("result_get_protocol failed, dissect_handle missing from request")
+	}
+	if len(msg.Frames[1]) != 4 {
+		return errors.New("result_get_protocol failed, dissect_handle too short")
+	}
+	dissectHandle := binary.LittleEndian.Uint32(msg.Frames[1])
+
+	desc, found := wg.resultsCache[int(dissectHandle)]
+	if !found {
+		response := zmq.NewMsgFromString([]string{"\x00"})
+		return wg.zmqSocket.Send(response)
+	}
+
+	//Response
+	response := zmq.NewMsg(append([]byte(desc.Protocol), 0x00))
+	return wg.zmqSocket.Send(response)
+}
+
+func (wg *Wirego) processResultGetInfo(msg *zmq.Msg) error {
+	//Frame one contains index
+	if len(msg.Frames) != 2 {
+		return errors.New("result_get_info failed, dissect_handle missing from request")
+	}
+	if len(msg.Frames[1]) != 4 {
+		return errors.New("result_get_info failed, dissectHandle too short")
+	}
+	dissectHandle := binary.LittleEndian.Uint32(msg.Frames[1])
+
+	desc, found := wg.resultsCache[int(dissectHandle)]
+	if !found {
+		response := zmq.NewMsgFromString([]string{"\x00"})
+		return wg.zmqSocket.Send(response)
+	}
+
+	//Response
+	response := zmq.NewMsg(append([]byte(desc.Info), 0x00))
 	return wg.zmqSocket.Send(response)
 }

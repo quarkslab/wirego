@@ -483,11 +483,71 @@ int wirego_dissect_packet_cb(wirego_t* wirego_h, int packet_number, char* src, c
 
 
 char* wirego_result_get_protocol_cb(wirego_t* wirego_h, int dissect_handle){
+  const char cmd[] = "result_get_protocol";
+  char* resp;
+  int size;
+  zmq_msg_t msg;
 
+  char* protocol = NULL;
+  
+  ws_warning("sending result_get_protocol request ...");
+  
+  if (zmq_send(wirego_h->zsock, (void*)(cmd), sizeof(cmd), ZMQ_SNDMORE) == -1) {
+    return NULL;
+  }
+  if (zmq_send(wirego_h->zsock, &dissect_handle, sizeof(int), 0) == -1) {
+    return NULL;
+  }
+  ws_warning("waiting result_get_protocol response...");
+
+  //Frame 0 contains protocol (string)
+  zmq_msg_init (&msg);
+	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
+  resp = zmq_msg_data(&msg);
+  if ((size == 0) || (resp[size-1] != 0x00)) {
+    zmq_msg_close (&msg);
+    return NULL;
+  }
+  protocol = (char*) calloc(size, 1);
+  strcpy(protocol, resp);
+
+
+  ws_warning("result_get_protocol(%d) %s", idx, protocol);
+  return protocol;
 }
 
 char* wirego_result_get_info_cb(wirego_t* wirego_h, int dissect_handle){
+  const char cmd[] = "result_get_info";
+  char* resp;
+  int size;
+  zmq_msg_t msg;
 
+  char* info = NULL;
+  
+  ws_warning("sending result_get_info request ...");
+  
+  if (zmq_send(wirego_h->zsock, (void*)(cmd), sizeof(cmd), ZMQ_SNDMORE) == -1) {
+    return NULL;
+  }
+  if (zmq_send(wirego_h->zsock, &dissect_handle, sizeof(int), 0) == -1) {
+    return NULL;
+  }
+  ws_warning("waiting result_get_info response...");
+
+  //Frame 0 contains info (string)
+  zmq_msg_init (&msg);
+	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
+  resp = zmq_msg_data(&msg);
+  if ((size == 0) || (resp[size-1] != 0x00)) {
+    zmq_msg_close (&msg);
+    return NULL;
+  }
+  info = (char*) calloc(size, 1);
+  strcpy(info, resp);
+
+
+  ws_warning("result_get_info(%d) %s", idx, info);
+  return protocol;
 }
 
 int wirego_result_get_fields_count_cb(wirego_t* wirego_h, int dissect_handle){
