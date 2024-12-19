@@ -63,20 +63,20 @@ func (wg *Wirego) processGetField(msg *zmq.Msg) error {
 
 	f := wg.pluginFields[index]
 
-	wg.wiregoFieldIds[int(f.WiregoFieldId)] = true //FIXME : why?
+	wg.wiregoFieldIds[int(f.WiregoFieldId)] = true //FIXME : backported from Wirego v1. But why?
 
 	//Response
-	//Frame 0 : wiregoFieldId
+	//Frame 1 : wiregoFieldId
 	wiregoFieldId := make([]byte, 4)
 	binary.LittleEndian.PutUint32(wiregoFieldId, uint32(f.WiregoFieldId))
-	//Frame 1 : name
+	//Frame 2 : name
 	name := f.Name
-	//Frame 2 : filter
+	//Frame 3 : filter
 	filter := f.Filter
-	//Frame 3 : valueType
+	//Frame 4 : valueType
 	valueType := make([]byte, 4)
 	binary.LittleEndian.PutUint32(valueType, uint32(f.ValueType))
-	//Frame 4 : DisplayMode
+	//Frame 5 : DisplayMode
 	displayMode := make([]byte, 4)
 	binary.LittleEndian.PutUint32(displayMode, uint32(f.DisplayMode))
 
@@ -112,6 +112,7 @@ func (wg *Wirego) processDetectInt(msg *zmq.Msg) error {
 		}
 	}
 
+	//Gone too far, index is invalid
 	if matchValue == -1 {
 		return wg.returnFailure(nil)
 	}
@@ -151,6 +152,7 @@ func (wg *Wirego) processDetectString(msg *zmq.Msg) error {
 		}
 	}
 
+	//Gone too far, index is invalid
 	if len(matchValue) == 0 {
 		return wg.returnFailure(nil)
 	}
@@ -171,6 +173,7 @@ func (wg *Wirego) processDetectHeuristicParent(msg *zmq.Msg) error {
 	}
 	idx := binary.LittleEndian.Uint32(msg.Frames[1])
 
+	//Gone too far, index is invalid
 	if idx >= uint32(len(wg.pluginDetectionHeuristicsParents)) {
 		response := zmq.NewMsg(getResultMsg(false))
 		return wg.zmqSocket.Send(response)
@@ -292,6 +295,7 @@ func (wg *Wirego) processResultGetProtocol(msg *zmq.Msg) error {
 	}
 	dissectHandle := binary.LittleEndian.Uint32(msg.Frames[1])
 
+	//Dissect did update the cache, so pick value from there
 	desc, found := wg.resultsCache[int(dissectHandle)]
 	if !found {
 		return wg.returnFailure(fmt.Errorf("accessing unknown result for packet %d", dissectHandle))
@@ -312,6 +316,7 @@ func (wg *Wirego) processResultGetInfo(msg *zmq.Msg) error {
 	}
 	dissectHandle := binary.LittleEndian.Uint32(msg.Frames[1])
 
+	//Dissect did update the cache, so pick value from there
 	desc, found := wg.resultsCache[int(dissectHandle)]
 	if !found {
 		return wg.returnFailure(fmt.Errorf("accessing unknown result for packet %d", dissectHandle))
@@ -332,6 +337,7 @@ func (wg *Wirego) processResultGetFieldsCount(msg *zmq.Msg) error {
 	}
 	dissectHandle := binary.LittleEndian.Uint32(msg.Frames[1])
 
+	//Dissect did update the cache, so pick value from there
 	desc, found := wg.resultsCache[int(dissectHandle)]
 	if !found {
 		return wg.returnFailure(fmt.Errorf("accessing unknown result for packet %d", dissectHandle))
@@ -361,13 +367,14 @@ func (wg *Wirego) processResultGetField(msg *zmq.Msg) error {
 	}
 	idx := binary.LittleEndian.Uint32(msg.Frames[2])
 
+	//Dissect did update the cache, so pick value from there
 	desc, found := wg.resultsCache[int(dissectHandle)]
 	if !found {
 		return wg.returnFailure(fmt.Errorf("accessing unknown result for packet %d", dissectHandle))
 	}
 
 	if idx >= uint32(len(desc.fields)) {
-		return wg.returnFailure(errors.New("accessing invalid field index"))
+		return wg.returnFailure(errors.New("accessing invalid result field index"))
 	}
 	field := desc.fields[idx]
 
