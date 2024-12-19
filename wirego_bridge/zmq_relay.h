@@ -17,8 +17,8 @@ char* wirego_detect_int_cb(wirego_t* wirego_h, int* filter_value, int idx);
 char* wirego_detect_string_cb(wirego_t* wirego_h, char** filter_value, int idx);
 char* wirego_detect_heuristic_parent_cb(wirego_t* wirego_h, int idx);
 
-int wirego_detection_heuristic_cb(wirego_t* wirego_h, int packet_number, char* src, char* dst, char* layer, char* packet, int packet_size);
-int wirego_dissect_packet_cb(wirego_t* wirego_h, int packet_number, char* src, char* dst, char* layer, char* packet, int packet_size);
+int wirego_detection_heuristic_cb(wirego_t* wirego_h, int packet_number, char* src, char* dst, char* layer, const char* packet, int packet_size);
+int wirego_dissect_packet_cb(wirego_t* wirego_h, int packet_number, char* src, char* dst, char* layer, const char* packet, int packet_size);
 char* wirego_result_get_protocol_cb(wirego_t* wirego_h, int dissect_handle);
 char* wirego_result_get_info_cb(wirego_t* wirego_h, int dissect_handle);
 int wirego_result_get_fields_count_cb(wirego_t* wirego_h, int dissect_handle);

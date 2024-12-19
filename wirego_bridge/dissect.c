@@ -10,34 +10,13 @@ void tree_add_item(wirego_t *wirego_h, proto_item *parent_node, int dissectHandl
 int dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _U_)
 {
   int pdu_len;
-  char * golang_buff = NULL;
   char src[255];
   char dst[255];
   char * full_layer = NULL;
   int dissectHandle = -1;
 
   wirego_t *wirego_h = get_wirego_h();
-
-  /*
-    In a more classic Wireshark plugin we would use all the tvb_* accessors here
-    Since processing of the packet is performed in the golang plugin (that's actually the very purpose
-    of this insanity), and since I won't write bindings for the complete wireshark API, we need to push
-    the packet buffer to the plugin.
-
-    We have two options here:
-
-      - use tvb_get_ptr
-      - use tvb_memcpy
-    
-    FIXME : not true anymore
-
-    The get_ptr would be the more obvious, but it is marked as very dangerous. Since this buffer would be pushed 
-    to a golang plugin it could eventually be even more dangerous.
-    Thus we're using tvb_memcpy, which will provide us a dedicated buffer to play with.
-    That's not optimal at all, but we'll start with this.
-  */
-
-
+ 
   if (!tvb || !pinfo)
     return -1;
 
@@ -51,13 +30,7 @@ int dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *da
 
 
   full_layer = compile_network_stack(pinfo);
-
-  //Pass everything to the golang plugin
-  golang_buff = (char*) malloc(pdu_len);
-  tvb_memcpy(tvb, golang_buff, 0, pdu_len);
-  dissectHandle = wirego_dissect_packet_cb(wirego_h, pinfo->num, src, dst, full_layer, golang_buff, pdu_len);
-  free(golang_buff);
-  golang_buff = NULL;
+  dissectHandle = wirego_dissect_packet_cb(wirego_h, pinfo->num, src, dst, full_layer, tvb_get_ptr(tvb, 0, pdu_len), pdu_len);
   free(full_layer);
   full_layer = NULL;
 

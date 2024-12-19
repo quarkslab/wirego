@@ -466,7 +466,7 @@ char* wirego_detect_heuristic_parent_cb(wirego_t* wirego_h, int idx) {
 }
 
 // Returns 0 on detection success, -1 on failure or no detection
-int wirego_detection_heuristic_cb(wirego_t* wirego_h, int packet_number, char* src, char* dst, char* layer, char* packet, int packet_size) {
+int wirego_detection_heuristic_cb(wirego_t* wirego_h, int packet_number, char* src, char* dst, char* layer, const char* packet, int packet_size) {
   if (src == NULL || dst == NULL || layer == NULL || packet == NULL || packet_size == 0) {
     return -1;
   }
@@ -525,12 +525,11 @@ int wirego_detection_heuristic_cb(wirego_t* wirego_h, int packet_number, char* s
   return detection_result;
 }
 
-int wirego_dissect_packet_cb(wirego_t* wirego_h, int packet_number, char* src, char* dst, char* layer, char* packet, int packet_size) {
+int wirego_dissect_packet_cb(wirego_t* wirego_h, int packet_number, char* src, char* dst, char* layer, const char* packet, int packet_size) {
   const char cmd[] = "dissect_packet";
   int size;
   zmq_msg_t msg;
   int dissect_handler = -1;
-  char b;
   char status;
   int ret;
 

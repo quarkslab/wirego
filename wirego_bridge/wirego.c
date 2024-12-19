@@ -285,7 +285,6 @@ int wirego_is_plugin_loaded(void) {
 static gboolean wirego_heuristic_check(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data)
 {
   int pdu_len;
-  char * golang_buff = NULL;
   char src[255];
   char dst[255];
   char * full_layer = NULL;
@@ -306,11 +305,7 @@ static gboolean wirego_heuristic_check(tvbuff_t *tvb, packet_info *pinfo, proto_
   full_layer = compile_network_stack(pinfo);
 
   //Pass everything to the golang plugin
-  golang_buff = (char*) malloc(pdu_len);
-  tvb_memcpy(tvb, golang_buff, 0, pdu_len);
-  detected = wirego_detection_heuristic_cb(&wirego_h, pinfo->num, src, dst, full_layer, golang_buff, pdu_len);
-  free(golang_buff);
-  golang_buff = NULL;
+  detected = wirego_detection_heuristic_cb(&wirego_h, pinfo->num, src, dst, full_layer, tvb_get_ptr(tvb, 0, pdu_len), pdu_len);
   free(full_layer);
   full_layer = NULL;
 
