@@ -574,7 +574,7 @@ int wirego_dissect_packet_cb(wirego_t* wirego_h, int packet_number, char* src, c
     return -1;
   }
 
-  //Frame 1 contains detection result (byte)
+  //Frame 1 contains a dissect handler (int)
   zmq_msg_init (&msg);
 	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
   ret = read_int_from_msg(&msg, size, &dissect_handler);
