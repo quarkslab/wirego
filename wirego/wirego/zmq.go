@@ -3,6 +3,7 @@ package wirego
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	zmq "github.com/go-zeromq/zmq4"
@@ -12,7 +13,7 @@ type ZMQCommand func(msg *zmq.Msg) error
 
 // zmqSetup setups the ZMQ endpoint
 func (wg *Wirego) zmqSetup() error {
-	wg.logs.Println("Setting up ZMQ endpoint to " + wg.zqmEndpoint)
+	slog.Info("Setting up ZMQ endpoint to " + wg.zqmEndpoint)
 	wg.zmqContext = context.Background()
 	wg.zmqSocket = zmq.NewRep(wg.zmqContext, zmq.WithDialerRetry(time.Second), zmq.WithAutomaticReconnect(true))
 
@@ -52,7 +53,7 @@ func (wg *Wirego) Listen() {
 	dispatcher["result_get_field"] = wg.processResultGetField
 	dispatcher["result_release"] = wg.processResultRelease
 
-	wg.logs.Println("Ready, waiting for Wirego bridge commands.")
+	slog.Info("Ready, waiting for Wirego bridge commands.")
 
 	for {
 		msg, err := wg.zmqSocket.Recv()
@@ -68,12 +69,12 @@ func (wg *Wirego) Listen() {
 		cmd := getStringFromFrame(msg.Frames[0])
 		cb, found := dispatcher[cmd]
 		if !found {
-			wg.logs.Println("Received unknown command from Wirego bridge: '" + cmd + "'")
+			slog.Error("Received unknown command from Wirego bridge: '" + cmd + "'")
 		} else {
-			wg.logs.Println("Processing command '" + cmd + "'...")
+			slog.Debug("Processing command '" + cmd + "'...")
 			err = cb(&msg)
 			if err != nil {
-				wg.logs.Println("-> Failed:", err)
+				slog.Warn("Command '"+cmd+"' failed:", err.Error())
 			}
 		}
 	}

@@ -14,7 +14,7 @@ package wirego
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"strings"
 
@@ -38,7 +38,7 @@ type DissectResultFieldFlatten struct {
 
 // Just a simple holder for the Wirego package
 type Wirego struct {
-	logs               *log.Logger                        // Main display
+	logs               *slog.Logger
 	listener           WiregoInterface                    // Listener (implemented by end user)
 	resultsCacheEnable bool                               // Is the cache enabled?
 	resultsCache       map[int]*DissectResultFlattenEntry // The dissectionresults cache
@@ -62,10 +62,16 @@ var wg Wirego
 
 // New creates a new instance of Wirego. zqmEndpoint desfined the endpoint to be used when Listen is called.
 // The "listener" is the end-used implementation of the Wirego's interface
-func New(zqmEndpoint string, listener WiregoInterface) (*Wirego, error) {
+func New(zqmEndpoint string, verbose bool, listener WiregoInterface) (*Wirego, error) {
 	var err error
 
-	wg.logs = log.New(os.Stdout, "Wirego> ", 0)
+	wg.logs = slog.New(slog.NewTextHandler(os.Stdout, nil))
+	if verbose {
+		slog.SetLogLoggerLevel(slog.LevelDebug)
+	} else {
+		slog.SetLogLoggerLevel(slog.LevelInfo)
+	}
+
 	wg.listener = listener
 	wg.zqmEndpoint = zqmEndpoint
 	wg.resultsCacheEnable = true
@@ -91,18 +97,18 @@ func New(zqmEndpoint string, listener WiregoInterface) (*Wirego, error) {
 	}
 
 	//Be a bit verbose to ease plugin development
-	wg.logs.Println("Setting up Wirego...")
-	wg.logs.Println("Plugin will appear in Wireshark as '" + wg.pluginName + "' with filter '" + wg.pluginFilter + "'")
-	wg.logs.Printf("Custom fields registered: %d", len(wg.pluginFields))
+	slog.Info("Setting up Wirego...")
+	slog.Info("Plugin will appear in Wireshark as '" + wg.pluginName + "' with filter '" + wg.pluginFilter + "'")
+	slog.Info("Custom fields registered: %d", len(wg.pluginFields))
 	if len(wg.pluginDetectionHeuristicsParents) != 0 {
-		wg.logs.Println("Heuristics function will be called hen parent matches " + strings.Join(wg.pluginDetectionHeuristicsParents, " or "))
+		slog.Info("Heuristics function will be called hen parent matches " + strings.Join(wg.pluginDetectionHeuristicsParents, " or "))
 	}
 	if len(wg.pluginDetectionFilters) != 0 {
 		var str []string
 		for _, f := range wg.pluginDetectionFilters {
 			str = append(str, f.String())
 		}
-		wg.logs.Println("Dissect will be called when filters following matches: " + strings.Join(str, " or "))
+		slog.Info("Dissect will be called when filters following matches: " + strings.Join(str, " or "))
 	}
 
 	//Setup ZMQ

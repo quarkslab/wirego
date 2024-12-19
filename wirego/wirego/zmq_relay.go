@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	zmq "github.com/go-zeromq/zmq4"
 )
@@ -424,7 +425,7 @@ func getResultMsg(success bool) []byte {
 // returnFailure logs given error message (if any) and returns an error to the remote ZMQ endpoint
 func (wg *Wirego) returnFailure(err error) error {
 	if err != nil {
-		wg.logs.Print("/!\\ Error:", err)
+		slog.Error("/!\\ Error:", err)
 	}
 
 	response := zmq.NewMsg(getResultMsg(false))
