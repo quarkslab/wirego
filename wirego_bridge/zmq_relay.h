@@ -22,8 +22,8 @@ int wirego_dissect_packet_cb(wirego_t* wirego_h, int packet_number, char* src, c
 char* wirego_result_get_protocol_cb(wirego_t* wirego_h, int dissect_handle);
 char* wirego_result_get_info_cb(wirego_t* wirego_h, int dissect_handle);
 int wirego_result_get_fields_count_cb(wirego_t* wirego_h, int dissect_handle);
-void wirego_result_get_field_cb(wirego_t* wirego_h, int dissect_handle, int idx, int* parent_idx, int* wirego_field_id, int* offset, int* length);
-void wirego_result_release_cb(wirego_t* wirego_h, int dissect_handle);
+int wirego_result_get_field_cb(wirego_t* wirego_h, int dissect_handle, int idx, int* parent_idx, int* wirego_field_id, int* offset, int* length);
+int wirego_result_release_cb(wirego_t* wirego_h, int dissect_handle);
 
 
 #endif
