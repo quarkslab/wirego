@@ -6,9 +6,9 @@
 
 //Utility ZMQ functions
 int wirego_zmq_ping(wirego_t* wirego_h);
-
-//ZMQ relay commands to Wirego plugin
 int wirego_version_cb(wirego_t* wirego_h, int *major, int*minor);
+
+//ZMQ relay commands to Wirego remote plugin
 char * wirego_get_name_cb(wirego_t* wirego_h);
 int wirego_get_fields_count_cb(wirego_t* wirego_h);
 int wirego_get_field_cb(wirego_t* wirego_h, int idx, int *wirego_field_id, char** name, char** filter, int *value_type, int *display);
