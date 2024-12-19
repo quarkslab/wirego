@@ -107,6 +107,10 @@ void proto_register_wirego(void) {
 
   //Ask plugin how many custom fields are declared
   wirego_h.fields_count = wirego_get_fields_count_cb(&wirego_h);
+  if (wirego_h.fields_count == -1) {
+    ws_warning("Wirego: failed to retrieve remote fields count");
+    return;
+  }
   hfx = (hf_register_info*) malloc(wirego_h.fields_count * sizeof(hf_register_info));
   wirego_h.fields_mapping = (field_id_to_plugin_field_id_t *) malloc(wirego_h.fields_count * sizeof(field_id_to_plugin_field_id_t));
 
@@ -118,7 +122,10 @@ void proto_register_wirego(void) {
     int display;
 
     //Fetch field
-    wirego_get_field_cb(&wirego_h, i, &wirego_field_id, &name, &filter, &value_type, &display);
+    if (wirego_get_field_cb(&wirego_h, i, &wirego_field_id, &name, &filter, &value_type, &display) == -1) {
+      ws_warning("Wirego: failed to retrieve field %d info from remote", i);
+      return;
+    }
 
     //Convert field to wireshark
     wirego_h.fields_mapping[i].wirego_field_id = wirego_field_id;
@@ -148,10 +155,21 @@ void proto_register_wirego(void) {
   //Register the plugin (long name, short name, filter)
   static char long_name[255];
   char * name = wirego_get_name_cb(&wirego_h);
-  
+  if (!name) {
+    ws_warning("Failed to retrieve remote Wirego plugin name");
+    return;
+  }
+
   snprintf(long_name, 255, "%s (Wirego v%d.%d)", name, vmajor, vminor);
-  //Wireshark will directly store the returns strings into internal structures and tables.
-  wirego_h.proto_wirego = proto_register_protocol(long_name, name, wirego_get_plugin_filter_cb(&wirego_h));
+  free(name);
+
+  //Wireshark will directly store the returns strings into internal structures and tables (so don't free filter).
+  char* filter = wirego_get_plugin_filter_cb(&wirego_h);
+  if (!filter) {
+    ws_warning("Failed to retrieve remote Wirego plugin filter");
+    return;
+  }
+  wirego_h.proto_wirego = proto_register_protocol(long_name, name, filter);
   //Don't release name and filter, since those are used by wireshark's internals
   //Register our custom fields
   proto_register_field_array(wirego_h.proto_wirego, hfx, wirego_h.fields_count);
@@ -272,7 +290,7 @@ static gboolean wirego_heuristic_check(tvbuff_t *tvb, packet_info *pinfo, proto_
   free(full_layer);
   full_layer = NULL;
 
-  if (detected == 0)
+  if (detected == -1)
     return FALSE;
   
   dissect_wirego(tvb, pinfo, tree, data);

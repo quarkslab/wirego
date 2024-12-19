@@ -72,10 +72,15 @@ int dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *da
   //Analyse plugin results
 
   //Flag protocol name
-  col_set_str(pinfo->cinfo, COL_PROTOCOL, wirego_result_get_protocol_cb(wirego_h, dissectHandle));
+  char * protocol = wirego_result_get_protocol_cb(wirego_h, dissectHandle);
+  if (protocol)
+    col_set_str(pinfo->cinfo, COL_PROTOCOL, protocol);
+
 
   //Fill "info" column
-  col_set_str(pinfo->cinfo, COL_INFO, wirego_result_get_info_cb(wirego_h, dissectHandle));
+  char * info = wirego_result_get_info_cb(wirego_h, dissectHandle);
+  if (info)
+    col_set_str(pinfo->cinfo, COL_INFO, info);
 
   //During the first pass, tree can eventually be NULL
   //Wireshark does not ask the plugin to fill detailed structures
@@ -85,7 +90,7 @@ int dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *da
   //How many custom fields did the plugin return?
   int result_fields_count = wirego_result_get_fields_count_cb(wirego_h, dissectHandle);
 
-  if (result_fields_count == 0)
+  if (result_fields_count <= 0)
     goto DONE;
 
   //Add a subtree on this packet
@@ -100,19 +105,20 @@ int dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *da
 
   //Process all custom fields
 
-for (int i = 0; i < result_fields_count; i++) {
-  int parent_idx;
-  int wirego_field_id;
-  int offset;
-  int length;
+  for (int i = 0; i < result_fields_count; i++) {
+    int parent_idx;
+    int wirego_field_id;
+    int offset;
+    int length;
 
 
-  //Ask plugin for result
-  wirego_result_get_field_cb(wirego_h, dissectHandle, i, &parent_idx, &wirego_field_id, &offset, &length);
+    //Ask plugin for result
+    if (wirego_result_get_field_cb(wirego_h, dissectHandle, i, &parent_idx, &wirego_field_id, &offset, &length) == -1)
+      break;
 
-if (parent_idx == -1)
-    tree_add_item(wirego_h, wirego_tree, dissectHandle, tvb, i,result_fields_count);
-}
+    if (parent_idx == -1)
+      tree_add_item(wirego_h, wirego_tree, dissectHandle, tvb, i,result_fields_count);
+  }
 
 DONE:
   wirego_result_release_cb(wirego_h, dissectHandle);

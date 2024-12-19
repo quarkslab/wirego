@@ -41,7 +41,7 @@ int wirego_version_cb(wirego_t* wirego_h, int *major, int*minor) {
   zmq_msg_t msg;
   char b;
   int ret;
-
+  char status;
   *major = 0;
   *minor = 0;
   ws_warning("sending version request ...");
@@ -51,7 +51,16 @@ int wirego_version_cb(wirego_t* wirego_h, int *major, int*minor) {
   }
   ws_warning("waiting version response...");
 
-  //Frame 0 contains major version (1 byte)
+  //Read REP status (1 byte)
+  zmq_msg_init (&msg);
+	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
+  ret = read_byte_from_msg(&msg, size, &status);
+  zmq_msg_close (&msg);
+  if ((ret == -1) || (status == 0)) {
+    return -1;
+  }
+
+  //Frame 1 contains major version (1 byte)
   zmq_msg_init (&msg);
 	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
   ret = read_byte_from_msg(&msg, size, &b);
@@ -61,7 +70,7 @@ int wirego_version_cb(wirego_t* wirego_h, int *major, int*minor) {
     return -1;
   }
 
-  //Frame 1 contains minor version (1 byte)
+  //Frame 2 contains minor version (1 byte)
   zmq_msg_init (&msg);
 	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
   ret = read_byte_from_msg(&msg, size, &b);
@@ -78,8 +87,10 @@ int wirego_version_cb(wirego_t* wirego_h, int *major, int*minor) {
 //Returns 0 on success and -1 on failure.
 int wirego_zmq_ping(wirego_t* wirego_h) {
   const char ping_cmd[] = "ping";
-  const char ping_resp[] = "echo reply";
-
+  char status;
+  zmq_msg_t msg;
+  int size;
+  int ret;
   ws_warning("sending ping...");
   
   if (zmq_send(wirego_h->zsock, (void*)(ping_cmd), sizeof(ping_cmd), 0) == -1) {
@@ -87,21 +98,14 @@ int wirego_zmq_ping(wirego_t* wirego_h) {
   }
   ws_warning("waiting ping response...");
 
-  zmq_msg_t msg;
+  //Read REP status (1 byte)
   zmq_msg_init (&msg);
-	int size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
-  char * res = read_string_from_msg(&msg, size);
+	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
+  ret = read_byte_from_msg(&msg, size, &status);
   zmq_msg_close (&msg);
-
-  if (res == NULL) {
+  if ((ret == -1) || (status == 0)) {
     return -1;
   }
-
-  if (strcmp(ping_resp, res)) {
-    free(res);
-    return -1;
-  }
-  free(res);
 
   return 0;
 }
@@ -111,17 +115,29 @@ int wirego_zmq_ping(wirego_t* wirego_h) {
 char* wirego_get_name_cb(wirego_t* wirego_h) {
   const char cmd[] = "get_name";
   char* name = NULL;
-
+  char status;
+  zmq_msg_t msg;
+  int size;
+  int ret;
   ws_warning("sending get name...");
   
   if (zmq_send(wirego_h->zsock, (void*)(cmd), sizeof(cmd), 0) == -1) {
-    return name;
+    return NULL;
   }
   ws_warning("waiting get name response...");
 
-  zmq_msg_t msg;
+  //Read REP status (1 byte)
   zmq_msg_init (&msg);
-	int size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
+	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
+  ret = read_byte_from_msg(&msg, size, &status);
+  zmq_msg_close (&msg);
+  if ((ret == -1) || (status == 0)) {
+    return NULL;
+  }
+
+  //Frame 1 contains name (string)
+  zmq_msg_init (&msg);
+	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
   name = read_string_from_msg(&msg, size);
   zmq_msg_close (&msg);
 
@@ -137,6 +153,10 @@ char* wirego_get_name_cb(wirego_t* wirego_h) {
 char* wirego_get_plugin_filter_cb(wirego_t* wirego_h){
   const char cmd[] = "get_plugin_filter";
   char*filter = NULL;
+  char status;
+  zmq_msg_t msg;
+  int size;
+  int ret;
 
   ws_warning("sending get_plugin_filter...");
   
@@ -145,9 +165,18 @@ char* wirego_get_plugin_filter_cb(wirego_t* wirego_h){
   }
   ws_warning("waiting get_plugin_filter response...");
 
-  zmq_msg_t msg;
+  //Read REP status (1 byte)
   zmq_msg_init (&msg);
-	int size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
+	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
+  ret = read_byte_from_msg(&msg, size, &status);
+  zmq_msg_close (&msg);
+  if ((ret == -1) || (status == 0)) {
+    return NULL;
+  }
+
+  //Frame 1 contains filter (string)
+  zmq_msg_init (&msg);
+	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
   filter = read_string_from_msg(&msg, size);
   zmq_msg_close (&msg);
 
@@ -164,6 +193,7 @@ int wirego_get_fields_count_cb(wirego_t* wirego_h) {
   zmq_msg_t msg;
   int fields_count = -1;
   int ret;
+  char status;
 
   ws_warning("sending get_fields_count request ...");
   
@@ -172,7 +202,16 @@ int wirego_get_fields_count_cb(wirego_t* wirego_h) {
   }
   ws_warning("waiting get_fields_count response...");
 
-  //Frame 0 contains fields count (4 bytes / little endian)
+  //Read REP status (1 byte)
+  zmq_msg_init (&msg);
+	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
+  ret = read_byte_from_msg(&msg, size, &status);
+  zmq_msg_close (&msg);
+  if ((ret == -1) || (status == 0)) {
+    return -1;
+  }
+
+  //Frame 1 contains fields count (4 bytes / little endian)
   zmq_msg_init (&msg);
 	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
   ret = read_int_from_msg(&msg, size, &fields_count);
@@ -192,6 +231,7 @@ int wirego_get_field_cb(wirego_t* wirego_h, int idx, int *wirego_field_id, char*
   int size;
   int ret;
   zmq_msg_t msg;
+  char status;
 
   *wirego_field_id = -1;
   *name = NULL;
@@ -209,7 +249,16 @@ int wirego_get_field_cb(wirego_t* wirego_h, int idx, int *wirego_field_id, char*
   }
   ws_warning("waiting get_field response...");
 
-  //Frame 0 contains field id (int)
+  //Read REP status (1 byte)
+  zmq_msg_init (&msg);
+	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
+  ret = read_byte_from_msg(&msg, size, &status);
+  zmq_msg_close (&msg);
+  if ((ret == -1) || (status == 0)) {
+    return -1;
+  }
+
+  //Frame 1 contains field id (int)
   zmq_msg_init (&msg);
 	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
   ret = read_int_from_msg(&msg, size, wirego_field_id);
@@ -218,7 +267,7 @@ int wirego_get_field_cb(wirego_t* wirego_h, int idx, int *wirego_field_id, char*
     return -1;
   }
 
-  //Frame 1 contains field name (c string)
+  //Frame 2 contains field name (c string)
   zmq_msg_init (&msg);
 	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
   *name = read_string_from_msg(&msg, size);
@@ -228,30 +277,40 @@ int wirego_get_field_cb(wirego_t* wirego_h, int idx, int *wirego_field_id, char*
   }
 
 
-  //Frame 2 contains field filter (c string)
+  //Frame 3 contains field filter (c string)
   zmq_msg_init (&msg);
 	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
   *filter = read_string_from_msg(&msg, size);
   zmq_msg_close (&msg);
   if (!*filter) {
+    free(*name);
+    *name = NULL;
     return -1;    
   }
 
-  //Frame 3 contains value type (int)
+  //Frame 4 contains value type (int)
   zmq_msg_init (&msg);
 	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
   ret = read_int_from_msg(&msg, size, value_type);
   zmq_msg_close (&msg);
   if (ret == -1) {
+    free(*name);
+    *name = NULL;
+    free(*filter);
+    *filter = NULL;
     return -1;
   }
 
-  //Frame 4 contains display type (int)
+  //Frame 5 contains display type (int)
   zmq_msg_init (&msg);
 	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
   ret = read_int_from_msg(&msg, size, display);
   zmq_msg_close (&msg);
   if (ret == -1) {
+    free(*name);
+    *name = NULL;
+    free(*filter);
+    *filter = NULL;
     return -1;
   }
 
@@ -266,7 +325,7 @@ char* wirego_detect_int_cb(wirego_t* wirego_h, int *filter_value, int idx) {
   int ret;
   int size;
   zmq_msg_t msg;
-
+  char status;
   char* filter = NULL;
   *filter_value = -1;
   
@@ -280,7 +339,16 @@ char* wirego_detect_int_cb(wirego_t* wirego_h, int *filter_value, int idx) {
   }
   ws_warning("waiting detect_int response...");
 
-  //Frame 0 contains filter string (string)
+  //Read REP status (1 byte)
+  zmq_msg_init (&msg);
+	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
+  ret = read_byte_from_msg(&msg, size, &status);
+  zmq_msg_close (&msg);
+  if ((ret == -1) || (status == 0)) {
+    return NULL;
+  }
+
+  //Frame 1 contains filter string (string)
   zmq_msg_init (&msg);
 	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
   filter = read_string_from_msg(&msg, size);
@@ -289,12 +357,13 @@ char* wirego_detect_int_cb(wirego_t* wirego_h, int *filter_value, int idx) {
     return NULL;    
   }
 
-  //Frame 1 contains match value (int)
+  //Frame 2 contains match value (int)
   zmq_msg_init (&msg);
 	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
   ret = read_int_from_msg(&msg, size, filter_value);
   zmq_msg_close (&msg);
   if (ret == -1) {
+    free(filter);
     return NULL;
   }
 
@@ -307,8 +376,10 @@ char* wirego_detect_string_cb(wirego_t* wirego_h,  char**filter_value, int idx) 
   const char cmd[] = "detect_string";
   int size;
   zmq_msg_t msg;
-
+  char status;
   char* filter = NULL;
+  int ret;
+
   *filter_value = NULL;
   
   ws_warning("sending detect_string request ...");
@@ -321,7 +392,16 @@ char* wirego_detect_string_cb(wirego_t* wirego_h,  char**filter_value, int idx) 
   }
   ws_warning("waiting detect_string response...");
 
-  //Frame 0 contains filter string (string)
+  //Read REP status (1 byte)
+  zmq_msg_init (&msg);
+	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
+  ret = read_byte_from_msg(&msg, size, &status);
+  zmq_msg_close (&msg);
+  if ((ret == -1) || (status == 0)) {
+    return NULL;
+  }
+
+  //Frame 1 contains filter string (string)
   zmq_msg_init (&msg);
 	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
   filter = read_string_from_msg(&msg, size);
@@ -330,12 +410,13 @@ char* wirego_detect_string_cb(wirego_t* wirego_h,  char**filter_value, int idx) 
     return NULL;    
   }
 
-  //Frame 1 contains match value (string)
+  //Frame 2 contains match value (string)
   zmq_msg_init (&msg);
 	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
   *filter_value = read_string_from_msg(&msg, size);
   zmq_msg_close (&msg);
   if (!*filter_value) {
+    free(filter);
     return NULL;    
   }
 
@@ -348,9 +429,10 @@ char* wirego_detect_heuristic_parent_cb(wirego_t* wirego_h, int idx) {
   const char cmd[] = "detect_heuristic_parent";
   int size;
   zmq_msg_t msg;
-
+  char status;
   char* parent_protocol = NULL;
-  
+  int ret;
+
   ws_warning("sending detect_heuristic_parent request ...");
   
   if (zmq_send(wirego_h->zsock, (void*)(cmd), sizeof(cmd), ZMQ_SNDMORE) == -1) {
@@ -361,7 +443,16 @@ char* wirego_detect_heuristic_parent_cb(wirego_t* wirego_h, int idx) {
   }
   ws_warning("waiting detect_heuristic_parent response...");
 
-  //Frame 0 contains parent_protocol (string)
+  //Read REP status (1 byte)
+  zmq_msg_init (&msg);
+	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
+  ret = read_byte_from_msg(&msg, size, &status);
+  zmq_msg_close (&msg);
+  if ((ret == -1) || (status == 0)) {
+    return NULL;
+  }
+
+  //Frame 1 contains parent_protocol (string)
   zmq_msg_init (&msg);
 	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
   parent_protocol = read_string_from_msg(&msg, size);
@@ -374,7 +465,7 @@ char* wirego_detect_heuristic_parent_cb(wirego_t* wirego_h, int idx) {
   return parent_protocol;
 }
 
-
+// Returns 0 on detection success, -1 on failure or no detection
 int wirego_detection_heuristic_cb(wirego_t* wirego_h, int packet_number, char* src, char* dst, char* layer, char* packet, int packet_size) {
   if (src == NULL || dst == NULL || layer == NULL || packet == NULL || packet_size == 0) {
     return -1;
@@ -386,7 +477,8 @@ int wirego_detection_heuristic_cb(wirego_t* wirego_h, int packet_number, char* s
   int detection_result = -1;
   char b;
   int ret;
-  
+  char status;
+
   ws_warning("sending detection_heuristic request ...");
   
   if (zmq_send(wirego_h->zsock, (void*)(cmd), sizeof(cmd), ZMQ_SNDMORE) == -1) {
@@ -409,7 +501,16 @@ int wirego_detection_heuristic_cb(wirego_t* wirego_h, int packet_number, char* s
   }
   ws_warning("waiting detection_heuristic response...");
 
-  //Frame 0 contains detection result (byte)
+  //Read REP status (1 byte)
+  zmq_msg_init (&msg);
+	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
+  ret = read_byte_from_msg(&msg, size, &status);
+  zmq_msg_close (&msg);
+  if ((ret == -1) || (status == 0)) {
+    return -1;
+  }
+
+  //Frame 1 contains detection result (byte)
   zmq_msg_init (&msg);
 	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
   ret = read_byte_from_msg(&msg, size, &b);
@@ -430,6 +531,8 @@ int wirego_dissect_packet_cb(wirego_t* wirego_h, int packet_number, char* src, c
   zmq_msg_t msg;
   int dissect_handler = -1;
   char b;
+  char status;
+  int ret;
 
   if (src == NULL || dst == NULL || layer == NULL || packet == NULL || packet_size == 0) {
     return -1;
@@ -458,7 +561,16 @@ int wirego_dissect_packet_cb(wirego_t* wirego_h, int packet_number, char* src, c
   }
   ws_warning("waiting dissect_packet response...");
 
-  //Frame 0 contains detection result (byte)
+  //Read REP status (1 byte)
+  zmq_msg_init (&msg);
+	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
+  ret = read_byte_from_msg(&msg, size, &status);
+  zmq_msg_close (&msg);
+  if ((ret == -1) || (status == 0)) {
+    return -1;
+  }
+
+  //Frame 1 contains detection result (byte)
   zmq_msg_init (&msg);
 	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
   dissect_handler = read_byte_from_msg(&msg, size, &b);
@@ -474,7 +586,9 @@ char* wirego_result_get_protocol_cb(wirego_t* wirego_h, int dissect_handle){
   int size;
   zmq_msg_t msg;
   char* protocol = NULL;
-  
+  char status;
+  int ret;
+
   ws_warning("sending result_get_protocol request ...");
   
   if (zmq_send(wirego_h->zsock, (void*)(cmd), sizeof(cmd), ZMQ_SNDMORE) == -1) {
@@ -485,7 +599,16 @@ char* wirego_result_get_protocol_cb(wirego_t* wirego_h, int dissect_handle){
   }
   ws_warning("waiting result_get_protocol response...");
 
-  //Frame 0 contains protocol (string)
+  //Read REP status (1 byte)
+  zmq_msg_init (&msg);
+	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
+  ret = read_byte_from_msg(&msg, size, &status);
+  zmq_msg_close (&msg);
+  if ((ret == -1) || (status == 0)) {
+    return NULL;
+  }
+
+  //Frame 1 contains protocol (string)
   zmq_msg_init (&msg);
 	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
   protocol = read_string_from_msg(&msg, size);
@@ -503,7 +626,9 @@ char* wirego_result_get_info_cb(wirego_t* wirego_h, int dissect_handle){
   int size;
   zmq_msg_t msg;
   char* info = NULL;
-  
+  char status;
+  int ret;
+
   ws_warning("sending result_get_info request ...");
   
   if (zmq_send(wirego_h->zsock, (void*)(cmd), sizeof(cmd), ZMQ_SNDMORE) == -1) {
@@ -514,7 +639,16 @@ char* wirego_result_get_info_cb(wirego_t* wirego_h, int dissect_handle){
   }
   ws_warning("waiting result_get_info response...");
 
-  //Frame 0 contains info (string)
+  //Read REP status (1 byte)
+  zmq_msg_init (&msg);
+	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
+  ret = read_byte_from_msg(&msg, size, &status);
+  zmq_msg_close (&msg);
+  if ((ret == -1) || (status == 0)) {
+    return NULL;
+  }
+
+  //Frame 1 contains info (string)
   zmq_msg_init (&msg);
 	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
   info = read_string_from_msg(&msg, size);
@@ -533,6 +667,7 @@ int wirego_result_get_fields_count_cb(wirego_t* wirego_h, int dissect_handle){
   zmq_msg_t msg;
   int ret;
   int count = -1;
+  char status;
   
   ws_warning("sending result_get_fields_count request ...");
   
@@ -544,7 +679,16 @@ int wirego_result_get_fields_count_cb(wirego_t* wirego_h, int dissect_handle){
   }
   ws_warning("waiting result_get_fields_count response...");
 
-  //Frame 0 contains info (string)
+  //Read REP status (1 byte)
+  zmq_msg_init (&msg);
+	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
+  ret = read_byte_from_msg(&msg, size, &status);
+  zmq_msg_close (&msg);
+  if ((ret == -1) || (status == 0)) {
+    return -1;
+  }
+
+  //Frame 1 contains info (string)
   zmq_msg_init (&msg);
 	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
   ret = read_int_from_msg(&msg, size, &count);
@@ -561,6 +705,7 @@ int wirego_result_get_field_cb(wirego_t* wirego_h, int dissect_handle, int idx, 
   int size;
   zmq_msg_t msg;
   int ret;
+  char status;
 
   *parent_idx = -1;
   *wirego_field_id = -1;
@@ -579,7 +724,16 @@ int wirego_result_get_field_cb(wirego_t* wirego_h, int dissect_handle, int idx, 
   }
   ws_warning("waiting result_get_field response...");
 
-  //Frame 0 contains field parent_idx (int)
+  //Read REP status (1 byte)
+  zmq_msg_init (&msg);
+	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
+  ret = read_byte_from_msg(&msg, size, &status);
+  zmq_msg_close (&msg);
+  if ((ret == -1) || (status == 0)) {
+    return -1;
+  }
+
+  //Frame 1 contains field parent_idx (int)
   zmq_msg_init (&msg);
 	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
   ret = read_int_from_msg(&msg, size, parent_idx);
@@ -587,7 +741,7 @@ int wirego_result_get_field_cb(wirego_t* wirego_h, int dissect_handle, int idx, 
   if (ret == -1)
     return -1;
 
-  //Frame 1 contains field wirego_field_id (int)
+  //Frame 2 contains field wirego_field_id (int)
   zmq_msg_init (&msg);
 	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
   ret = read_int_from_msg(&msg, size, wirego_field_id);
@@ -595,7 +749,7 @@ int wirego_result_get_field_cb(wirego_t* wirego_h, int dissect_handle, int idx, 
   if (ret == -1)
     return -1;
 
-  //Frame 2 contains field offset (int)
+  //Frame 3 contains field offset (int)
   zmq_msg_init (&msg);
 	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
   ret = read_int_from_msg(&msg, size, offset);
@@ -603,7 +757,7 @@ int wirego_result_get_field_cb(wirego_t* wirego_h, int dissect_handle, int idx, 
   if (ret == -1)
     return -1;
 
-  //Frame 2 contains field length (int)
+  //Frame 4 contains field length (int)
   zmq_msg_init (&msg);
 	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
   ret = read_int_from_msg(&msg, size, length);
@@ -620,7 +774,9 @@ int wirego_result_release_cb(wirego_t* wirego_h, int dissect_handle){
   int size;
   zmq_msg_t msg;
   char b;
-  
+  char status;
+  int ret;
+
   ws_warning("sending result_release request ...");
   
   if (zmq_send(wirego_h->zsock, (void*)(cmd), sizeof(cmd), ZMQ_SNDMORE) == -1) {
@@ -631,10 +787,19 @@ int wirego_result_release_cb(wirego_t* wirego_h, int dissect_handle){
   }
   ws_warning("waiting result_release response...");
 
-  //Frame 0 contains dummy result
+  //Read REP status (1 byte)
   zmq_msg_init (&msg);
 	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
-  int ret = read_byte_from_msg(&msg, size, &b);
+  ret = read_byte_from_msg(&msg, size, &status);
+  zmq_msg_close (&msg);
+  if ((ret == -1) || (status == 0)) {
+    return -1;
+  }
+
+  //Frame 1 contains dummy result
+  zmq_msg_init (&msg);
+	size = zmq_recvmsg(wirego_h->zsock, &msg, 0);
+  ret = read_byte_from_msg(&msg, size, &b);
   zmq_msg_close (&msg);
   if (ret == -1)
     return -1;
