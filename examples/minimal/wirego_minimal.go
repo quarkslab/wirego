@@ -20,7 +20,7 @@ type WiregoMinimalExample struct {
 func main() {
 	var wge WiregoMinimalExample
 
-	wg, err := wirego.New("tcp://127.0.0.1:6666", true, wge)
+	wg, err := wirego.New("tcp://127.0.0.1:6666", false, wge)
 	if err != nil {
 		fmt.Println(err)
 		return

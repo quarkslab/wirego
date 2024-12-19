@@ -142,7 +142,7 @@ char* wirego_get_name_cb(wirego_t* wirego_h) {
   zmq_msg_close (&msg);
 
   if (name)
-    ws_warning("wirego_get_name_cb %s",name);
+    ws_noisy("wirego_get_name_cb %s",name);
 
   return name;
 }
@@ -181,7 +181,7 @@ char* wirego_get_plugin_filter_cb(wirego_t* wirego_h){
   zmq_msg_close (&msg);
 
   if (filter)
-    ws_warning("wirego_get_plugin_filter_cb %s",filter);
+    ws_noisy("wirego_get_plugin_filter_cb %s",filter);
 
   return filter;
 }
@@ -220,7 +220,7 @@ int wirego_get_fields_count_cb(wirego_t* wirego_h) {
   if (ret == -1)
     return -1;
 
-  ws_warning("wirego_get_fields_count_cb %d",fields_count);
+  ws_noisy("wirego_get_fields_count_cb %d",fields_count);
 
   return fields_count;
 }
@@ -314,7 +314,7 @@ int wirego_get_field_cb(wirego_t* wirego_h, int idx, int *wirego_field_id, char*
     return -1;
   }
 
-  ws_warning("wirego_get_field(%d) Field id:%d Name: %s Filter: %s Vtype %d Display %d", idx, *wirego_field_id, *name, *filter, *value_type, *display);
+  ws_noisy("wirego_get_field(%d) Field id:%d Name: %s Filter: %s Vtype %d Display %d", idx, *wirego_field_id, *name, *filter, *value_type, *display);
 
   return 0;
 }
@@ -367,7 +367,7 @@ char* wirego_detect_int_cb(wirego_t* wirego_h, int *filter_value, int idx) {
     return NULL;
   }
 
-  ws_warning("wirego_detect_int(%d) %s = %d", idx, filter, *filter_value);
+  ws_noisy("wirego_detect_int(%d) %s = %d", idx, filter, *filter_value);
 
   return filter;
 }
@@ -420,7 +420,7 @@ char* wirego_detect_string_cb(wirego_t* wirego_h,  char**filter_value, int idx) 
     return NULL;    
   }
 
-  ws_warning("wirego_detect_string(%d) %s = %s", idx, filter, *filter_value);
+  ws_noisy("wirego_detect_string(%d) %s = %s", idx, filter, *filter_value);
 
   return filter;
 }
@@ -461,7 +461,7 @@ char* wirego_detect_heuristic_parent_cb(wirego_t* wirego_h, int idx) {
     return NULL;    
   }
 
-  ws_warning("detect_heuristic_parent(%d) %s", idx, parent_protocol);
+  ws_noisy("detect_heuristic_parent(%d) %s", idx, parent_protocol);
   return parent_protocol;
 }
 
@@ -521,7 +521,7 @@ int wirego_detection_heuristic_cb(wirego_t* wirego_h, int packet_number, char* s
   }
   detection_result = b;
 
-  ws_warning("detection_heuristic %d", detection_result);
+  ws_noisy("detection_heuristic %d", detection_result);
   return detection_result;
 }
 
@@ -579,7 +579,7 @@ int wirego_dissect_packet_cb(wirego_t* wirego_h, int packet_number, char* src, c
   }
   zmq_msg_close (&msg);
 
-  ws_warning("dissect_packet %d", dissect_handler);
+  ws_noisy("dissect_packet %d", dissect_handler);
   return dissect_handler;
 }
 
@@ -620,7 +620,7 @@ char* wirego_result_get_protocol_cb(wirego_t* wirego_h, int dissect_handle){
     return NULL;    
   }
 
-  ws_warning("result_get_protocol(%d) %s", dissect_handle, protocol);
+  ws_noisy("result_get_protocol(%d) %s", dissect_handle, protocol);
   return protocol;
 }
 
@@ -660,7 +660,7 @@ char* wirego_result_get_info_cb(wirego_t* wirego_h, int dissect_handle){
     return NULL;    
   }
 
-  ws_warning("result_get_info(%d) %s", dissect_handle, info);
+  ws_noisy("result_get_info(%d) %s", dissect_handle, info);
   return info;
 }
 
@@ -699,7 +699,7 @@ int wirego_result_get_fields_count_cb(wirego_t* wirego_h, int dissect_handle){
 
   if (ret == -1)
     return -1;
-  ws_warning("result_get_fields_count(%d) %d", dissect_handle, count);
+  ws_noisy("result_get_fields_count(%d) %d", dissect_handle, count);
   return count;
 }
 
@@ -768,7 +768,7 @@ int wirego_result_get_field_cb(wirego_t* wirego_h, int dissect_handle, int idx, 
   if (ret == -1)
     return -1;
 
-  ws_warning("result_get_field(%d, %d) parent_idx %d wirego_field_id %d offs %d length %d", dissect_handle, idx, *parent_idx, *wirego_field_id, *offset, *length);
+  ws_noisy("result_get_field(%d, %d) parent_idx %d wirego_field_id %d offs %d length %d", dissect_handle, idx, *parent_idx, *wirego_field_id, *offset, *length);
   return 0;
 }
 
@@ -806,7 +806,7 @@ int wirego_result_release_cb(wirego_t* wirego_h, int dissect_handle){
   zmq_msg_close (&msg);
   if (ret == -1)
     return -1;
-  ws_warning("result_release(%d) %d", dissect_handle, b);
+  ws_noisy("result_release(%d) %d", dissect_handle, b);
   return 0;
 }
 
