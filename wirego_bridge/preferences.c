@@ -19,7 +19,7 @@ static const gchar* pref_wirego_zmq_endpoint = "";
   The last configured value in the parameters is saved on a local hidden file.
 */
 
-
+// get_zmq_endpoint reads the last configured endpoint from the save file
 char * get_zmq_endpoint(void) {
   char config_path[1024];
   static char zmq_endpoint[1024];
@@ -44,6 +44,7 @@ char * get_zmq_endpoint(void) {
   return zmq_endpoint;
 }
 
+// save_zmq_endpoint updated the save file with the current configured endpoint
 int save_zmq_endpoint(const char * zmq_endpoint) {
   FILE * f;
   char config_path[1024];
@@ -57,6 +58,7 @@ int save_zmq_endpoint(const char * zmq_endpoint) {
   return 0;
 }
 
+// preferences_apply_cb is called by wireshark when the Wirego's preferences are updated or loaded
 void preferences_apply_cb(void) {
   char * zmq_endpoint = get_zmq_endpoint();
 
@@ -72,7 +74,7 @@ void preferences_apply_cb(void) {
   }
 }
 
-// Define the Wirego preferences panel
+// register_preferences_menu defines the Wirego preferences panel
 void register_preferences_menu(void) {
   module_t *wirego_module;
   int proto_main_wirego = proto_register_protocol("Wirego", "Wirego", "wirego");

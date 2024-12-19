@@ -44,6 +44,7 @@ wirego_t * get_wirego_h(void) {
 
 //Register protocol when plugin is loaded.
 void proto_register_wirego(void) {
+  //Setup Wirego's structure
   memset(&wirego_h, 0x00, sizeof(wirego_t));
   wirego_h.loaded = 0;
   wirego_h.ett_wirego  = -1;
@@ -66,14 +67,24 @@ void proto_register_wirego(void) {
     return;
   }
 
+  // Setup ZMQ
   wirego_h.zctx = zmq_ctx_new();
   wirego_h.zsock = zmq_socket(wirego_h.zctx, ZMQ_REQ);
   if (wirego_h.zsock == NULL) {
     ws_warning("Wirego: failed to create ZMQ socket (%s)\n",zmq_strerror (errno));
     return;
   }
+  int timeout_ms = 2 * 1000;
+  if (zmq_setsockopt(wirego_h.zsock, ZMQ_CONNECT_TIMEOUT, &timeout_ms, sizeof(timeout_ms)) != 0)
+    ws_warning("Wirego: failed to set socket option (timeout)");
+  if (zmq_setsockopt(wirego_h.zsock, ZMQ_RCVTIMEO, &timeout_ms, sizeof(timeout_ms)) != 0)
+    ws_warning("Wirego: failed to set socket option (rcvtimeout)");
+  if (zmq_setsockopt(wirego_h.zsock, ZMQ_SNDTIMEO, &timeout_ms, sizeof(timeout_ms)) != 0)
+    ws_warning("Wirego: failed to set socket option (sndtimeout)");
+
 
   //Connect to remote Wirego plugin
+  //If connection fails, connect will likely return 0
   int ret = zmq_connect(wirego_h.zsock, wirego_h.zmq_endpoint);
   if (ret != 0) {
     ws_warning("Wirego: failed to connect to ZMQ endpoint (%s)\n",zmq_strerror (errno));
