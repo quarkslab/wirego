@@ -1,98 +1,23 @@
 package wirego
 
 import (
-	"context"
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"time"
 
 	zmq "github.com/go-zeromq/zmq4"
 )
 
-type ZMQCommand func(msg *zmq.Msg) error
+/*
+This is the implementation of the Wirego's ZMQ specification.
+Since this is pretty straightforward, please refer to the associated doc for details about REQ/REP, frames, encoding etc.
+*/
 
+// Define the implemented ZMQ spec version
 const (
 	WiregoVersionMajor = 2
 	WiregoVersionMinor = 0
 )
-
-func getStringFromFrame(frame []byte) string {
-	//Make sure it's a C string
-	if frame[len(frame)-1] != 0x00 {
-		return ""
-	}
-
-	return string(frame[:len(frame)-1])
-}
-
-func (wg *Wirego) zmqSetup() error {
-	wg.zmqContext = context.Background()
-	wg.zmqSocket = zmq.NewRep(wg.zmqContext, zmq.WithDialerRetry(time.Second))
-
-	err := wg.zmqSocket.Listen(wg.zqmEndpoint)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (wg *Wirego) Listen() {
-	if wg.listener == nil {
-		return
-	}
-
-	dispatcher := make(map[string]ZMQCommand)
-
-	//Utility commands, not dispatched to the Wirego plugin interface
-	dispatcher["ping"] = wg.processPing
-	dispatcher["version"] = wg.processVersion
-
-	//ZMQ interface commands
-	dispatcher["get_name"] = wg.processGetName
-	dispatcher["get_plugin_filter"] = wg.processGetFilter
-	dispatcher["get_fields_count"] = wg.processGetFieldsCount
-	dispatcher["get_field"] = wg.processGetField
-	dispatcher["detect_int"] = wg.processDetectInt
-	dispatcher["detect_string"] = wg.processDetectString
-	dispatcher["detect_heuristic_parent"] = wg.processDetectHeuristicParent
-	dispatcher["detection_heuristic"] = wg.processDetectionHeuristic
-	dispatcher["dissect_packet"] = wg.processDissectPacket
-	dispatcher["result_get_protocol"] = wg.processResultGetProtocol
-	dispatcher["result_get_info"] = wg.processResultGetInfo
-	dispatcher["result_get_fields_count"] = wg.processResultGetFieldsCount
-	dispatcher["result_get_field"] = wg.processResultGetField
-	dispatcher["result_release"] = wg.processResultRelease
-
-	for {
-		fmt.Println("Wait...")
-
-		msg, err := wg.zmqSocket.Recv()
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-		if len(msg.Frames) == 0 {
-			continue
-		}
-
-		//Frame 0 contains the command. Get rid of trailing /x00 C-string
-		cmd := getStringFromFrame(msg.Frames[0])
-		cb, found := dispatcher[cmd]
-		if !found {
-			fmt.Println("Unknown command: '" + cmd + "'")
-		} else {
-			fmt.Println("Processing command", cmd, "...")
-			err = cb(&msg)
-			if err != nil {
-				fmt.Println("-> Failed:", err)
-			} else {
-				fmt.Println("-> Success.")
-			}
-		}
-	}
-}
 
 func (wg *Wirego) processPing(msg *zmq.Msg) error {
 	response := zmq.NewMsg(getResultMsg(true))
@@ -123,20 +48,17 @@ func (wg *Wirego) processGetFieldsCount(msg *zmq.Msg) error {
 }
 
 func (wg *Wirego) processGetField(msg *zmq.Msg) error {
+	if len(msg.Frames) != 2 {
+		return wg.returnFailure(errors.New("get_field failed, invalid arguments count in request"))
+	}
 
 	//Frame one contains index
-	if len(msg.Frames) != 2 {
-		wg.returnFailure()
-		return errors.New("get_field failed, index missing from request")
-	}
 	if len(msg.Frames[1]) != 4 {
-		wg.returnFailure()
-		return errors.New("get_field failed, index too short")
+		return wg.returnFailure(errors.New("get_field failed, index too short"))
 	}
 	index := binary.LittleEndian.Uint32(msg.Frames[1])
 	if index >= uint32(len(wg.pluginFields)) {
-		wg.returnFailure()
-		return errors.New("get_field failed, index too high")
+		return wg.returnFailure(errors.New("get_field failed, index too high"))
 	}
 
 	f := wg.pluginFields[index]
@@ -167,14 +89,13 @@ func (wg *Wirego) processDetectInt(msg *zmq.Msg) error {
 	var filterString string
 	matchValue = -1
 
-	//Frame one contains index
 	if len(msg.Frames) != 2 {
-		wg.returnFailure()
-		return errors.New("detect_int failed, index missing from request")
+		return wg.returnFailure(errors.New("detect_int failed, invalid arguments count in request"))
 	}
+
+	//Frame one contains index
 	if len(msg.Frames[1]) != 4 {
-		wg.returnFailure()
-		return errors.New("detect_int failed, index too short")
+		return wg.returnFailure(errors.New("detect_int failed, index too short"))
 	}
 	idx := binary.LittleEndian.Uint32(msg.Frames[1])
 
@@ -192,7 +113,7 @@ func (wg *Wirego) processDetectInt(msg *zmq.Msg) error {
 	}
 
 	if matchValue == -1 {
-		return wg.returnFailure()
+		return wg.returnFailure(nil)
 	}
 
 	//Response
@@ -207,14 +128,13 @@ func (wg *Wirego) processDetectString(msg *zmq.Msg) error {
 	var matchValue string
 	var filterString string
 
-	//Frame one contains index
 	if len(msg.Frames) != 2 {
-		wg.returnFailure()
-		return errors.New("detect_string failed, index missing from request")
+		return wg.returnFailure(errors.New("detect_string failed, invalid arguments count in request"))
 	}
+
+	//Frame one contains index
 	if len(msg.Frames[1]) != 4 {
-		wg.returnFailure()
-		return errors.New("detect_string failed, index too short")
+		return wg.returnFailure(errors.New("detect_string failed, index too short"))
 	}
 	idx := binary.LittleEndian.Uint32(msg.Frames[1])
 
@@ -232,7 +152,7 @@ func (wg *Wirego) processDetectString(msg *zmq.Msg) error {
 	}
 
 	if len(matchValue) == 0 {
-		return wg.returnFailure()
+		return wg.returnFailure(nil)
 	}
 
 	//Response
@@ -241,14 +161,13 @@ func (wg *Wirego) processDetectString(msg *zmq.Msg) error {
 }
 
 func (wg *Wirego) processDetectHeuristicParent(msg *zmq.Msg) error {
-	//Frame one contains index
 	if len(msg.Frames) != 2 {
-		wg.returnFailure()
-		return errors.New("detect_heuristic_parent failed, index missing from request")
+		return wg.returnFailure(errors.New("detect_heuristic_parent failed, invalid arguments count in request"))
 	}
+
+	//Frame one contains index
 	if len(msg.Frames[1]) != 4 {
-		wg.returnFailure()
-		return errors.New("detect_heuristic_parent failed, index too short")
+		return wg.returnFailure(errors.New("detect_heuristic_parent failed, index too short"))
 	}
 	idx := binary.LittleEndian.Uint32(msg.Frames[1])
 
@@ -270,12 +189,12 @@ func (wg *Wirego) processDetectionHeuristic(msg *zmq.Msg) error {
 	var packet []byte
 
 	if len(msg.Frames) != 6 {
-		wg.returnFailure()
-		return errors.New("detection_heuristic failed, missing arguments")
+		return wg.returnFailure(errors.New("detection_heuristic failed, invalid arguments count in request"))
 	}
+
+	//Frame one contains packet number
 	if len(msg.Frames[1]) != 4 {
-		wg.returnFailure()
-		return errors.New("detection_heuristic failed, packet_number too short")
+		return wg.returnFailure(errors.New("detection_heuristic failed, packet_number too short"))
 	}
 	packetNumber = binary.LittleEndian.Uint32(msg.Frames[1])
 	src = getStringFromFrame(msg.Frames[2])
@@ -302,12 +221,12 @@ func (wg *Wirego) processDissectPacket(msg *zmq.Msg) error {
 	var packet []byte
 
 	if len(msg.Frames) != 6 {
-		wg.returnFailure()
-		return errors.New("dissect_packet failed, missing arguments")
+		return wg.returnFailure(errors.New("dissect_packet failed, invalid arguments count in request"))
 	}
+
+	//Frame one contains packet number
 	if len(msg.Frames[1]) != 4 {
-		wg.returnFailure()
-		return errors.New("dissect_packet failed, packet_number too short")
+		return wg.returnFailure(errors.New("dissect_packet failed, packet_number too short"))
 	}
 	packetNumber = binary.LittleEndian.Uint32(msg.Frames[1])
 	src = getStringFromFrame(msg.Frames[2])
@@ -328,23 +247,20 @@ func (wg *Wirego) processDissectPacket(msg *zmq.Msg) error {
 	result := wg.listener.DissectPacket(int(packetNumber), src, dst, layer, packet)
 
 	if result == nil {
-		return wg.returnFailure()
+		return wg.returnFailure(nil)
 	}
 
 	//Check results
 	for _, r := range result.Fields {
 		if r.Offset >= len(packet) {
-			fmt.Printf("Wirego plugin did return an invalid Offset : %d (packet size is %d bytes)\n", r.Offset, len(packet))
-			return wg.returnFailure()
+			return wg.returnFailure(fmt.Errorf("Wirego plugin did return an invalid Offset : %d (packet size is %d bytes)", r.Offset, len(packet)))
 		}
 		if r.Offset+r.Length > len(packet) {
-			fmt.Printf("Wirego plugin did return an invalid Length : %d (offset is %d and packet size is %d bytes)\n", r.Length, r.Offset, len(packet))
-			return wg.returnFailure()
+			return wg.returnFailure(fmt.Errorf("Wirego plugin did return an invalid Length : %d (offset is %d and packet size is %d bytes)", r.Length, r.Offset, len(packet)))
 		}
 		_, found := wg.wiregoFieldIds[int(r.WiregoFieldId)]
 		if !found {
-			fmt.Printf("Wirego plugin did return an invalid WiregoFieldId : %d\n", r.WiregoFieldId)
-			return wg.returnFailure()
+			return wg.returnFailure(fmt.Errorf("Wirego plugin did return an invalid WiregoFieldId : %d", r.WiregoFieldId))
 		}
 	}
 
@@ -353,7 +269,7 @@ func (wg *Wirego) processDissectPacket(msg *zmq.Msg) error {
 	flatten.Info = result.Info
 	flatten.Protocol = result.Protocol
 	for _, r := range result.Fields {
-		wg.addFieldsRec(&flatten, -1, &r)
+		wg.addFieldsRecursive(&flatten, -1, &r)
 	}
 
 	//Add to cache
@@ -366,20 +282,19 @@ func (wg *Wirego) processDissectPacket(msg *zmq.Msg) error {
 }
 
 func (wg *Wirego) processResultGetProtocol(msg *zmq.Msg) error {
-	//Frame one contains index
 	if len(msg.Frames) != 2 {
-		wg.returnFailure()
-		return errors.New("result_get_protocol failed, dissect_handle missing from request")
+		return wg.returnFailure(errors.New("result_get_protocol failed, packet_number too short"))
 	}
+
+	//Frame one contains dissect handle (ie packet number)
 	if len(msg.Frames[1]) != 4 {
-		wg.returnFailure()
-		return errors.New("result_get_protocol failed, dissect_handle too short")
+		return wg.returnFailure(errors.New("result_get_protocol failed, dissect_handle too short"))
 	}
 	dissectHandle := binary.LittleEndian.Uint32(msg.Frames[1])
 
 	desc, found := wg.resultsCache[int(dissectHandle)]
 	if !found {
-		return wg.returnFailure()
+		return wg.returnFailure(fmt.Errorf("accessing unknown result for packet %d", dissectHandle))
 	}
 
 	//Response
@@ -388,20 +303,18 @@ func (wg *Wirego) processResultGetProtocol(msg *zmq.Msg) error {
 }
 
 func (wg *Wirego) processResultGetInfo(msg *zmq.Msg) error {
-	//Frame one contains index
 	if len(msg.Frames) != 2 {
-		wg.returnFailure()
-		return errors.New("result_get_info failed, dissect_handle missing from request")
+		return wg.returnFailure(errors.New("result_get_info failed, packet_number too short"))
 	}
+	//Frame one contains dissect handle (ie packet number)
 	if len(msg.Frames[1]) != 4 {
-		wg.returnFailure()
-		return errors.New("result_get_info failed, dissectHandle too short")
+		return wg.returnFailure(errors.New("result_get_info failed, dissectHandle too short"))
 	}
 	dissectHandle := binary.LittleEndian.Uint32(msg.Frames[1])
 
 	desc, found := wg.resultsCache[int(dissectHandle)]
 	if !found {
-		return wg.returnFailure()
+		return wg.returnFailure(fmt.Errorf("accessing unknown result for packet %d", dissectHandle))
 	}
 
 	//Response
@@ -410,20 +323,18 @@ func (wg *Wirego) processResultGetInfo(msg *zmq.Msg) error {
 }
 
 func (wg *Wirego) processResultGetFieldsCount(msg *zmq.Msg) error {
-	//Frame one contains index
 	if len(msg.Frames) != 2 {
-		wg.returnFailure()
-		return errors.New("result_get_fields_count failed, dissect_handle missing from request")
+		return wg.returnFailure(errors.New("result_get_fields_count failed, packet_number too short"))
 	}
+	//Frame one contains dissect handle (ie packet number)
 	if len(msg.Frames[1]) != 4 {
-		wg.returnFailure()
-		return errors.New("result_get_fields_count failed, dissectHandle too short")
+		return wg.returnFailure(errors.New("result_get_fields_count failed, dissectHandle too short"))
 	}
 	dissectHandle := binary.LittleEndian.Uint32(msg.Frames[1])
 
 	desc, found := wg.resultsCache[int(dissectHandle)]
 	if !found {
-		return wg.returnFailure()
+		return wg.returnFailure(fmt.Errorf("accessing unknown result for packet %d", dissectHandle))
 	}
 
 	//Response
@@ -435,34 +346,28 @@ func (wg *Wirego) processResultGetFieldsCount(msg *zmq.Msg) error {
 
 func (wg *Wirego) processResultGetField(msg *zmq.Msg) error {
 	if len(msg.Frames) != 3 {
-		wg.returnFailure()
-		return errors.New("result_get_field failed, missing args from request")
+		return wg.returnFailure(errors.New("result_get_field failed, packet_number too short"))
 	}
-	//Frame 1 contains dissect_handle
+
+	//Frame 1 contains dissect handle (ie packet number)
 	if len(msg.Frames[1]) != 4 {
-		wg.returnFailure()
-		return errors.New("result_get_field failed, dissectHandle too short")
+		return wg.returnFailure(errors.New("result_get_field failed, dissectHandle too short"))
 	}
 	dissectHandle := binary.LittleEndian.Uint32(msg.Frames[1])
 
 	//Frame 2 contains index
-	if len(msg.Frames) != 2 {
-		wg.returnFailure()
-		return errors.New("result_get_field failed, index missing from request")
-	}
-	if len(msg.Frames[1]) != 4 {
-		wg.returnFailure()
-		return errors.New("result_get_field failed, index too short")
+	if len(msg.Frames[2]) != 4 {
+		return wg.returnFailure(errors.New("result_get_field failed, index too short"))
 	}
 	idx := binary.LittleEndian.Uint32(msg.Frames[2])
 
 	desc, found := wg.resultsCache[int(dissectHandle)]
 	if !found {
-		return wg.returnFailure()
+		return wg.returnFailure(fmt.Errorf("accessing unknown result for packet %d", dissectHandle))
 	}
 
 	if idx >= uint32(len(desc.fields)) {
-		return wg.returnFailure()
+		return wg.returnFailure(errors.New("accessing invalid field index"))
 	}
 	field := desc.fields[idx]
 
@@ -472,23 +377,22 @@ func (wg *Wirego) processResultGetField(msg *zmq.Msg) error {
 	wiregoFieldId := make([]byte, 4)
 	binary.LittleEndian.PutUint32(wiregoFieldId, uint32(field.wiregoFieldId))
 	offset := make([]byte, 4)
-	binary.LittleEndian.PutUint32(parentIdx, uint32(field.offset))
+	binary.LittleEndian.PutUint32(offset, uint32(field.offset))
 	length := make([]byte, 4)
-	binary.LittleEndian.PutUint32(parentIdx, uint32(field.length))
+	binary.LittleEndian.PutUint32(length, uint32(field.length))
 
 	response := zmq.NewMsgFrom(getResultMsg(true), parentIdx, wiregoFieldId, offset, length)
 	return wg.zmqSocket.Send(response)
 }
 
 func (wg *Wirego) processResultRelease(msg *zmq.Msg) error {
-	//Frame one contains index
 	if len(msg.Frames) != 2 {
-		wg.returnFailure()
-		return errors.New("result_release failed, dissect_handle missing from request")
+		return wg.returnFailure(errors.New("result_release failed, packet_number too short"))
 	}
+
+	//Frame 1 contains dissect handle (ie packet number)
 	if len(msg.Frames[1]) != 4 {
-		wg.returnFailure()
-		return errors.New("result_release failed, dissectHandle too short")
+		return wg.returnFailure(errors.New("result_release failed, dissectHandle too short"))
 	}
 	dissectHandle := binary.LittleEndian.Uint32(msg.Frames[1])
 
@@ -501,6 +405,7 @@ func (wg *Wirego) processResultRelease(msg *zmq.Msg) error {
 	return wg.zmqSocket.Send(response)
 }
 
+// getResultMsg returns a preset result status to be sent to the remote ZMQ endpoint
 func getResultMsg(success bool) []byte {
 	if success {
 		return []byte{0x01}
@@ -509,7 +414,22 @@ func getResultMsg(success bool) []byte {
 	}
 }
 
-func (wg *Wirego) returnFailure() error {
+// returnFailure logs given error message (if any) and returns an error to the remote ZMQ endpoint
+func (wg *Wirego) returnFailure(err error) error {
+	if err != nil {
+		wg.logs.Print("/!\\ Error:", err)
+	}
+
 	response := zmq.NewMsg(getResultMsg(false))
 	return wg.zmqSocket.Send(response)
+}
+
+// getStringFromFrame extrazcts a C-String from a given frame. Upon error, an empty string is returned.
+func getStringFromFrame(frame []byte) string {
+	//Make sure it's a C string
+	if frame[len(frame)-1] != 0x00 {
+		return ""
+	}
+
+	return string(frame[:len(frame)-1])
 }

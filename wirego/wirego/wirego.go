@@ -14,55 +14,67 @@ package wirego
 import (
 	"context"
 	"fmt"
+	"log"
+	"os"
+	"strings"
 
 	zmq "github.com/go-zeromq/zmq4"
 )
 
+// Stores the dissection results for a given packet
 type DissectResultFlattenEntry struct {
-	Protocol string
-	Info     string
-	fields   []DissectResultFlatten
-}
-type DissectResultFlatten struct {
-	parentIdx     int
-	wiregoFieldId FieldId
-	offset        int
-	length        int
+	Protocol string                      // Protocol column for Wireshark
+	Info     string                      // Info column for Wireshark
+	fields   []DissectResultFieldFlatten // List of fields for Wireshark
 }
 
-// Just a simple holder
+// Stores a given field from a dissection result
+type DissectResultFieldFlatten struct {
+	parentIdx     int     // Index of parent field (for nested fields)
+	wiregoFieldId FieldId // Field id (Wirego)
+	offset        int     // Field Offset in packet
+	length        int     // Field length
+}
+
+// Just a simple holder for the Wirego package
 type Wirego struct {
-	listener           WiregoInterface
-	resultsCacheEnable bool
-	wiregoFieldIds     map[int]bool
-	resultsCache       map[int]*DissectResultFlattenEntry
+	logs               *log.Logger                        // Main display
+	listener           WiregoInterface                    // Listener (implemented by end user)
+	resultsCacheEnable bool                               // Is the cache enabled?
+	resultsCache       map[int]*DissectResultFlattenEntry // The dissectionresults cache
+	wiregoFieldIds     map[int]bool                       // A set of all defined fields id (for quick access)
 
 	//ZMQ
-	zqmEndpoint string
-	zmqContext  context.Context
-	zmqSocket   zmq.Socket
+	zqmEndpoint string          // The ZMQ endpoint defined by end user
+	zmqContext  context.Context // ZMQ context
+	zmqSocket   zmq.Socket      // The opened ZMQ socket
 
-	//Fetched and duplicated from plugin, to trick gc
-	pluginName                       string
-	pluginFilter                     string
-	pluginDetectionHeuristicsParents []string
-	pluginDetectionFilters           []DetectionFilter
-	pluginFields                     []WiresharkField
+	//Fetched from plugin for quicked access
+	pluginName                       string            // The plugin name to be displayed on Wireshark
+	pluginFilter                     string            // The plugin filter used to filter traffic on Wireshark
+	pluginDetectionHeuristicsParents []string          // Detection heuristic parents (if any)
+	pluginDetectionFilters           []DetectionFilter // Detection filters (if any)
+	pluginFields                     []WiresharkField  // List of plugin custom fields
 }
 
 // We use a static "object" here
 var wg Wirego
 
+// New creates a new instance of Wirego. zqmEndpoint desfined the endpoint to be used when Listen is called.
+// The "listener" is the end-used implementation of the Wirego's interface
 func New(zqmEndpoint string, listener WiregoInterface) (*Wirego, error) {
 	var err error
+
+	wg.logs = log.New(os.Stdout, "Wirego> ", 0)
 	wg.listener = listener
 	wg.zqmEndpoint = zqmEndpoint
 	wg.resultsCacheEnable = true
 
+	//Prepare maps
 	wg.wiregoFieldIds = make(map[int]bool)
 	wg.resultsCache = make(map[int]*DissectResultFlattenEntry)
 
-	//Preload all "static" values to bypass the GC and keep local copies
+	//Preload all "static" values
 	wg.pluginName = wg.listener.GetName()
 	wg.pluginFilter = wg.listener.GetFilter()
 	wg.pluginDetectionHeuristicsParents = wg.listener.GetDetectionHeuristicsParents()
@@ -76,6 +88,21 @@ func New(zqmEndpoint string, listener WiregoInterface) (*Wirego, error) {
 			return nil, fmt.Errorf("failed to add wirego fields, duplicated WiregoFieldId: %d", f.WiregoFieldId)
 		}
 		wg.wiregoFieldIds[int(f.WiregoFieldId)] = true
+	}
+
+	//Be a bit verbose to ease plugin development
+	wg.logs.Println("Setting up Wirego...")
+	wg.logs.Println("Plugin will appear in Wireshark as '" + wg.pluginName + "' with filter '" + wg.pluginFilter + "'")
+	wg.logs.Printf("Custom fields registered: %d", len(wg.pluginFields))
+	if len(wg.pluginDetectionHeuristicsParents) != 0 {
+		wg.logs.Println("Heuristics function will be called hen parent matches " + strings.Join(wg.pluginDetectionHeuristicsParents, " or "))
+	}
+	if len(wg.pluginDetectionFilters) != 0 {
+		var str []string
+		for _, f := range wg.pluginDetectionFilters {
+			str = append(str, f.String())
+		}
+		wg.logs.Println("Dissect will be called when filters following matches: " + strings.Join(str, " or "))
 	}
 
 	//Setup ZMQ
@@ -92,172 +119,20 @@ func (wg *Wirego) ResultsCacheEnable(enable bool) {
 	wg.resultsCacheEnable = enable
 }
 
-/*
-//export wirego_version_major
-func wirego_version_major() C.int {
-	return WIREGO_VERSION_MAJOR
-}
-
-//export wirego_version_minor
-func wirego_version_minor() C.int {
-	return WIREGO_VERSION_MINOR
-}
-
-//export wirego_plugin_name
-func wirego_plugin_name() *C.char {
-	if wg.listener == nil {
-		return nil
-	}
-	return C.CString(wg.pluginName)
-}
-
-//export wirego_plugin_filter
-func wirego_plugin_filter() *C.char {
-	if wg.listener == nil {
-		return nil
-	}
-	return C.CString(wg.pluginFilter)
-}
-
-//export wirego_get_fields_count
-func wirego_get_fields_count() C.int {
-	if wg.listener == nil {
-		return 0
-	}
-
-	return C.int(len(wg.pluginFields))
-}
-
-//export wirego_get_field
-func wirego_get_field(index int, wiregoFieldId *C.int, name **C.char, filter **C.char, valueType *C.int, display *C.int) C.int {
-	*wiregoFieldId = -1
-	*name = nil
-	*filter = nil
-	*valueType = -1
-	*display = -1
-
-	if (wg.listener == nil) || (index < 0) || (index >= len(wg.pluginFields)) {
-		return C.int(-1)
-	}
-
-	f := wg.pluginFields[index]
-
-	wg.wiregoFieldIds[int(f.WiregoFieldId)] = true
-	*wiregoFieldId = C.int(f.WiregoFieldId)
-	*name = C.CString(f.Name)
-	*filter = C.CString(f.Filter)
-	*valueType = C.int(f.ValueType)
-	*display = C.int(f.DisplayMode)
-
-	return C.int(0)
-}
-
-//export wirego_detection_heuristic
-func wirego_detection_heuristic(packetNumber C.int, src *C.char, dst *C.char, layer *C.char, packet *C.char, packetSize C.int) C.int {
-	if wg.listener == nil {
-		return C.int(-1)
-	}
-
-	if (src == nil) || (dst == nil) || (layer == nil) || (packet == nil) || packetSize == 0 {
-		return C.int(-1)
-	}
-
-	result := wg.listener.DetectionHeuristic(int(packetNumber), C.GoString(src), C.GoString(dst), C.GoString(layer), C.GoBytes(unsafe.Pointer(packet), packetSize))
-
-	if result {
-		return 1
-	}
-	return 0
-}
-
-//export wirego_result_get_protocol
-func wirego_result_get_protocol(h C.int) *C.char {
-	if wg.listener == nil || wg.resultsCache == nil {
-		return nil
-	}
-
-	wg.lock.Lock()
-	defer wg.lock.Unlock()
-	desc, found := wg.resultsCache[h]
-	if !found {
-		return nil
-	}
-
-	return C.CString(desc.Protocol)
-}
-
-//export wirego_result_get_info
-func wirego_result_get_info(h C.int) *C.char {
-	if wg.listener == nil || wg.resultsCache == nil {
-		return nil
-	}
-
-	wg.lock.Lock()
-	defer wg.lock.Unlock()
-	desc, found := wg.resultsCache[h]
-	if !found {
-		return nil
-	}
-
-	return C.CString(desc.Info)
-}
-
-//export wirego_result_get_fields_count
-func wirego_result_get_fields_count(h C.int) C.int {
-	if wg.listener == nil || wg.resultsCache == nil {
-		return C.int(0)
-	}
-
-	wg.lock.Lock()
-	defer wg.lock.Unlock()
-	desc, found := wg.resultsCache[h]
-	if !found {
-		return C.int(0)
-	}
-	return C.int(len(desc.fields))
-}
-
-//export wirego_result_get_field
-func wirego_result_get_field(h C.int, idx C.int, parentIdx *C.int, wiregoFieldId *C.int, offset *C.int, length *C.int) {
-	*parentIdx = -1
-	*wiregoFieldId = -1
-	*offset = -1
-	*length = -1
-
-	if wg.listener == nil || wg.resultsCache == nil {
-		return
-	}
-
-	wg.lock.Lock()
-	defer wg.lock.Unlock()
-
-	desc, found := wg.resultsCache[h]
-	if !found {
-		return
-	}
-
-	if idx >= C.int(len(desc.fields)) {
-		return
-	}
-	*parentIdx = C.int(desc.fields[idx].parentIdx)
-	*wiregoFieldId = C.int(desc.fields[idx].wiregoFieldId)
-	*offset = C.int(desc.fields[idx].offset)
-	*length = C.int(desc.fields[idx].length)
-}
-
-//export wirego_result_release
-func wirego_result_release(h C.int) {
-	if !resultsCacheEnable {
-		delete(wg.resultsCache, h)
-	}
-}
-*/
-
-func (wg *Wirego) addFieldsRec(flatten *DissectResultFlattenEntry, parentIdx int, field *DissectField) {
-	flatten.fields = append(flatten.fields, DissectResultFlatten{parentIdx: parentIdx, wiregoFieldId: field.WiregoFieldId, offset: field.Offset, length: field.Length})
+// addFieldsRecursive unrolls a fields result tree to flatten version, in order to store it to the cache
+func (wg *Wirego) addFieldsRecursive(flatten *DissectResultFlattenEntry, parentIdx int, field *DissectField) {
+	flatten.fields = append(flatten.fields, DissectResultFieldFlatten{parentIdx: parentIdx, wiregoFieldId: field.WiregoFieldId, offset: field.Offset, length: field.Length})
 	newParentIdx := len(flatten.fields) - 1
 
 	for _, sub := range field.SubFields {
-		wg.addFieldsRec(flatten, newParentIdx, &sub)
+		wg.addFieldsRecursive(flatten, newParentIdx, &sub)
+	}
+}
+
+func (f DetectionFilter) String() string {
+	if f.FilterType == DetectionFilterTypeInt {
+		return fmt.Sprintf("%s=%d", f.Name, f.ValueInt)
+	} else {
+		return fmt.Sprintf("%s=%s", f.Name, f.ValueString)
 	}
 }
