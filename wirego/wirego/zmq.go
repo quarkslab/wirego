@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	zmq "github.com/go-zeromq/zmq4"
@@ -30,6 +33,19 @@ func (wg *Wirego) Listen() {
 	if wg.listener == nil {
 		return
 	}
+
+	sigc := make(chan os.Signal, 1)
+	signal.Notify(sigc,
+		syscall.SIGHUP,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGQUIT)
+	go func() {
+		_ = <-sigc
+		wg.logs.Warn("Stopping...")
+		wg.zmqSocket.Close()
+		os.Exit(0)
+	}()
 
 	dispatcher := make(map[string]ZMQCommand)
 

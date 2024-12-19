@@ -13,7 +13,7 @@ Before going any further, you should build this example and try to load it with 
     make
 
 
-Our plugin in Go will need to import the "wirego" package and register to wirego during init():
+Our plugin in Go will need to instanciate the "wirego" package using "New":
 
 ```golang
 package main
@@ -28,33 +28,30 @@ import (
 type WiregoExample struct {
 }
 
-// Unused (but mandatory)
-func main() {}
+func main() {
+	var wge WiregoMinimalExample
 
-// Called at golang environment initialization (you should probably not touch this)
-func init() {
-  var wge WiregoExample
+	wg, err := wirego.New("ipc:///tmp/wirego0", false, wge)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	wg.ResultsCacheEnable(false)
 
-  //Register to the wirego package
-  wirego.Register(wge)
-
-  //Enable the Wirego cache, so that Wireshark will not ask us to parse the same packet multiple times
-  wirego.ResultsCacheEnable(false)
+	wg.Listen()
 }
 ```
+
+We create a new Wirego instance by passing the ZMQ endpoint to be used, a verbodity flag and a pointer to the object implementing the interface.
+The ZMQ endpoint is a standard ZMQ string, such as:
+
+  - tcp://127.0.0.1:1234  listen locally on TCP port 1234
+	- udp://192.168.1.1:4561 listen on an external interface, on UDP port 4561
+	- ipc:///tmp/wirego0 listen on a local IPC (ie unix socket)
+
+
 Now we just need to implement the WiregoInterface interface.
 
-
-The first function to implement is **Setup**, that is where we can initialize our plugin if needed.
-Since this is a simple example, we don't have anything to initialize.
-
-```golang
-// This function is called when the plugin is loaded.
-func (WiregoMinimalExample) Setup() error {
-
-	return nil
-}
-```
 
 **GetName** returns the name of our example plugin and **GetFilter** defines the string that we will use to filter the packets matching our protocol in Wireshark.
 
@@ -181,9 +178,15 @@ func (WiregoMinimalExample) DissectPacket(packetNumber int, src string, dst stri
 
 The last step is to build our plugin using:
 
-      go build -o wirego_minimalistic.so -buildmode=c-shared
+      go build
 
-And... that's all!
 
-Run Wireshark, to go Preferences -> Wirego and point to your freshly built Golang plugin.
+And that's all.
+
+Now:
+
+  1. run your remote plugin: ./wirego_minimal
+	2. run Wireshark, to go Preferences -> Wirego and type the ZMQ endpoint string defined on the main() function. Restart Wireshark.
+
+
 

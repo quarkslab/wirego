@@ -56,33 +56,23 @@ The http plugin does the same and uses fields to register on top of tcp port 80.
 
 ## Implementation
 
-During **init**, which is called at package initialization (hence when the plugin is loaded), we register to the Wirego package. As previously explained, the cache is disabled: in order to flag the requests as "valid" or "invalid" we need to be able to update the http request result.
+As previously explained, the cache is disabled: in order to flag the requests as "valid" or "invalid" we need to be able to update the http request result.
 
 ```golang
 type WiregoReolinkCreds struct {
 }
 
-// Unused (but mandatory)
-func main() {}
-
-// Called at golang environment initialization (you should probably not touch this)
-func init() {
+func main() {
 	var wge WiregoReolinkCreds
 
-	//Register to the wirego package
-	wirego.Register(wge)
+	wg, err := wirego.New("ipc:///tmp/wirego0", false, wge)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	wg.ResultsCacheEnable(false)
 
-  //Disable the Wirego cache
-	wirego.ResultsCacheEnable(false)
-}
-```
-
-The **Setup** is not used here, we don't have anything to initialize.
-
-```golang
-// This function is called when the plugin is loaded.
-func (WiregoReolinkCreds) Setup() error {
-	return nil
+	wg.Listen()
 }
 ```
 

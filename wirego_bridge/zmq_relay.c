@@ -2,6 +2,11 @@
 #include <zmq.h>
 #include <wsutil/wslog.h>
 
+/*
+  This is the Wirego's ZMQ protocol implementation. 
+  For any details concernning commands, arguments and encoding types, please refer to the dedicated specification.
+*/
+
 //Reads a C-String from a msg. Returns an allocated pointer or NULL
 char * read_string_from_msg(zmq_msg_t *msg, int size) {
   char* resp = zmq_msg_data(msg);

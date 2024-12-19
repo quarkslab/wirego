@@ -97,22 +97,17 @@ type WiregoReolinkCreds struct {
 
 var requestsCache []RequestCacheEntry
 
-// Unused (but mandatory)
-func main() {}
-
-// Called at golang environment initialization (you should probably not touch this)
-func init() {
+func main() {
 	var wge WiregoReolinkCreds
 
-	//Register to the wirego package
-	wirego.Register(wge)
-	wirego.ResultsCacheEnable(false)
-}
+	wg, err := wirego.New("ipc:///tmp/wirego0", false, wge)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	wg.ResultsCacheEnable(false)
 
-// This function is called when the plugin is loaded.
-func (WiregoReolinkCreds) Setup() error {
-
-	return nil
+	wg.Listen()
 }
 
 // This function shall return the plugin name
