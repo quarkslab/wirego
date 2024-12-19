@@ -20,7 +20,7 @@ General considerations:
   - All transmitted bytes values are pretty standard 8 bits values
   - The first frame of all REQ commands is the command name (as a string)
   - The first frame of all REP is the result status (as a 1 byte boolean)
-  - All requests use simple data types. When a structure (or an array of structure) might be needed, accessors are defined
+  - All requests use simple data types. When a structure (or an array of structures) might be needed, simple accessors are defined
 
 
 The following tables describes each command and expected response.

@@ -28,7 +28,7 @@ In all Wirego's code and documentations we will refer to:
   - **Wirego package** : a package/class/bundle for a given language, used to make things easier on your side
   - **Wirego remote** : the plugin that you will develop using the **Wirego package**
 
-## Overview
+## Overview (in Go)
 
 In order to setup Wirego, you will need follow 3 steps:
 
@@ -65,6 +65,9 @@ A few plugin examples are available :
   - [Reolink Credentials light](./examples/reolinkcredslight/) : a lightweight version of a Reolink camera credentials parser
   - [Reolink Credentials](./examples/reolinkcreds/) : a advanced version of a Reolink camera credentials parser
 
+## Implementing a new language
+
+If you plan to implement a package for a currently unsupported language, please take a look at the [Wirego ZMQ specifications](./doc/PROTOCOL.md).
 
 ## Next steps
 
