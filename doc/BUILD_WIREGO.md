@@ -44,6 +44,9 @@ Extract the built files from the image:
 
 If you don't plan to use a pre-built version of the wirego plugin, you can built it manually.
 
+Install ZMQ library : [https://zeromq.org/download/](https://zeromq.org/download/)
+
+
 Clone Wireshark:
 
     git clone https://github.com/wireshark/wireshark.git

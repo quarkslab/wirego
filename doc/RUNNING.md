@@ -13,17 +13,13 @@ Another option is to start Wireshark, open the "About" dialog, click on the "Fol
 ![About](./img/about.png)
 
 
-To make sure your plugin has been properly loaded, open Analyze>Enabled Protocols and search for "wirego".
+To make sure your plugin has been properly loaded, open Preferences>Protocols and search for "wirego".
 
 If your golang plugin fails to load for any reason, the plugin will not appear on that list.
 
 
-## Loading your plugin
+## Configuring your endpoint
 
 Once the Wirego plugin for Wireshark is installed open Wireshark preferences, select "Protocols" on the left menu and then locate "Wirego".
 
-Click the "Browse" button to locate your plugin written in Go.
-
-![Setting up Wireshark](./img/parameters.png)
-
-You will need to restart Wireshark for the changes to be applied.
+Enter the endpoint to match the one used on you **Wirego remote plugin**.
