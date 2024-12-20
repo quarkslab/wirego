@@ -1,8 +1,9 @@
-# Wirego ![Wirego Logo](./doc/img/wirego_logo_small.png)
+# Wirego 
 
-
-A Wireshark plugin framework based on ZMQ, supporting Golang and hopefully more languages soon.
-
+|    |    |
+| -- | -- |
+| ![Wirego Logo](./doc/img/wirego_logo_small.png) |  A Wireshark plugin framework based on ZMQ, supporting Golang and hopefully more languages soon.
+|
 
 
 ## Introduction
