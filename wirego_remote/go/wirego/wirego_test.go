@@ -343,11 +343,92 @@ func TestDissectPacket(t *testing.T) {
 	checkZMQCommand(request, response, t)
 }
 
-func checkZMQCommand(sendFrames [][]byte, resultFrames [][]byte, t *testing.T) {
-	var pl Plug
-	defer os.Remove(zmqTestEndpointFile)
+func TestResultGetProtocol(t *testing.T) {
+	var request [][]byte
+	var response [][]byte
 
+	wg := helperSetupWirego(t)
+
+	//Dissect packet
+	request = append(request, []byte("dissect_packet\x00"))                       //Command name
+	request = append(request, binary.LittleEndian.AppendUint32([]byte{}, 123456)) //Packet number
+	request = append(request, []byte("1.2.3.4"))                                  //Src
+	request = append(request, []byte("4.3.2.1"))                                  //Dest
+	request = append(request, []byte("tcp.ip.vlan.ip.hdlc"))                      //Layer
+	request = append(request, []byte{0x01, 0x02, 0x03, 0x04})                     //Payload
+
+	response = append(response, []byte{0x01})                                       //Valid
+	response = append(response, binary.LittleEndian.AppendUint32([]byte{}, 123456)) //Dissection handle (packet number)
+	helperRunCommand(request, response, t)
+
+	//reset
+	request = make([][]byte, 0)
+	response = make([][]byte, 0)
+
+	//Fetch protocol
+	request = append(request, []byte("result_get_protocol\x00"))                  //Command name
+	request = append(request, binary.LittleEndian.AppendUint32([]byte{}, 123456)) //Packet number
+	response = append(response, []byte{0x01})                                     //Valid
+	response = append(response, []byte("Test protocol\x00"))                      //Packet dissection: protocol
+	helperRunCommand(request, response, t)
+
+	helperStopWirego(wg, t)
+}
+
+func TestResultGetInfo(t *testing.T) {
+	var request [][]byte
+	var response [][]byte
+
+	wg := helperSetupWirego(t)
+
+	//Dissect packet
+	request = append(request, []byte("dissect_packet\x00"))                       //Command name
+	request = append(request, binary.LittleEndian.AppendUint32([]byte{}, 123456)) //Packet number
+	request = append(request, []byte("1.2.3.4"))                                  //Src
+	request = append(request, []byte("4.3.2.1"))                                  //Dest
+	request = append(request, []byte("tcp.ip.vlan.ip.hdlc"))                      //Layer
+	request = append(request, []byte{0x01, 0x02, 0x03, 0x04})                     //Payload
+
+	response = append(response, []byte{0x01})                                       //Valid
+	response = append(response, binary.LittleEndian.AppendUint32([]byte{}, 123456)) //Dissection handle (packet number)
+	helperRunCommand(request, response, t)
+
+	//reset
+	request = make([][]byte, 0)
+	response = make([][]byte, 0)
+
+	//Fetch protocol
+	request = append(request, []byte("result_get_info\x00"))                      //Command name
+	request = append(request, binary.LittleEndian.AppendUint32([]byte{}, 123456)) //Packet number
+	response = append(response, []byte{0x01})                                     //Valid
+	response = append(response, []byte("Test info\x00"))                          //Packet dissection: info
+	helperRunCommand(request, response, t)
+
+	helperStopWirego(wg, t)
+}
+
+/*
+	dispatcher["result_get_protocol"] = wg.processResultGetProtocol
+	dispatcher["result_get_info"] = wg.processResultGetInfo
+	dispatcher["result_get_fields_count"] = wg.processResultGetFieldsCount
+	dispatcher["result_get_field"] = wg.processResultGetField
+	dispatcher["result_release"] = wg.processResultRelease
+
+*/
+
+// Start Wirego, run command, exit
+func checkZMQCommand(sendFrames [][]byte, resultFrames [][]byte, t *testing.T) {
+	wg := helperSetupWirego(t)
+	helperRunCommand(sendFrames, resultFrames, t)
+	helperStopWirego(wg, t)
+}
+
+// helperSetupWirego starts wirego and wait for commands
+func helperSetupWirego(t *testing.T) (wg *Wirego) {
+	var pl Plug
+	os.Remove(zmqTestEndpointFile)
 	t.Log("Testing", t.Name())
+
 	//Setup Wirego package
 	wg, err := New(zmqTestEndpoint, true, &pl)
 	if err != nil {
@@ -356,9 +437,15 @@ func checkZMQCommand(sendFrames [][]byte, resultFrames [][]byte, t *testing.T) {
 
 	//Listen in background
 	go wg.Listen()
-
 	//Make sure zmq server is ready
 	time.Sleep(100 * time.Millisecond)
+
+	return wg
+}
+
+// helperRunCommand sends command, receive response and check
+func helperRunCommand(sendFrames [][]byte, resultFrames [][]byte, t *testing.T) {
+	var err error
 
 	//Connect to Wirego's ZMQ (fake Wirego bridge)
 	ctx := context.Background()
@@ -394,7 +481,10 @@ func checkZMQCommand(sendFrames [][]byte, resultFrames [][]byte, t *testing.T) {
 			t.Fatalf("Frame %d is as expected", i)
 		}
 	}
+}
 
+// helperStopWirego stops wirego
+func helperStopWirego(wg *Wirego, t *testing.T) {
 	//Close
 	wg.zmqSocket.Close()
 	time.Sleep(100 * time.Millisecond)

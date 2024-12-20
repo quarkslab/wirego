@@ -276,7 +276,7 @@ func (wg *Wirego) processDissectPacket(msg *zmq.Msg) error {
 
 func (wg *Wirego) processResultGetProtocol(msg *zmq.Msg) error {
 	if len(msg.Frames) != 2 {
-		return wg.returnFailure(errors.New("result_get_protocol failed, packet_number too short"))
+		return wg.returnFailure(errors.New("result_get_protocol failed, invalid arguments count in request"))
 	}
 
 	//Frame one contains dissect handle (ie packet number)
@@ -298,7 +298,7 @@ func (wg *Wirego) processResultGetProtocol(msg *zmq.Msg) error {
 
 func (wg *Wirego) processResultGetInfo(msg *zmq.Msg) error {
 	if len(msg.Frames) != 2 {
-		return wg.returnFailure(errors.New("result_get_info failed, packet_number too short"))
+		return wg.returnFailure(errors.New("result_get_info failed, invalid arguments count in request"))
 	}
 	//Frame one contains dissect handle (ie packet number)
 	if len(msg.Frames[1]) != 4 {
@@ -319,7 +319,7 @@ func (wg *Wirego) processResultGetInfo(msg *zmq.Msg) error {
 
 func (wg *Wirego) processResultGetFieldsCount(msg *zmq.Msg) error {
 	if len(msg.Frames) != 2 {
-		return wg.returnFailure(errors.New("result_get_fields_count failed, packet_number too short"))
+		return wg.returnFailure(errors.New("result_get_fields_count failed, invalid arguments count in request"))
 	}
 	//Frame one contains dissect handle (ie packet number)
 	if len(msg.Frames[1]) != 4 {
@@ -340,7 +340,7 @@ func (wg *Wirego) processResultGetFieldsCount(msg *zmq.Msg) error {
 
 func (wg *Wirego) processResultGetField(msg *zmq.Msg) error {
 	if len(msg.Frames) != 3 {
-		return wg.returnFailure(errors.New("result_get_field failed, packet_number too short"))
+		return wg.returnFailure(errors.New("result_get_field failed, invalid arguments count in request"))
 	}
 
 	//Frame 1 contains dissect handle (ie packet number)
@@ -382,7 +382,7 @@ func (wg *Wirego) processResultGetField(msg *zmq.Msg) error {
 
 func (wg *Wirego) processResultRelease(msg *zmq.Msg) error {
 	if len(msg.Frames) != 2 {
-		return wg.returnFailure(errors.New("result_release failed, packet_number too short"))
+		return wg.returnFailure(errors.New("result_release failed, invalid arguments count in request"))
 	}
 
 	//Frame 1 contains dissect handle (ie packet number)
