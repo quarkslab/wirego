@@ -407,14 +407,149 @@ func TestResultGetInfo(t *testing.T) {
 	helperStopWirego(wg, t)
 }
 
-/*
-	dispatcher["result_get_protocol"] = wg.processResultGetProtocol
-	dispatcher["result_get_info"] = wg.processResultGetInfo
-	dispatcher["result_get_fields_count"] = wg.processResultGetFieldsCount
-	dispatcher["result_get_field"] = wg.processResultGetField
-	dispatcher["result_release"] = wg.processResultRelease
+func TestResultGetFieldsCount(t *testing.T) {
+	var request [][]byte
+	var response [][]byte
 
-*/
+	wg := helperSetupWirego(t)
+
+	//Dissect packet
+	request = append(request, []byte("dissect_packet\x00"))                       //Command name
+	request = append(request, binary.LittleEndian.AppendUint32([]byte{}, 123456)) //Packet number
+	request = append(request, []byte("1.2.3.4"))                                  //Src
+	request = append(request, []byte("4.3.2.1"))                                  //Dest
+	request = append(request, []byte("tcp.ip.vlan.ip.hdlc"))                      //Layer
+	request = append(request, []byte{0x01, 0x02, 0x03, 0x04})                     //Payload
+
+	response = append(response, []byte{0x01})                                       //Valid
+	response = append(response, binary.LittleEndian.AppendUint32([]byte{}, 123456)) //Dissection handle (packet number)
+	helperRunCommand(request, response, t)
+
+	//reset
+	request = make([][]byte, 0)
+	response = make([][]byte, 0)
+
+	//Fetch protocol
+	request = append(request, []byte("result_get_fields_count\x00"))              //Command name
+	request = append(request, binary.LittleEndian.AppendUint32([]byte{}, 123456)) //Packet number
+	response = append(response, []byte{0x01})                                     //Valid
+	response = append(response, binary.LittleEndian.AppendUint32([]byte{}, 4))    //Packet dissection: fields count
+	helperRunCommand(request, response, t)
+
+	helperStopWirego(wg, t)
+}
+
+func TestResultGetField(t *testing.T) {
+	var request [][]byte
+	var response [][]byte
+
+	wg := helperSetupWirego(t)
+
+	//Dissect packet
+	request = append(request, []byte("dissect_packet\x00"))                       //Command name
+	request = append(request, binary.LittleEndian.AppendUint32([]byte{}, 123456)) //Packet number
+	request = append(request, []byte("1.2.3.4"))                                  //Src
+	request = append(request, []byte("4.3.2.1"))                                  //Dest
+	request = append(request, []byte("tcp.ip.vlan.ip.hdlc"))                      //Layer
+	request = append(request, []byte{0x01, 0x02, 0x03, 0x04})                     //Payload
+
+	response = append(response, []byte{0x01})                                       //Valid
+	response = append(response, binary.LittleEndian.AppendUint32([]byte{}, 123456)) //Dissection handle (packet number)
+	helperRunCommand(request, response, t)
+
+	//reset
+	request = make([][]byte, 0)
+	response = make([][]byte, 0)
+
+	//Fetch dissection result field 0 (f1)
+	request = append(request, []byte("result_get_field\x00"))                                   //Command name
+	request = append(request, binary.LittleEndian.AppendUint32([]byte{}, 123456))               //Packet number
+	request = append(request, binary.LittleEndian.AppendUint32([]byte{}, 0))                    //Field index
+	response = append(response, []byte{0x01})                                                   //Valid
+	response = append(response, binary.LittleEndian.AppendUint32([]byte{}, uint32(0xffffffff))) //Packet dissection field: parent idx
+	response = append(response, binary.LittleEndian.AppendUint32([]byte{}, uint32(1)))          //Packet dissection field: wirego field id
+	response = append(response, binary.LittleEndian.AppendUint32([]byte{}, uint32(0)))          //Packet dissection field: offset
+	response = append(response, binary.LittleEndian.AppendUint32([]byte{}, uint32(1)))          //Packet dissection field: length
+	helperRunCommand(request, response, t)
+
+	//reset
+	request = make([][]byte, 0)
+	response = make([][]byte, 0)
+
+	//Fetch dissection result field 1 (f2)
+	request = append(request, []byte("result_get_field\x00"))                                   //Command name
+	request = append(request, binary.LittleEndian.AppendUint32([]byte{}, 123456))               //Packet number
+	request = append(request, binary.LittleEndian.AppendUint32([]byte{}, 1))                    //Field index
+	response = append(response, []byte{0x01})                                                   //Valid
+	response = append(response, binary.LittleEndian.AppendUint32([]byte{}, uint32(0xFFFFFFFF))) //Packet dissection field: parent idx
+	response = append(response, binary.LittleEndian.AppendUint32([]byte{}, uint32(2)))          //Packet dissection field: wirego field id
+	response = append(response, binary.LittleEndian.AppendUint32([]byte{}, uint32(0)))          //Packet dissection field: offset
+	response = append(response, binary.LittleEndian.AppendUint32([]byte{}, uint32(1)))          //Packet dissection field: length
+	helperRunCommand(request, response, t)
+
+	//reset
+	request = make([][]byte, 0)
+	response = make([][]byte, 0)
+
+	//Fetch dissection result field 2 (sub)
+	request = append(request, []byte("result_get_field\x00"))                          //Command name
+	request = append(request, binary.LittleEndian.AppendUint32([]byte{}, 123456))      //Packet number
+	request = append(request, binary.LittleEndian.AppendUint32([]byte{}, 2))           //Field index
+	response = append(response, []byte{0x01})                                          //Valid
+	response = append(response, binary.LittleEndian.AppendUint32([]byte{}, uint32(1))) //Packet dissection field: parent idx
+	response = append(response, binary.LittleEndian.AppendUint32([]byte{}, uint32(2))) //Packet dissection field: wirego field id
+	response = append(response, binary.LittleEndian.AppendUint32([]byte{}, uint32(1))) //Packet dissection field: offset
+	response = append(response, binary.LittleEndian.AppendUint32([]byte{}, uint32(1))) //Packet dissection field: length
+	helperRunCommand(request, response, t)
+
+	//reset
+	request = make([][]byte, 0)
+	response = make([][]byte, 0)
+
+	//Fetch dissection result field 3 (f3)
+	request = append(request, []byte("result_get_field\x00"))                                   //Command name
+	request = append(request, binary.LittleEndian.AppendUint32([]byte{}, 123456))               //Packet number
+	request = append(request, binary.LittleEndian.AppendUint32([]byte{}, 3))                    //Field index
+	response = append(response, []byte{0x01})                                                   //Valid
+	response = append(response, binary.LittleEndian.AppendUint32([]byte{}, uint32(0xffffffff))) //Packet dissection field: parent idx
+	response = append(response, binary.LittleEndian.AppendUint32([]byte{}, uint32(1)))          //Packet dissection field: wirego field id
+	response = append(response, binary.LittleEndian.AppendUint32([]byte{}, uint32(2)))          //Packet dissection field: offset
+	response = append(response, binary.LittleEndian.AppendUint32([]byte{}, uint32(1)))          //Packet dissection field: length
+	helperRunCommand(request, response, t)
+
+	helperStopWirego(wg, t)
+}
+
+func TestResultRelease(t *testing.T) {
+	var request [][]byte
+	var response [][]byte
+
+	wg := helperSetupWirego(t)
+
+	//Dissect packet
+	request = append(request, []byte("dissect_packet\x00"))                       //Command name
+	request = append(request, binary.LittleEndian.AppendUint32([]byte{}, 123456)) //Packet number
+	request = append(request, []byte("1.2.3.4"))                                  //Src
+	request = append(request, []byte("4.3.2.1"))                                  //Dest
+	request = append(request, []byte("tcp.ip.vlan.ip.hdlc"))                      //Layer
+	request = append(request, []byte{0x01, 0x02, 0x03, 0x04})                     //Payload
+
+	response = append(response, []byte{0x01})                                       //Valid
+	response = append(response, binary.LittleEndian.AppendUint32([]byte{}, 123456)) //Dissection handle (packet number)
+	helperRunCommand(request, response, t)
+
+	//reset
+	request = make([][]byte, 0)
+	response = make([][]byte, 0)
+
+	//Release result
+	request = append(request, []byte("result_release\x00"))                       //Command name
+	request = append(request, binary.LittleEndian.AppendUint32([]byte{}, 123456)) //Packet number
+	response = append(response, []byte{0x01})                                     //Valid
+	helperRunCommand(request, response, t)
+
+	helperStopWirego(wg, t)
+}
 
 // Start Wirego, run command, exit
 func checkZMQCommand(sendFrames [][]byte, resultFrames [][]byte, t *testing.T) {
