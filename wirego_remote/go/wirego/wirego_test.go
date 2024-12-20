@@ -39,19 +39,36 @@ func (p *Plug) GetFields() []WiresharkField {
 func (p *Plug) GetDetectionFilters() []DetectionFilter {
 	var d []DetectionFilter
 
+	d = append(d, DetectionFilter{FilterType: DetectionFilterTypeInt, Name: "filterint01", ValueInt: 123})
+	d = append(d, DetectionFilter{FilterType: DetectionFilterTypeInt, Name: "filterint02", ValueInt: 456})
+	d = append(d, DetectionFilter{FilterType: DetectionFilterTypeString, Name: "filterstring01", ValueString: "123"})
+	d = append(d, DetectionFilter{FilterType: DetectionFilterTypeString, Name: "filterstring02", ValueString: "456"})
 	return d
 }
 
 func (p *Plug) GetDetectionHeuristicsParents() []string {
-	return []string{"parent1", "parent2"}
+	return []string{"darth", "vader"}
 }
 
 func (p *Plug) DetectionHeuristic(packetNumber int, src string, dst string, stack string, packet []byte) bool {
-	return false
+	return bytes.Equal(packet, []byte{0x01, 0x02, 0x03, 0x04})
+
 }
 
 func (p *Plug) DissectPacket(packetNumber int, src string, dst string, stack string, packet []byte) *DissectResult {
 	var dr DissectResult
+
+	dr.Protocol = "Test protocol"
+	dr.Info = "Test info"
+
+	f1 := DissectField{WiregoFieldId: 1, Offset: 0, Length: 1}
+	dr.Fields = append(dr.Fields, f1)
+
+	sub := DissectField{WiregoFieldId: 2, Offset: 1, Length: 1}
+	f2 := DissectField{WiregoFieldId: 2, Offset: 0, Length: 1, SubFields: append([]DissectField{}, sub)}
+	dr.Fields = append(dr.Fields, f2)
+	f3 := DissectField{WiregoFieldId: 1, Offset: 2, Length: 1}
+	dr.Fields = append(dr.Fields, f3)
 
 	return &dr
 }
@@ -164,6 +181,168 @@ func TestGetField(t *testing.T) {
 	checkZMQCommand(request, response, t)
 }
 
+func TestDetectInt(t *testing.T) {
+	var request [][]byte
+	var response [][]byte
+
+	//Check detect int with idx 0
+	request = append(request, []byte("detect_int\x00"))                      //Command name
+	request = append(request, binary.LittleEndian.AppendUint32([]byte{}, 0)) //Index
+
+	response = append(response, []byte{0x01})                                    //Valid
+	response = append(response, []byte("filterint01\x00"))                       //Detect parameter
+	response = append(response, binary.LittleEndian.AppendUint32([]byte{}, 123)) //Detect value
+	checkZMQCommand(request, response, t)
+
+	//reset
+	request = make([][]byte, 0)
+	response = make([][]byte, 0)
+
+	//Check detect int with idx 1
+	request = append(request, []byte("detect_int\x00"))                      //Command name
+	request = append(request, binary.LittleEndian.AppendUint32([]byte{}, 1)) //Index
+
+	response = append(response, []byte{0x01})                                    //Valid
+	response = append(response, []byte("filterint02\x00"))                       //Detect parameter
+	response = append(response, binary.LittleEndian.AppendUint32([]byte{}, 456)) //Detect value
+	checkZMQCommand(request, response, t)
+
+	//reset
+	request = make([][]byte, 0)
+	response = make([][]byte, 0)
+
+	//Check detect int with idx 2 (too far, will fail)
+	request = append(request, []byte("detect_int\x00"))                      //Command name
+	request = append(request, binary.LittleEndian.AppendUint32([]byte{}, 2)) //Index
+
+	response = append(response, []byte{0x00}) //Invalid
+	checkZMQCommand(request, response, t)
+}
+
+func TestDetectString(t *testing.T) {
+	var request [][]byte
+	var response [][]byte
+
+	//Check detect string with idx 0
+	request = append(request, []byte("detect_string\x00"))                   //Command name
+	request = append(request, binary.LittleEndian.AppendUint32([]byte{}, 0)) //Index
+
+	response = append(response, []byte{0x01})                 //Valid
+	response = append(response, []byte("filterstring01\x00")) //Detect parameter
+	response = append(response, []byte("123\x00"))            //Detect value
+	checkZMQCommand(request, response, t)
+
+	//reset
+	request = make([][]byte, 0)
+	response = make([][]byte, 0)
+
+	//Check detect string with idx 1
+	request = append(request, []byte("detect_string\x00"))                   //Command name
+	request = append(request, binary.LittleEndian.AppendUint32([]byte{}, 1)) //Index
+
+	response = append(response, []byte{0x01})                 //Valid
+	response = append(response, []byte("filterstring02\x00")) //Detect parameter
+	response = append(response, []byte("456\x00"))            //Detect value
+	checkZMQCommand(request, response, t)
+
+	//reset
+	request = make([][]byte, 0)
+	response = make([][]byte, 0)
+
+	//Check detect string with idx 2 (too far, will fail)
+	request = append(request, []byte("detect_string\x00"))                   //Command name
+	request = append(request, binary.LittleEndian.AppendUint32([]byte{}, 2)) //Index
+
+	response = append(response, []byte{0x00}) //Invalid
+	checkZMQCommand(request, response, t)
+}
+
+func TestDetectHeuristicParents(t *testing.T) {
+	var request [][]byte
+	var response [][]byte
+
+	//Check detect string with idx 0
+	request = append(request, []byte("detect_heuristic_parent\x00"))         //Command name
+	request = append(request, binary.LittleEndian.AppendUint32([]byte{}, 0)) //Index
+
+	response = append(response, []byte{0x01})        //Valid
+	response = append(response, []byte("darth\x00")) //Parent name
+	checkZMQCommand(request, response, t)
+
+	//reset
+	request = make([][]byte, 0)
+	response = make([][]byte, 0)
+
+	//Check detect string with idx 1
+	request = append(request, []byte("detect_heuristic_parent\x00"))         //Command name
+	request = append(request, binary.LittleEndian.AppendUint32([]byte{}, 1)) //Index
+
+	response = append(response, []byte{0x01})        //Valid
+	response = append(response, []byte("vader\x00")) //Parent name
+	checkZMQCommand(request, response, t)
+
+	//reset
+	request = make([][]byte, 0)
+	response = make([][]byte, 0)
+
+	//Check detect string with idx 2 (too far, will fail)
+	request = append(request, []byte("detect_heuristic_parent\x00"))         //Command name
+	request = append(request, binary.LittleEndian.AppendUint32([]byte{}, 2)) //Index
+
+	response = append(response, []byte{0x00}) //Invalid
+	checkZMQCommand(request, response, t)
+}
+
+func TestDetectionHeuristic(t *testing.T) {
+	var request [][]byte
+	var response [][]byte
+
+	//Heuristic detection with "good" packet
+	request = append(request, []byte("detection_heuristic\x00"))                  //Command name
+	request = append(request, binary.LittleEndian.AppendUint32([]byte{}, 123456)) //Packet number
+	request = append(request, []byte("1.2.3.4"))                                  //Src
+	request = append(request, []byte("4.3.2.1"))                                  //Dest
+	request = append(request, []byte("tcp.ip.vlan.ip.hdlc"))                      //Layer
+	request = append(request, []byte{0x01, 0x02, 0x03, 0x04})                     //Payload
+
+	response = append(response, []byte{0x01}) //Valid
+	response = append(response, []byte{0x01}) //Detected
+	checkZMQCommand(request, response, t)
+
+	//reset
+	request = make([][]byte, 0)
+	response = make([][]byte, 0)
+
+	//Heuristic detection with "bad" packet
+	request = append(request, []byte("detection_heuristic\x00"))                  //Command name
+	request = append(request, binary.LittleEndian.AppendUint32([]byte{}, 123456)) //Packet number
+	request = append(request, []byte("1.2.3.4"))                                  //Src
+	request = append(request, []byte("4.3.2.1"))                                  //Dest
+	request = append(request, []byte("tcp.ip.vlan.ip.hdlc"))                      //Layer
+	request = append(request, []byte{0x01, 0x01, 0x01, 0x01})                     //Payload
+
+	response = append(response, []byte{0x01}) //Valid
+	response = append(response, []byte{0x00}) //Not Detected
+	checkZMQCommand(request, response, t)
+}
+
+func TestDissectPacket(t *testing.T) {
+	var request [][]byte
+	var response [][]byte
+
+	//Dissect packet
+	request = append(request, []byte("dissect_packet\x00"))                       //Command name
+	request = append(request, binary.LittleEndian.AppendUint32([]byte{}, 123456)) //Packet number
+	request = append(request, []byte("1.2.3.4"))                                  //Src
+	request = append(request, []byte("4.3.2.1"))                                  //Dest
+	request = append(request, []byte("tcp.ip.vlan.ip.hdlc"))                      //Layer
+	request = append(request, []byte{0x01, 0x02, 0x03, 0x04})                     //Payload
+
+	response = append(response, []byte{0x01})                                       //Valid
+	response = append(response, binary.LittleEndian.AppendUint32([]byte{}, 123456)) //Dissection handle (packet number)
+	checkZMQCommand(request, response, t)
+}
+
 func checkZMQCommand(sendFrames [][]byte, resultFrames [][]byte, t *testing.T) {
 	var pl Plug
 	defer os.Remove(zmqTestEndpointFile)
@@ -208,7 +387,11 @@ func checkZMQCommand(sendFrames [][]byte, resultFrames [][]byte, t *testing.T) {
 
 	for i := 0; i < len(response.Frames); i++ {
 		if !bytes.Equal(response.Frames[i], resultFrames[i]) {
-			t.Fatalf("Frame %d is as expected (received %s / expected %s)", i, hex.EncodeToString(response.Frames[i]), hex.EncodeToString(resultFrames[i]))
+			t.Log("Frame received:")
+			t.Log(hex.Dump(response.Frames[i]))
+			t.Log("Expected:")
+			t.Log(hex.Dump(resultFrames[i]))
+			t.Fatalf("Frame %d is as expected", i)
 		}
 	}
 
