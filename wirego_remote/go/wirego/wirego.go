@@ -13,6 +13,7 @@ package wirego
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -72,6 +73,14 @@ func New(zqmEndpoint string, verbose bool, listener WiregoInterface) (*Wirego, e
 		slog.SetLogLoggerLevel(slog.LevelInfo)
 	}
 
+	if listener == nil {
+		return nil, errors.New("failed to init Wirego, listener to set")
+	}
+
+	if !strings.HasPrefix(zqmEndpoint, "tcp://") && !strings.HasPrefix(zqmEndpoint, "udp://") && !strings.HasPrefix(zqmEndpoint, "ipc://") {
+		return nil, errors.New("failed to init Wirego, invalid endpoint format")
+	}
+
 	wg.listener = listener
 	wg.zqmEndpoint = zqmEndpoint
 	wg.resultsCacheEnable = true
@@ -99,9 +108,9 @@ func New(zqmEndpoint string, verbose bool, listener WiregoInterface) (*Wirego, e
 	//Be a bit verbose to ease plugin development
 	slog.Info("Setting up Wirego...")
 	slog.Info("Plugin will appear in Wireshark as '" + wg.pluginName + "' with filter '" + wg.pluginFilter + "'")
-	slog.Info("Custom fields registered: %d", len(wg.pluginFields))
+	slog.Info(fmt.Sprintf("Custom fields registered: %d", len(wg.pluginFields)))
 	if len(wg.pluginDetectionHeuristicsParents) != 0 {
-		slog.Info("Heuristics function will be called hen parent matches " + strings.Join(wg.pluginDetectionHeuristicsParents, " or "))
+		slog.Info("Heuristics function will be called when parent matches " + strings.Join(wg.pluginDetectionHeuristicsParents, " or "))
 	}
 	if len(wg.pluginDetectionFilters) != 0 {
 		var str []string

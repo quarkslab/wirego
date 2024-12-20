@@ -41,10 +41,7 @@ func (wg *Wirego) processGetFilter(msg *zmq.Msg) error {
 }
 
 func (wg *Wirego) processGetFieldsCount(msg *zmq.Msg) error {
-	b := make([]byte, 4)
-	binary.LittleEndian.PutUint32(b, uint32(len(wg.pluginFields)))
-
-	response := zmq.NewMsgFrom(getResultMsg(true), b)
+	response := zmq.NewMsgFrom(getResultMsg(true), binary.LittleEndian.AppendUint32([]byte{}, uint32(len(wg.pluginFields))))
 	return wg.zmqSocket.Send(response)
 }
 
@@ -119,10 +116,7 @@ func (wg *Wirego) processDetectInt(msg *zmq.Msg) error {
 	}
 
 	//Response
-	matchValueSlc := make([]byte, 4)
-	binary.LittleEndian.PutUint32(matchValueSlc, uint32(matchValue))
-
-	response := zmq.NewMsgFrom(getResultMsg(true), append([]byte(filterString), 0x00), matchValueSlc)
+	response := zmq.NewMsgFrom(getResultMsg(true), append([]byte(filterString), 0x00), binary.LittleEndian.AppendUint32([]byte{}, uint32(matchValue)))
 	return wg.zmqSocket.Send(response)
 }
 
@@ -241,9 +235,7 @@ func (wg *Wirego) processDissectPacket(msg *zmq.Msg) error {
 	//Look into the cache, if found no need to process again
 	_, found := wg.resultsCache[int(packetNumber)]
 	if found {
-		res := make([]byte, 4)
-		binary.LittleEndian.PutUint32(res, packetNumber)
-		response := zmq.NewMsgFrom(getResultMsg(true), res)
+		response := zmq.NewMsgFrom(getResultMsg(true), binary.LittleEndian.AppendUint32([]byte{}, packetNumber))
 		return wg.zmqSocket.Send(response)
 	}
 
@@ -278,10 +270,7 @@ func (wg *Wirego) processDissectPacket(msg *zmq.Msg) error {
 
 	//Add to cache
 	wg.resultsCache[int(packetNumber)] = &flatten
-
-	res := make([]byte, 4)
-	binary.LittleEndian.PutUint32(res, packetNumber)
-	response := zmq.NewMsgFrom(getResultMsg(true), res)
+	response := zmq.NewMsgFrom(getResultMsg(true), binary.LittleEndian.AppendUint32([]byte{}, packetNumber))
 	return wg.zmqSocket.Send(response)
 }
 
@@ -345,9 +334,7 @@ func (wg *Wirego) processResultGetFieldsCount(msg *zmq.Msg) error {
 	}
 
 	//Response
-	b := make([]byte, 4)
-	binary.LittleEndian.PutUint32(b, uint32(len(desc.fields)))
-	response := zmq.NewMsgFrom(getResultMsg(true), b)
+	response := zmq.NewMsgFrom(getResultMsg(true), binary.LittleEndian.AppendUint32([]byte{}, uint32(len(desc.fields))))
 	return wg.zmqSocket.Send(response)
 }
 
@@ -425,7 +412,7 @@ func getResultMsg(success bool) []byte {
 // returnFailure logs given error message (if any) and returns an error to the remote ZMQ endpoint
 func (wg *Wirego) returnFailure(err error) error {
 	if err != nil {
-		slog.Error("/!\\ Error:", err)
+		slog.Error("/!\\ Error:" + err.Error())
 	}
 
 	response := zmq.NewMsg(getResultMsg(false))

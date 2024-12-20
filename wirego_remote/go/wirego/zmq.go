@@ -44,7 +44,6 @@ func (wg *Wirego) Listen() {
 		_ = <-sigc
 		wg.logs.Warn("Stopping...")
 		wg.zmqSocket.Close()
-		os.Exit(0)
 	}()
 
 	dispatcher := make(map[string]ZMQCommand)
@@ -86,12 +85,14 @@ func (wg *Wirego) Listen() {
 		cb, found := dispatcher[cmd]
 		if !found {
 			slog.Error("Received unknown command from Wirego bridge: '" + cmd + "'")
+			wg.returnFailure(nil)
 		} else {
 			slog.Debug("Processing command '" + cmd + "'...")
 			err = cb(&msg)
 			if err != nil {
-				slog.Warn("Command '"+cmd+"' failed:", err.Error())
+				slog.Warn("Command '" + cmd + "' failed:" + err.Error())
 			}
 		}
 	}
+	wg.logs.Info("Listen exitted")
 }
