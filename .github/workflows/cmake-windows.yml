@@ -12,7 +12,7 @@ jobs:
     runs-on: windows-2022
     strategy:
       matrix:
-        wireshark_version: ["4.0", "4.2"]
+        wireshark_version: ["4.0", "4.2", "4.4"]
     env:
       PLATFORM: x64
       WIRESHARK_BASE_DIR: C:\Development

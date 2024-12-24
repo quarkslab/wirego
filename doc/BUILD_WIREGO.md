@@ -21,9 +21,6 @@ Use the following Dockerfile:
     # Build Wireshark and plugins
     RUN cd /go/wireshark && git checkout release-4.2 && mkdir build && cd build && cmake -DCUSTOM_PLUGIN_SRC_DIR=/go/wireshark/plugins/epan/wirego .. && make
 
-
-    # Build the example plugin
-    RUN cd /go/wirego/wirego/example/ && make
 ```
 
 
@@ -34,7 +31,6 @@ Build the Docker image using:
 Extract the built files from the image:
 
     id=$(docker create wiregobuild)
-    docker cp $id:/go/wirego/wirego/example/wirego_example.so - > wirego_example.so.tar
     docker cp $id:/go/wireshark/build/run/wireshark - > wireshark.so.tar
     docker cp $id:./wireshark/build/run/plugins/4.2/epan/wirego.so - > wirego.so.tar        
     docker rm -v $id
