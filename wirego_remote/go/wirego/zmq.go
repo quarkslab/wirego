@@ -49,19 +49,19 @@ func (wg *Wirego) Listen() {
 	dispatcher := make(map[string]ZMQCommand)
 
 	//Utility commands, not dispatched to the Wirego plugin interface
-	dispatcher["utility_ping"] = wg.processPing
-	dispatcher["utility_get_version"] = wg.processVersion
+	dispatcher["utility_ping"] = wg.processUtilityPing
+	dispatcher["utility_get_version"] = wg.processUtilityVersion
 
 	//ZMQ interface commands
-	dispatcher["setup_get_plugin_name"] = wg.processGetName
-	dispatcher["setup_get_plugin_filter"] = wg.processGetFilter
-	dispatcher["setup_get_fields_count"] = wg.processGetFieldsCount
-	dispatcher["setup_get_field"] = wg.processGetField
-	dispatcher["setup_detect_int"] = wg.processDetectInt
-	dispatcher["setup_detect_string"] = wg.processDetectString
-	dispatcher["setup_detect_heuristic_parent"] = wg.processDetectHeuristicParent
-	dispatcher["process_heuristic"] = wg.processDetectionHeuristic
-	dispatcher["process_dissect_packet"] = wg.processDissectPacket
+	dispatcher["setup_get_plugin_name"] = wg.processSetupGetPluginName
+	dispatcher["setup_get_plugin_filter"] = wg.processSetupGetPluginFilter
+	dispatcher["setup_get_fields_count"] = wg.processSetupGetFieldsCount
+	dispatcher["setup_get_field"] = wg.processSetupGetField
+	dispatcher["setup_detect_int"] = wg.processSetupDetectInt
+	dispatcher["setup_detect_string"] = wg.processSetupDetectString
+	dispatcher["setup_detect_heuristic_parent"] = wg.processSetupDetectHeuristicParent
+	dispatcher["process_heuristic"] = wg.processProcessHeuristic
+	dispatcher["process_dissect_packet"] = wg.processProcessDissectPacket
 	dispatcher["result_get_protocol"] = wg.processResultGetProtocol
 	dispatcher["result_get_info"] = wg.processResultGetInfo
 	dispatcher["result_get_fields_count"] = wg.processResultGetFieldsCount

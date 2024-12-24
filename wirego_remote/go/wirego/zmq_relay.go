@@ -20,32 +20,32 @@ const (
 	WiregoVersionMinor = 0
 )
 
-func (wg *Wirego) processPing(msg *zmq.Msg) error {
+func (wg *Wirego) processUtilityPing(msg *zmq.Msg) error {
 	response := zmq.NewMsg(getResultMsg(true))
 	return wg.zmqSocket.Send(response)
 }
 
-func (wg *Wirego) processVersion(msg *zmq.Msg) error {
+func (wg *Wirego) processUtilityVersion(msg *zmq.Msg) error {
 	response := zmq.NewMsgFrom(getResultMsg(true), []byte{byte(WiregoVersionMajor)}, []byte{byte(WiregoVersionMinor)})
 	return wg.zmqSocket.Send(response)
 }
 
-func (wg *Wirego) processGetName(msg *zmq.Msg) error {
+func (wg *Wirego) processSetupGetPluginName(msg *zmq.Msg) error {
 	response := zmq.NewMsgFrom(getResultMsg(true), []byte(wg.pluginName+"\x00"))
 	return wg.zmqSocket.Send(response)
 }
 
-func (wg *Wirego) processGetFilter(msg *zmq.Msg) error {
+func (wg *Wirego) processSetupGetPluginFilter(msg *zmq.Msg) error {
 	response := zmq.NewMsgFrom(getResultMsg(true), []byte(wg.pluginFilter+"\x00"))
 	return wg.zmqSocket.Send(response)
 }
 
-func (wg *Wirego) processGetFieldsCount(msg *zmq.Msg) error {
+func (wg *Wirego) processSetupGetFieldsCount(msg *zmq.Msg) error {
 	response := zmq.NewMsgFrom(getResultMsg(true), binary.LittleEndian.AppendUint32([]byte{}, uint32(len(wg.pluginFields))))
 	return wg.zmqSocket.Send(response)
 }
 
-func (wg *Wirego) processGetField(msg *zmq.Msg) error {
+func (wg *Wirego) processSetupGetField(msg *zmq.Msg) error {
 	if len(msg.Frames) != 2 {
 		return wg.returnFailure(errors.New("get_field failed, invalid arguments count in request"))
 	}
@@ -82,7 +82,7 @@ func (wg *Wirego) processGetField(msg *zmq.Msg) error {
 	return wg.zmqSocket.Send(response)
 }
 
-func (wg *Wirego) processDetectInt(msg *zmq.Msg) error {
+func (wg *Wirego) processSetupDetectInt(msg *zmq.Msg) error {
 	var matchValue int
 	var filterString string
 	matchValue = -1
@@ -120,7 +120,7 @@ func (wg *Wirego) processDetectInt(msg *zmq.Msg) error {
 	return wg.zmqSocket.Send(response)
 }
 
-func (wg *Wirego) processDetectString(msg *zmq.Msg) error {
+func (wg *Wirego) processSetupDetectString(msg *zmq.Msg) error {
 	var matchValue string
 	var filterString string
 
@@ -157,7 +157,7 @@ func (wg *Wirego) processDetectString(msg *zmq.Msg) error {
 	return wg.zmqSocket.Send(response)
 }
 
-func (wg *Wirego) processDetectHeuristicParent(msg *zmq.Msg) error {
+func (wg *Wirego) processSetupDetectHeuristicParent(msg *zmq.Msg) error {
 	if len(msg.Frames) != 2 {
 		return wg.returnFailure(errors.New("detect_heuristic_parent failed, invalid arguments count in request"))
 	}
@@ -179,7 +179,7 @@ func (wg *Wirego) processDetectHeuristicParent(msg *zmq.Msg) error {
 	return wg.zmqSocket.Send(response)
 }
 
-func (wg *Wirego) processDetectionHeuristic(msg *zmq.Msg) error {
+func (wg *Wirego) processProcessHeuristic(msg *zmq.Msg) error {
 	var packetNumber uint32
 	var src string
 	var dst string
@@ -211,7 +211,7 @@ func (wg *Wirego) processDetectionHeuristic(msg *zmq.Msg) error {
 	}
 }
 
-func (wg *Wirego) processDissectPacket(msg *zmq.Msg) error {
+func (wg *Wirego) processProcessDissectPacket(msg *zmq.Msg) error {
 	var packetNumber uint32
 	var src string
 	var dst string
