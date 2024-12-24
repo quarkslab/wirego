@@ -1,6 +1,15 @@
 # Setting up Wireshark and running
 
 
+## Running your remote
+
+During Wireshark startup, the Wirego bridge plugin will try to establish a connection to your program.
+Before anything else, it's probably time to start your remote developed using a Wirego package (see wirego_remote/go/).
+If you're remote is not ready yet, you will probably want to start with an example: [../examples/minimal/](../examples/minimal/).
+
+Your remote program will wait for connections from the Wirego bridge.
+
+
 ## Installing the Wirego plugin for Wireshark
 
 Once you have built the Wirego plugin for Wireshark (or downloaded a pre-built version), you should have a Wireshark plugin named __wirego.so__.
@@ -22,4 +31,8 @@ If your golang plugin fails to load for any reason, the plugin will not appear o
 
 Once the Wirego plugin for Wireshark is installed open Wireshark preferences, select "Protocols" on the left menu and then locate "Wirego".
 
-Enter the endpoint to match the one used on you **Wirego remote plugin**.
+Enter the endpoint to match the one used on you **Wirego remote plugin** then **restart Wireshark**
+
+During the next startup, Wirego remote will establish a ZMQ connection to your Wirego remote.
+
+It's probably time to open a pcap file and see your remote plugin in action!
