@@ -18,7 +18,7 @@ jobs:
       WIRESHARK_BASE_DIR: C:\Development
     steps:
       - name: Choco install
-        run: choco install -y --force --no-progress asciidoctorj xsltproc docbook-bundle nsis winflexbison3 cmake
+        run: choco install -y --force --no-progress asciidoctorj xsltproc docbook-bundle nsis winflexbison3 cmake zeromq
       - name: Add msbuild to PATH
         uses: microsoft/setup-msbuild@v1.1
         with:
@@ -40,7 +40,7 @@ jobs:
       - name: Create plugin dir
         run: mkdir ${{ github.workspace }}\wireshark\plugins\epan\wirego
       - name: Copy plugin files
-        run: copy ${{ github.workspace }}\wirego\wirego_plugin\* ${{ github.workspace }}\wireshark\plugins\epan\wirego\
+        run: copy ${{ github.workspace }}\wirego\wirego_bridge\* ${{ github.workspace }}\wireshark\plugins\epan\wirego\
       - name: Create build dir
         run: mkdir ${{ github.workspace }}\build
       - name: Debug dir

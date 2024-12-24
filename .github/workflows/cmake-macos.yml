@@ -20,7 +20,7 @@ jobs:
         run: echo "OUTPUT_PATH=${VERSION//./-}" >> $GITHUB_ENV
 
       - name: Install deps
-        run: brew install c-ares glib libgcrypt pcre2 speexdsp
+        run: brew install c-ares glib libgcrypt pcre2 speexdsp zeromq
 
       - name: Clone Wirego plugin
         uses: actions/checkout@v3
@@ -35,7 +35,7 @@ jobs:
           ref: release-${{ matrix.wireshark_version }}
 
       - name: Create plugin link
-        run: ln -s ${{ github.workspace }}/wirego/wirego_plugin ${{ github.workspace }}/wireshark/plugins/epan/wirego
+        run: ln -s ${{ github.workspace }}/wirego/wirego_bridge ${{ github.workspace }}/wireshark/plugins/epan/wirego
 
       - name: Create output dir
         run: mkdir ${{ github.workspace }}/build
