@@ -33,78 +33,78 @@ If, for any reason, the remote plugin fails to process a request it MUST act as 
 This current document defines API version: **2.0**
 
 
-## ping
+## utility_ping
 
-The ping command is automatically triggered when the **Wirego bridge** plugin is loaded.
+The utility_ping command is automatically triggered when the **Wirego bridge** plugin is loaded.
 If this command doesn't receive a reply within 2s, the Wirego plugin will be disabled.
 
-| Type  | Frame Num | Type   | Value      | Description                            |
-| ----- | --------- | ------ | ---------- | -------------------------------------- |
-| REQ   | 0         | string | "ping\0"   | Send a ping to the remote ZMQ endpoint |
-| REP   | 0         | byte   | 0/1        | Status (0 failure / 1 success)         |
+| Type  | Frame Num | Type   | Value              | Description                            |
+| ----- | --------- | ------ | ------------------ | -------------------------------------- |
+| REQ   | 0         | string | "utility_ping\0"   | Send a ping to the remote ZMQ endpoint |
+| REP   | 0         | byte   | 0/1                | Status (0 failure / 1 success)         |
 
-When receiving a ping request from the Wirego bridge, the Wirego remote plugin shall return "1".
+When receiving a utility_ping request from the Wirego bridge, the Wirego remote plugin shall return "1".
 
 **Note:** Since this call is an utility feature, it should be implemented by the "package" for the given language and not transmitted to the end user.
 
-## version
+## utility_get_version
 
 Once the ping is successful, the **Wirego bridge** requests the Wirego's API version from the **Wirego remote plugin** in order to make sure they're compatible.
 
 
-| Type  | Frame Num | Type   | Value       | Description                            |
-| ----- | --------- | ------ | ----------- | -------------------------------------- |
-| REQ   | 0         | string | "version\0" | Request the remote Wirego API version  |
-| REP   | 0         | byte   | 0/1         | Command status (0 failure / 1 success) |
-| REP   | 1         | byte   | Major ver.  | Wirego API major version               |
-| REP   | 2         | byte   | Minor ver.  | Wirego API minor version               |
+| Type  | Frame Num | Type   | Value                   | Description                            |
+| ----- | --------- | ------ | ----------------------- | -------------------------------------- |
+| REQ   | 0         | string | "utility_get_version\0" | Request the remote Wirego API version  |
+| REP   | 0         | byte   | 0/1                     | Command status (0 failure / 1 success) |
+| REP   | 1         | byte   | Major ver.              | Wirego API major version               |
+| REP   | 2         | byte   | Minor ver.              | Wirego API minor version               |
 
 If the version differs (eg. the bridge uses v1.99 and the remote v2.0), the Wirego plugin will not be loaded.
 
 **Note:** Since this call is an utility feature, it should be implemented by the "package" for the given language and not transmitted to the end user.
 
 
-## get_name
+## setup_get_plugin_name
 
 This call requests the name of the **Wirego remote plugin**.
 
-| Type  | Frame Num | Type   | Value        | Description                             |
-| ----- | --------- | ------ | ------------ | --------------------------------------- |
-| REQ   | 0         | string | "get_name\0" | Request the remote plugin name          |
-| REP   | 0         | byte   | 0/1          | status (0 failure / 1 success)  |
-| REP   | 1         | string | *            | Remote name                             |
+| Type  | Frame Num | Type   | Value                     | Description                             |
+| ----- | --------- | ------ | ------------------------- | --------------------------------------- |
+| REQ   | 0         | string | "setup_get_plugin_name\0" | Request the remote plugin name          |
+| REP   | 0         | byte   | 0/1                       | status (0 failure / 1 success)          |
+| REP   | 1         | string | *                         |  Remote name                            |
 
 
-## get_plugin_filter
+## setup_get_plugin_filter
 
 The plugin **filter** can be used to filter traffic on the Wireshark listing, matching the end user protocol.
 
 
-| Type  | Frame Num | Type   | Value                  | Description                             |
-| ----- | --------- | ------ | ---------------------- | --------------------------------------- |
-| REQ   | 0         | string | "get_plugin_filter\0"  | Request the remote plugin filter        |
-| REP   | 0         | byte   | 0/1                    | Command status (0 failure / 1 success)  |
-| REP   | 1         | string | *                      | Filter name                             |
+| Type  | Frame Num | Type   | Value                        | Description                             |
+| ----- | --------- | ------ | ---------------------------- | --------------------------------------- |
+| REQ   | 0         | string | "setup_get_plugin_filter\0"  | Request the remote plugin filter        |
+| REP   | 0         | byte   | 0/1                          | Command status (0 failure / 1 success)  |
+| REP   | 1         | string | *                            | Filter name                             |
 
-## get_fields_count
+## setup_get_fields_count
 
 During startup, Wireshark asks every plugin for their "custom fields".
 Each plugin has its own fields that it may eventually return.
 
-The **get_fields_count** is used to retrieve the number of fields that will be declared.
+The **setup_get_fields_count** is used to retrieve the number of fields that will be declared.
 
 
-| Type  | Frame Num | Type   | Value                  | Description                             |
-| ----- | --------- | ------ | ---------------------- | --------------------------------------- |
-| REQ   | 0         | string | "get_fields_count\0"   | Request the remote plugin filter        |
-| REP   | 0         | byte   | 0/1                    | Command status (0 failure / 1 success)  |
-| REP   | 1         | int    | *                      | Number of fields                        |
+| Type  | Frame Num | Type   | Value                        | Description                             |
+| ----- | --------- | ------ | ---------------------------- | --------------------------------------- |
+| REQ   | 0         | string | "setup_get_fields_count\0"   | Request the remote plugin filter        |
+| REP   | 0         | byte   | 0/1                          | Command status (0 failure / 1 success)  |
+| REP   | 1         | int    | *                            | Number of fields                        |
 
 
 
-## get_field
+## setup_get_field
 
-Once the number of fields is known (see **get_fields_count**), the bridge plugin will iterate through all fields by incrementing the **index** value on the get_fields_count command.
+Once the number of fields is known (see **setup_get_fields_count**), the bridge plugin will iterate through all fields by incrementing the **index** value on the setup_get_fields_count command.
 
 For each field, the remote plugin will provide:
 
@@ -116,7 +116,7 @@ For each field, the remote plugin will provide:
 
 | Type  | Frame Num | Type   | Value                  | Description                             |
 | ----- | --------- | ------ | ---------------------- | --------------------------------------- |
-| REQ   | 0         | string | "get_field\0"          | Request the remote plugin filter        |
+| REQ   | 0         | string | "setup_get_field\0"    | Request the remote plugin filter        |
 | REQ   | 1         | int    | index                  | Field index on the fields array         |
 | REP   | 0         | byte   | 0/1                    | Command status (0 failure / 1 success)  |
 | REP   | 1         | int    | *                      | Wirego field id                         |
@@ -126,41 +126,41 @@ For each field, the remote plugin will provide:
 | REP   | 5         | int    | *                      | Field display mode                      |
 
 
-## detect_int
+## setup_detect_int
 
 The end-user protocol dissect function will be called for each packet matching a detection feature.
 Detection features can be of type "int", "string" or be based on "heuristics".
 
-The **detect_int** command requests all filters of type "int" that can be used to detect the end-user protocol.
+The **setup_detect_int** command requests all filters of type "int" that can be used to detect the end-user protocol.
 This command will be called incrementally by increasing the index field.
 Once the last integer detection filter is reached, the remote plugin MUST return an error by setting the command status to 0.
 
 | Type  | Frame Num | Type   | Value                  | Description                                                 |
 | ----- | --------- | ------ | ---------------------- | ----------------------------------------------------------- |
-| REQ   | 0         | string | "detect_int\0"         | Request the remote plugin detection integer for given index |
+| REQ   | 0         | string | "setup_detect_int\0"   | Request the remote plugin detection integer for given index |
 | REQ   | 1         | int    | index                  | Filter index on the detect int array                        |
 | REP   | 0         | byte   | 0/1                    | Command status (0 failure / 1 success)                      |
 | REP   | 1         | string | *                      | The filter string                                           |
 | REP   | 2         | int    | *                      | The filter value                                            |
 
-## detect_string
+## setup_detect_string
 
-This command is similar to the "detect_int" one but applies to string filters.
+This command is similar to the "setup_detect_int" one but applies to string filters.
 
-The **detect_string** command requests all filters of type "string" that can be used to detect the end-user protocol.
+The **setup_detect_string** command requests all filters of type "string" that can be used to detect the end-user protocol.
 This command will be called incrementally by increasing the index field.
 Once the last string detection filter is reached, the remote plugin MUST return an error by setting the command status to 0.
 
-| Type  | Frame Num | Type   | Value                  | Description                                                |
-| ----- | --------- | ------ | ---------------------- | ---------------------------------------------------------- |
-| REQ   | 0         | string | "detect_int\0"         | Request the remote plugin detection string for given index |
-| REQ   | 1         | int    | index                  | Filter index on the detect int array                       |
-| REP   | 0         | byte   | 0/1                    | Command status (0 failure / 1 success)                     |
-| REP   | 1         | string | *                      | The filter string                                          |
-| REP   | 2         | string | *                      | The filter value                                           |
+| Type  | Frame Num | Type   | Value                   | Description                                                |
+| ----- | --------- | ------ | ----------------------- | ---------------------------------------------------------- |
+| REQ   | 0         | string | "setup_detect_string\0" | Request the remote plugin detection string for given index |
+| REQ   | 1         | int    | index                   | Filter index on the detect int array                       |
+| REP   | 0         | byte   | 0/1                     | Command status (0 failure / 1 success)                     |
+| REP   | 1         | string | *                       | The filter string                                          |
+| REP   | 2         | string | *                       | The filter value                                           |
 
 
-## detect_heuristic_parent
+## setup_detect_heuristic_parent
 
 Sometimes, it is not possible to detect a protocol based on an existing Wireshark filter (pointing to an upper layer or a port for example).
 It is then required to pass the packet to a detection function which will decide if this packet matches the protocol.
@@ -169,20 +169,20 @@ Since Wireshark will not pass every packet to every protocol implementing this f
 This command will be called incrementally by increasing the index field.
 Once the last heuristic parent filter is reached, the remote plugin MUST return an error by setting the command status to 0.
 
-| Type  | Frame Num | Type   | Value                       | Description                                                |
-| ----- | --------- | ------ | --------------------------- | ---------------------------------------------------------- |
-| REQ   | 0         | string | "detect_heuristic_parent\0" | Request the remote plugin heuristic parent for given index |
-| REQ   | 1         | int    | index                       | Index on the heuristic parent array                        |
-| REP   | 0         | byte   | 0/1                         | Command status (0 failure / 1 success)                     |
-| REP   | 1         | string | *                           | Heuristic parent protocol string                           |
+| Type  | Frame Num | Type   | Value                             | Description                                                |
+| ----- | --------- | ------ | --------------------------------- | ---------------------------------------------------------- |
+| REQ   | 0         | string | "setup_detect_heuristic_parent\0" | Request the remote plugin heuristic parent for given index |
+| REQ   | 1         | int    | index                             | Index on the heuristic parent array                        |
+| REP   | 0         | byte   | 0/1                               | Command status (0 failure / 1 success)                     |
+| REP   | 1         | string | *                                 | Heuristic parent protocol string                           |
 
-## detection_heuristic
+## process_heuristic
 
-When **detect_heuristic_parent** is declared and matches a packet, the packet child is sent to an heuristic function for detection.
+When **setup_detect_heuristic_parent** is declared and matches a packet, the packet child is sent to an heuristic function for detection.
 
 | Type  | Frame Num | Type   | Value                   | Description                                                |
 | ----- | --------- | ------ | ------------------------| ---------------------------------------------------------- |
-| REQ   | 0         | string | "detection_heuristic\0" | Request the remote plugin heuristic parent for given index |
+| REQ   | 0         | string | "process_heuristic\0"   | Request the remote plugin heuristic parent for given index |
 | REQ   | 1         | int    | packet_number           | The packet number on the current capture                   |
 | REQ   | 2         | string | src                     | The packet source string                                   |
 | REQ   | 3         | string | dst                     | The packet destination string                              |
@@ -191,9 +191,9 @@ When **detect_heuristic_parent** is declared and matches a packet, the packet ch
 | REP   | 0         | byte   | 0/1                     | Command status (0 failure / 1 success)                     |
 | REP   | 1         | byte   | 0/1                     | Detection result (0 failure / 1 success)                   |
 
-If detection succeeds, the same packet will be sent to the **dissect_packet** command.
+If detection succeeds, the same packet will be sent to the **process_dissect_packet** command.
 
-## dissect_packet
+## process_dissect_packet
 
 Everytime a packet matches:
 
@@ -201,19 +201,19 @@ Everytime a packet matches:
   - A string filter defined using **detect_string**
   - A heuristic detection **detection_heuristic**
 
-the packet payload is sent to the dissector function through **dissect_packet**.
+the packet payload is sent to the dissector function through **process_dissect_packet**.
 
 
-| Type  | Frame Num | Type   | Value                   | Description                                                |
-| ----- | --------- | ------ | ------------------------| ---------------------------------------------------------- |
-| REQ   | 0         | string | "dissect_packet\0"      | Request the remote plugin to dissect the packet            |
-| REQ   | 1         | int    | packet_number           | The packet number on the current capture                   |
-| REQ   | 2         | string | src                     | The packet source string                                   |
-| REQ   | 3         | string | dst                     | The packet destination string                              |
-| REQ   | 4         | string | layer                   | The packet layer stack string                              |
-| REQ   | 5         | bytes  | data                    | The packet data                                            |
-| REP   | 0         | byte   | 0/1                     | Command status (0 failure / 1 success)                     |
-| REP   | 1         | int    | *                       | Dissect handler                                            |
+| Type  | Frame Num | Type   | Value                      | Description                                                |
+| ----- | --------- | ------ | -------------------------- | ---------------------------------------------------------- |
+| REQ   | 0         | string | "process_dissect_packet\0" | Request the remote plugin to dissect the packet            |
+| REQ   | 1         | int    | packet_number              | The packet number on the current capture                   |
+| REQ   | 2         | string | src                        | The packet source string                                   |
+| REQ   | 3         | string | dst                        | The packet destination string                              |
+| REQ   | 4         | string | layer                      | The packet layer stack string                              |
+| REQ   | 5         | bytes  | data                       | The packet data                                            |
+| REP   | 0         | byte   | 0/1                        | Command status (0 failure / 1 success)                     |
+| REP   | 1         | int    | *                          | Dissect handler                                            |
 
 The dissection result can be a quite complex structure, containing multiple data types and eventually trees.
 In order to avoid imposing a specific serialization method that might not be easily available in any language, the following scheme is used:

@@ -38,10 +38,10 @@ int read_byte_from_msg(zmq_msg_t *msg, int size, char *val) {
   return 0;
 }
 
-//wirego_version_cb asks remote ZMQ endpoint for its version
+//wirego_utility_get_version asks remote ZMQ endpoint for its version
 //Returns 0 on success and -1 on failure.
-int wirego_version_cb(wirego_t* wirego_h, int *major, int*minor) {
-  const char cmd[] = "version";
+int wirego_utility_get_version(wirego_t* wirego_h, int *major, int*minor) {
+  const char cmd[] = "utility_get_version";
   int size;
   zmq_msg_t msg;
   char b;
@@ -49,12 +49,12 @@ int wirego_version_cb(wirego_t* wirego_h, int *major, int*minor) {
   char status;
   *major = 0;
   *minor = 0;
-  ws_noisy("sending version request ...");
+  ws_noisy("sending utility_get_version ...");
   
   if (zmq_send(wirego_h->zsock, (void*)(cmd), sizeof(cmd), 0) == -1) {
     return -1;
   }
-  ws_noisy("waiting version response...");
+  ws_noisy("waiting utility_get_version response...");
 
   //Read REP status (1 byte)
   zmq_msg_init (&msg);
@@ -88,20 +88,20 @@ int wirego_version_cb(wirego_t* wirego_h, int *major, int*minor) {
   return 0;
 }
 
-//wirego_zmq_ping send a ping to a remote ZMQ endpoint and hope for a reply
+//wirego_utility_ping send a ping to a remote ZMQ endpoint and hope for a reply
 //Returns 0 on success and -1 on failure.
-int wirego_zmq_ping(wirego_t* wirego_h) {
-  const char ping_cmd[] = "ping";
+int wirego_utility_ping(wirego_t* wirego_h) {
+  const char ping_cmd[] = "utility_ping";
   char status;
   zmq_msg_t msg;
   int size;
   int ret;
-  ws_noisy("sending ping...");
+  ws_noisy("sending utility_ping...");
   
   if (zmq_send(wirego_h->zsock, (void*)(ping_cmd), sizeof(ping_cmd), 0) == -1) {
     return -1;
   }
-  ws_noisy("waiting ping response...");
+  ws_noisy("waiting utility_ping response...");
 
   //Read REP status (1 byte)
   zmq_msg_init (&msg);
@@ -115,21 +115,21 @@ int wirego_zmq_ping(wirego_t* wirego_h) {
   return 0;
 }
 
-//wirego_get_name_cb asks for the remote ZMQ endpoint for it's name
+//wirego_setup_get_plugin_name asks for the remote ZMQ endpoint for it's name
 //Returns allocated string containing name or NULL
-char* wirego_get_name_cb(wirego_t* wirego_h) {
-  const char cmd[] = "get_name";
+char* wirego_setup_get_plugin_name(wirego_t* wirego_h) {
+  const char cmd[] = "setup_get_plugin_name";
   char* name = NULL;
   char status;
   zmq_msg_t msg;
   int size;
   int ret;
-  ws_noisy("sending get name...");
+  ws_noisy("sending setup_get_plugin_name...");
   
   if (zmq_send(wirego_h->zsock, (void*)(cmd), sizeof(cmd), 0) == -1) {
     return NULL;
   }
-  ws_noisy("waiting get name response...");
+  ws_noisy("waiting setup_get_plugin_name response...");
 
   //Read REP status (1 byte)
   zmq_msg_init (&msg);
@@ -147,28 +147,28 @@ char* wirego_get_name_cb(wirego_t* wirego_h) {
   zmq_msg_close (&msg);
 
   if (name)
-    ws_noisy("wirego_get_name_cb %s",name);
+    ws_noisy("setup_get_plugin_name %s",name);
 
   return name;
 }
 
 
-//wirego_get_plugin_filter_cb asks the remote ZMQ endpoint for its filter
+//wirego_setup_get_plugin_filter asks the remote ZMQ endpoint for its filter
 //Returns allocated string with filter or NULL
-char* wirego_get_plugin_filter_cb(wirego_t* wirego_h){
-  const char cmd[] = "get_plugin_filter";
+char* wirego_setup_get_plugin_filter(wirego_t* wirego_h){
+  const char cmd[] = "setup_get_plugin_filter";
   char*filter = NULL;
   char status;
   zmq_msg_t msg;
   int size;
   int ret;
 
-  ws_noisy("sending get_plugin_filter...");
+  ws_noisy("sending setup_get_plugin_filter...");
   
   if (zmq_send(wirego_h->zsock, (void*)(cmd), sizeof(cmd), 0) == -1) {
     return filter;
   }
-  ws_noisy("waiting get_plugin_filter response...");
+  ws_noisy("waiting setup_get_plugin_filter response...");
 
   //Read REP status (1 byte)
   zmq_msg_init (&msg);
@@ -186,26 +186,26 @@ char* wirego_get_plugin_filter_cb(wirego_t* wirego_h){
   zmq_msg_close (&msg);
 
   if (filter)
-    ws_noisy("wirego_get_plugin_filter_cb %s",filter);
+    ws_noisy("setup_get_plugin_filter %s",filter);
 
   return filter;
 }
 
-//wirego_get_fields_count_cb asks the remote ZMQ endpoint for the number of custom fields to be declared
-int wirego_get_fields_count_cb(wirego_t* wirego_h) {
-  const char cmd[] = "get_fields_count";
+//wirego_setup_get_fields_count asks the remote ZMQ endpoint for the number of custom fields to be declared
+int wirego_setup_get_fields_count(wirego_t* wirego_h) {
+  const char cmd[] = "setup_get_fields_count";
   int size;
   zmq_msg_t msg;
   int fields_count = -1;
   int ret;
   char status;
 
-  ws_noisy("sending get_fields_count request ...");
+  ws_noisy("sending setup_get_fields_count request ...");
   
   if (zmq_send(wirego_h->zsock, (void*)(cmd), sizeof(cmd), 0) == -1) {
     return -1;
   }
-  ws_noisy("waiting get_fields_count response...");
+  ws_noisy("waiting setup_get_fields_count response...");
 
   //Read REP status (1 byte)
   zmq_msg_init (&msg);
@@ -225,14 +225,14 @@ int wirego_get_fields_count_cb(wirego_t* wirego_h) {
   if (ret == -1)
     return -1;
 
-  ws_noisy("wirego_get_fields_count_cb %d",fields_count);
+  ws_noisy("setup_get_fields_count %d",fields_count);
 
   return fields_count;
 }
 
-//wirego_get_field_cb asks the remote ZMQ endpoint for the details about field number "idx"
-int wirego_get_field_cb(wirego_t* wirego_h, int idx, int *wirego_field_id, char** name, char** filter, int *value_type, int *display) {
-  const char cmd[] = "get_field";
+//wirego_setup_get_field asks the remote ZMQ endpoint for the details about field number "idx"
+int wirego_setup_get_field(wirego_t* wirego_h, int idx, int *wirego_field_id, char** name, char** filter, int *value_type, int *display) {
+  const char cmd[] = "setup_get_field";
   int size;
   int ret;
   zmq_msg_t msg;
@@ -244,7 +244,7 @@ int wirego_get_field_cb(wirego_t* wirego_h, int idx, int *wirego_field_id, char*
   *value_type = -1;
   *display = -1;
  
-  ws_noisy("sending get_field request ...");
+  ws_noisy("sending setup_get_field request ...");
   
   if (zmq_send(wirego_h->zsock, (void*)(cmd), sizeof(cmd), ZMQ_SNDMORE) == -1) {
     return -1;
@@ -252,7 +252,7 @@ int wirego_get_field_cb(wirego_t* wirego_h, int idx, int *wirego_field_id, char*
   if (zmq_send(wirego_h->zsock, &idx, sizeof(int), 0) == -1) {
     return -1;
   }
-  ws_noisy("waiting get_field response...");
+  ws_noisy("waiting setup_get_field response...");
 
   //Read REP status (1 byte)
   zmq_msg_init (&msg);
@@ -319,14 +319,14 @@ int wirego_get_field_cb(wirego_t* wirego_h, int idx, int *wirego_field_id, char*
     return -1;
   }
 
-  ws_noisy("wirego_get_field(%d) Field id:%d Name: %s Filter: %s Vtype %d Display %d", idx, *wirego_field_id, *name, *filter, *value_type, *display);
+  ws_noisy("setup_get_field(%d) Field id:%d Name: %s Filter: %s Vtype %d Display %d", idx, *wirego_field_id, *name, *filter, *value_type, *display);
 
   return 0;
 }
 
-//wirego_detect_int_cb asks the remote ZMQ endpoint for the detection filter of type "int" with given index
-char* wirego_detect_int_cb(wirego_t* wirego_h, int *filter_value, int idx) {
-  const char cmd[] = "detect_int";
+//wirego_setup_detect_int asks the remote ZMQ endpoint for the detection filter of type "int" with given index
+char* wirego_setup_detect_int(wirego_t* wirego_h, int *filter_value, int idx) {
+  const char cmd[] = "setup_detect_int";
   int ret;
   int size;
   zmq_msg_t msg;
@@ -334,7 +334,7 @@ char* wirego_detect_int_cb(wirego_t* wirego_h, int *filter_value, int idx) {
   char* filter = NULL;
   *filter_value = -1;
   
-  ws_noisy("sending detect_int request ...");
+  ws_noisy("sending setup_detect_int request ...");
   
   if (zmq_send(wirego_h->zsock, (void*)(cmd), sizeof(cmd), ZMQ_SNDMORE) == -1) {
     return NULL;
@@ -342,7 +342,7 @@ char* wirego_detect_int_cb(wirego_t* wirego_h, int *filter_value, int idx) {
   if (zmq_send(wirego_h->zsock, &idx, sizeof(int), 0) == -1) {
     return NULL;
   }
-  ws_noisy("waiting detect_int response...");
+  ws_noisy("waiting setup_detect_int response...");
 
   //Read REP status (1 byte)
   zmq_msg_init (&msg);
@@ -372,13 +372,13 @@ char* wirego_detect_int_cb(wirego_t* wirego_h, int *filter_value, int idx) {
     return NULL;
   }
 
-  ws_noisy("wirego_detect_int(%d) %s = %d", idx, filter, *filter_value);
+  ws_noisy("setup_detect_int(%d) %s = %d", idx, filter, *filter_value);
 
   return filter;
 }
 
-char* wirego_detect_string_cb(wirego_t* wirego_h,  char**filter_value, int idx) {
-  const char cmd[] = "detect_string";
+char* wirego_setup_detect_string(wirego_t* wirego_h,  char**filter_value, int idx) {
+  const char cmd[] = "setup_detect_string";
   int size;
   zmq_msg_t msg;
   char status;
@@ -387,7 +387,7 @@ char* wirego_detect_string_cb(wirego_t* wirego_h,  char**filter_value, int idx) 
 
   *filter_value = NULL;
   
-  ws_noisy("sending detect_string request ...");
+  ws_noisy("sending setup_detect_string request ...");
   
   if (zmq_send(wirego_h->zsock, (void*)(cmd), sizeof(cmd), ZMQ_SNDMORE) == -1) {
     return NULL;
@@ -395,7 +395,7 @@ char* wirego_detect_string_cb(wirego_t* wirego_h,  char**filter_value, int idx) 
   if (zmq_send(wirego_h->zsock, &idx, sizeof(int), 0) == -1) {
     return NULL;
   }
-  ws_noisy("waiting detect_string response...");
+  ws_noisy("waiting setup_detect_string response...");
 
   //Read REP status (1 byte)
   zmq_msg_init (&msg);
@@ -425,20 +425,20 @@ char* wirego_detect_string_cb(wirego_t* wirego_h,  char**filter_value, int idx) 
     return NULL;    
   }
 
-  ws_noisy("wirego_detect_string(%d) %s = %s", idx, filter, *filter_value);
+  ws_noisy("setup_detect_string(%d) %s = %s", idx, filter, *filter_value);
 
   return filter;
 }
 
-char* wirego_detect_heuristic_parent_cb(wirego_t* wirego_h, int idx) {
-  const char cmd[] = "detect_heuristic_parent";
+char* wirego_setup_detect_heuristic_parent(wirego_t* wirego_h, int idx) {
+  const char cmd[] = "setup_detect_heuristic_parent";
   int size;
   zmq_msg_t msg;
   char status;
   char* parent_protocol = NULL;
   int ret;
 
-  ws_noisy("sending detect_heuristic_parent request ...");
+  ws_noisy("sending setup_detect_heuristic_parent request ...");
   
   if (zmq_send(wirego_h->zsock, (void*)(cmd), sizeof(cmd), ZMQ_SNDMORE) == -1) {
     return NULL;
@@ -446,7 +446,7 @@ char* wirego_detect_heuristic_parent_cb(wirego_t* wirego_h, int idx) {
   if (zmq_send(wirego_h->zsock, &idx, sizeof(int), 0) == -1) {
     return NULL;
   }
-  ws_noisy("waiting detect_heuristic_parent response...");
+  ws_noisy("waiting setup_detect_heuristic_parent response...");
 
   //Read REP status (1 byte)
   zmq_msg_init (&msg);
@@ -466,17 +466,17 @@ char* wirego_detect_heuristic_parent_cb(wirego_t* wirego_h, int idx) {
     return NULL;    
   }
 
-  ws_noisy("detect_heuristic_parent(%d) %s", idx, parent_protocol);
+  ws_noisy("setup_detect_heuristic_parent(%d) %s", idx, parent_protocol);
   return parent_protocol;
 }
 
-// Returns 0 on detection success, -1 on failure or no detection
-int wirego_detection_heuristic_cb(wirego_t* wirego_h, int packet_number, char* src, char* dst, char* layer, const char* packet, int packet_size) {
+// wirego_process_heuristic returns 0 on detection success, -1 on failure or no detection
+int wirego_process_heuristic(wirego_t* wirego_h, int packet_number, char* src, char* dst, char* layer, const char* packet, int packet_size) {
   if (src == NULL || dst == NULL || layer == NULL || packet == NULL || packet_size == 0) {
     return -1;
   }
 
-  const char cmd[] = "detection_heuristic";
+  const char cmd[] = "process_heuristic";
   int size;
   zmq_msg_t msg;
   int detection_result = -1;
@@ -484,7 +484,7 @@ int wirego_detection_heuristic_cb(wirego_t* wirego_h, int packet_number, char* s
   int ret;
   char status;
 
-  ws_noisy("sending detection_heuristic request ...");
+  ws_noisy("sending process_heuristic request ...");
   
   if (zmq_send(wirego_h->zsock, (void*)(cmd), sizeof(cmd), ZMQ_SNDMORE) == -1) {
     return -1;
@@ -504,7 +504,7 @@ int wirego_detection_heuristic_cb(wirego_t* wirego_h, int packet_number, char* s
   if (zmq_send(wirego_h->zsock, packet, packet_size, 0) == -1) {
     return -1;
   }
-  ws_noisy("waiting detection_heuristic response...");
+  ws_noisy("waiting process_heuristic response...");
 
   //Read REP status (1 byte)
   zmq_msg_init (&msg);
@@ -526,12 +526,12 @@ int wirego_detection_heuristic_cb(wirego_t* wirego_h, int packet_number, char* s
   }
   detection_result = b;
 
-  ws_noisy("detection_heuristic %d", detection_result);
+  ws_noisy("process_heuristic %d", detection_result);
   return detection_result;
 }
 
-int wirego_dissect_packet_cb(wirego_t* wirego_h, int packet_number, char* src, char* dst, char* layer, const char* packet, int packet_size) {
-  const char cmd[] = "dissect_packet";
+int wirego_process_dissect_packet(wirego_t* wirego_h, int packet_number, char* src, char* dst, char* layer, const char* packet, int packet_size) {
+  const char cmd[] = "process_dissect_packet";
   int size;
   zmq_msg_t msg;
   int dissect_handler = -1;
@@ -543,7 +543,7 @@ int wirego_dissect_packet_cb(wirego_t* wirego_h, int packet_number, char* src, c
   }
 
   
-  ws_noisy("sending dissect_packet request ...");
+  ws_noisy("sending process_dissect_packet request ...");
   
   if (zmq_send(wirego_h->zsock, (void*)(cmd), sizeof(cmd), ZMQ_SNDMORE) == -1) {
     return -1;
@@ -563,7 +563,7 @@ int wirego_dissect_packet_cb(wirego_t* wirego_h, int packet_number, char* src, c
   if (zmq_send(wirego_h->zsock, packet, packet_size, 0) == -1) {
     return -1;
   }
-  ws_noisy("waiting dissect_packet response...");
+  ws_noisy("waiting process_dissect_packet response...");
 
   //Read REP status (1 byte)
   zmq_msg_init (&msg);
@@ -583,12 +583,12 @@ int wirego_dissect_packet_cb(wirego_t* wirego_h, int packet_number, char* src, c
   }
   zmq_msg_close (&msg);
 
-  ws_noisy("dissect_packet %d", dissect_handler);
+  ws_noisy("process_dissect_packet %d", dissect_handler);
   return dissect_handler;
 }
 
 
-char* wirego_result_get_protocol_cb(wirego_t* wirego_h, int dissect_handle){
+char* wirego_result_get_protocol(wirego_t* wirego_h, int dissect_handle){
   const char cmd[] = "result_get_protocol";
   int size;
   zmq_msg_t msg;
@@ -628,7 +628,7 @@ char* wirego_result_get_protocol_cb(wirego_t* wirego_h, int dissect_handle){
   return protocol;
 }
 
-char* wirego_result_get_info_cb(wirego_t* wirego_h, int dissect_handle){
+char* wirego_result_get_info(wirego_t* wirego_h, int dissect_handle){
   const char cmd[] = "result_get_info";
   int size;
   zmq_msg_t msg;
@@ -668,7 +668,7 @@ char* wirego_result_get_info_cb(wirego_t* wirego_h, int dissect_handle){
   return info;
 }
 
-int wirego_result_get_fields_count_cb(wirego_t* wirego_h, int dissect_handle){
+int wirego_result_get_fields_count(wirego_t* wirego_h, int dissect_handle){
   const char cmd[] = "result_get_fields_count";
   int size;
   zmq_msg_t msg;
@@ -707,7 +707,7 @@ int wirego_result_get_fields_count_cb(wirego_t* wirego_h, int dissect_handle){
   return count;
 }
 
-int wirego_result_get_field_cb(wirego_t* wirego_h, int dissect_handle, int idx, int* parent_idx, int* wirego_field_id, int* offset, int* length) {
+int wirego_result_get_field(wirego_t* wirego_h, int dissect_handle, int idx, int* parent_idx, int* wirego_field_id, int* offset, int* length) {
   const char cmd[] = "result_get_field";
   int size;
   zmq_msg_t msg;
@@ -776,7 +776,7 @@ int wirego_result_get_field_cb(wirego_t* wirego_h, int dissect_handle, int idx, 
   return 0;
 }
 
-int wirego_result_release_cb(wirego_t* wirego_h, int dissect_handle){
+int wirego_result_release(wirego_t* wirego_h, int dissect_handle){
   const char cmd[] = "result_release";
   int size;
   zmq_msg_t msg;

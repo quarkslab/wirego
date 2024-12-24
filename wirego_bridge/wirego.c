@@ -97,7 +97,7 @@ void proto_register_wirego(void) {
   }
 
   //Let's ping using ZMQ
-  ret = wirego_zmq_ping(&wirego_h);
+  ret = wirego_utility_ping(&wirego_h);
   if (ret != 0) {
     ws_warning("Wirego: failed to contact ZMQ endpoint (ping)");
     return;
@@ -106,7 +106,7 @@ void proto_register_wirego(void) {
 
   //Check API version
   int vmajor, vminor;
-  ret = wirego_version_cb(&wirego_h, &vmajor, &vminor);
+  ret = wirego_utility_get_version(&wirego_h, &vmajor, &vminor);
   if (ret != 0) {
     ws_warning("Wirego: failed to retrieve remote version");
     return;
@@ -122,7 +122,7 @@ void proto_register_wirego(void) {
   static hf_register_info *hfx;
 
   //Ask plugin how many custom fields are declared
-  wirego_h.fields_count = wirego_get_fields_count_cb(&wirego_h);
+  wirego_h.fields_count = wirego_setup_get_fields_count(&wirego_h);
   if (wirego_h.fields_count == -1) {
     ws_warning("Wirego: failed to retrieve remote fields count");
     return;
@@ -140,7 +140,7 @@ void proto_register_wirego(void) {
     int display;
 
     //Fetch field
-    if (wirego_get_field_cb(&wirego_h, i, &wirego_field_id, &name, &filter, &value_type, &display) == -1) {
+    if (wirego_setup_get_field(&wirego_h, i, &wirego_field_id, &name, &filter, &value_type, &display) == -1) {
       ws_warning("Wirego: failed to retrieve field %d info from remote", i);
       return;
     }
@@ -172,7 +172,7 @@ void proto_register_wirego(void) {
 
   //Setup plugin's long name
   static char long_name[255];
-  char * name = wirego_get_name_cb(&wirego_h);
+  char * name = wirego_setup_get_plugin_name(&wirego_h);
   if (!name) {
     ws_warning("Failed to retrieve remote Wirego plugin name");
     return;
@@ -180,7 +180,7 @@ void proto_register_wirego(void) {
   snprintf(long_name, 255, "%s (Wirego v%d.%d)", name, vmajor, vminor);
 
   //Fetch filter name
-  char* filter = wirego_get_plugin_filter_cb(&wirego_h);
+  char* filter = wirego_setup_get_plugin_filter(&wirego_h);
   if (!filter) {
     ws_warning("Failed to retrieve remote Wirego plugin filter");
     return;
@@ -216,7 +216,7 @@ void proto_reg_handoff_wirego(void) {
   int idx = 0;
   while (1) {
     int filter_value;
-    filter_name = wirego_detect_int_cb(&wirego_h, &filter_value, idx);
+    filter_name = wirego_setup_detect_int(&wirego_h, &filter_value, idx);
 
     //Reached last int filter
     if (filter_name == NULL)
@@ -230,7 +230,7 @@ void proto_reg_handoff_wirego(void) {
   idx = 0;
   while (1) {
     char* filter_value_str;
-    filter_name = wirego_detect_string_cb(&wirego_h, &filter_value_str, idx);
+    filter_name = wirego_setup_detect_string(&wirego_h, &filter_value_str, idx);
 
     //Reached last int filter
     if (filter_name == NULL)
@@ -247,14 +247,14 @@ void proto_reg_handoff_wirego(void) {
     char name[64];
     char display_name[128];
     char* parent_protocol_str;
-    parent_protocol_str = wirego_detect_heuristic_parent_cb(&wirego_h, idx);
+    parent_protocol_str = wirego_setup_detect_heuristic_parent(&wirego_h, idx);
 
     //Reached last heuristic parent
     if (parent_protocol_str == NULL)
       break;
 
     snprintf(name, 64, "wirego_heur_%d", idx);
-    snprintf(display_name, 128, "%s over %s", wirego_get_name_cb(&wirego_h), parent_protocol_str);
+    snprintf(display_name, 128, "%s over %s", wirego_setup_get_plugin_name(&wirego_h), parent_protocol_str);
 
     heur_dissector_add(parent_protocol_str, wirego_heuristic_check, display_name, name, wirego_h.proto_wirego, HEURISTIC_ENABLE);
     free(parent_protocol_str);
@@ -305,7 +305,7 @@ static gboolean wirego_heuristic_check(tvbuff_t *tvb, packet_info *pinfo, proto_
   full_layer = compile_network_stack(pinfo);
 
   //Pass everything to the golang plugin
-  detected = wirego_detection_heuristic_cb(&wirego_h, pinfo->num, src, dst, full_layer, tvb_get_ptr(tvb, 0, pdu_len), pdu_len);
+  detected = wirego_process_heuristic(&wirego_h, pinfo->num, src, dst, full_layer, tvb_get_ptr(tvb, 0, pdu_len), pdu_len);
   free(full_layer);
   full_layer = NULL;
 

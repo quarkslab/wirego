@@ -49,19 +49,19 @@ func (wg *Wirego) Listen() {
 	dispatcher := make(map[string]ZMQCommand)
 
 	//Utility commands, not dispatched to the Wirego plugin interface
-	dispatcher["ping"] = wg.processPing
-	dispatcher["version"] = wg.processVersion
+	dispatcher["utility_ping"] = wg.processPing
+	dispatcher["utility_get_version"] = wg.processVersion
 
 	//ZMQ interface commands
-	dispatcher["get_name"] = wg.processGetName
-	dispatcher["get_plugin_filter"] = wg.processGetFilter
-	dispatcher["get_fields_count"] = wg.processGetFieldsCount
-	dispatcher["get_field"] = wg.processGetField
-	dispatcher["detect_int"] = wg.processDetectInt
-	dispatcher["detect_string"] = wg.processDetectString
-	dispatcher["detect_heuristic_parent"] = wg.processDetectHeuristicParent
-	dispatcher["detection_heuristic"] = wg.processDetectionHeuristic
-	dispatcher["dissect_packet"] = wg.processDissectPacket
+	dispatcher["setup_get_plugin_name"] = wg.processGetName
+	dispatcher["setup_get_plugin_filter"] = wg.processGetFilter
+	dispatcher["setup_get_fields_count"] = wg.processGetFieldsCount
+	dispatcher["setup_get_field"] = wg.processGetField
+	dispatcher["setup_detect_int"] = wg.processDetectInt
+	dispatcher["setup_detect_string"] = wg.processDetectString
+	dispatcher["setup_detect_heuristic_parent"] = wg.processDetectHeuristicParent
+	dispatcher["process_heuristic"] = wg.processDetectionHeuristic
+	dispatcher["process_dissect_packet"] = wg.processDissectPacket
 	dispatcher["result_get_protocol"] = wg.processResultGetProtocol
 	dispatcher["result_get_info"] = wg.processResultGetInfo
 	dispatcher["result_get_fields_count"] = wg.processResultGetFieldsCount

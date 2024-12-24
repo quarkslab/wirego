@@ -107,43 +107,43 @@ func TestInvalidCommand(t *testing.T) {
 func TestPing(t *testing.T) {
 	var request [][]byte
 	var response [][]byte
-	request = append(request, []byte("ping\x00")) //Command name
-	response = append(response, []byte{0x01})     //Valid
+	request = append(request, []byte("utility_ping\x00")) //Command name
+	response = append(response, []byte{0x01})             //Valid
 	checkZMQCommand(request, response, t)
 }
 
 func TestVersion(t *testing.T) {
 	var request [][]byte
 	var response [][]byte
-	request = append(request, []byte("version\x00")) //Command name
-	response = append(response, []byte{0x01})        //Valid
-	response = append(response, []byte{0x02})        //Major
-	response = append(response, []byte{0x00})        //Minor
+	request = append(request, []byte("utility_get_version\x00")) //Command name
+	response = append(response, []byte{0x01})                    //Valid
+	response = append(response, []byte{0x02})                    //Major
+	response = append(response, []byte{0x00})                    //Minor
 	checkZMQCommand(request, response, t)
 }
 
 func TestGetName(t *testing.T) {
 	var request [][]byte
 	var response [][]byte
-	request = append(request, []byte("get_name\x00")) //Command name
-	response = append(response, []byte{0x01})         //Valid
-	response = append(response, []byte("Test\x00"))   //Name
+	request = append(request, []byte("setup_get_plugin_name\x00")) //Command name
+	response = append(response, []byte{0x01})                      //Valid
+	response = append(response, []byte("Test\x00"))                //Name
 	checkZMQCommand(request, response, t)
 }
 
 func TestGetPluginFilter(t *testing.T) {
 	var request [][]byte
 	var response [][]byte
-	request = append(request, []byte("get_plugin_filter\x00")) //Command name
-	response = append(response, []byte{0x01})                  //Valid
-	response = append(response, []byte("testfilter\x00"))      //Filter
+	request = append(request, []byte("setup_get_plugin_filter\x00")) //Command name
+	response = append(response, []byte{0x01})                        //Valid
+	response = append(response, []byte("testfilter\x00"))            //Filter
 	checkZMQCommand(request, response, t)
 }
 
 func TestGetFieldsCount(t *testing.T) {
 	var request [][]byte
 	var response [][]byte
-	request = append(request, []byte("get_fields_count\x00"))                  //Command name
+	request = append(request, []byte("setup_get_fields_count\x00"))            //Command name
 	response = append(response, []byte{0x01})                                  //Valid
 	response = append(response, binary.LittleEndian.AppendUint32([]byte{}, 2)) //Fields count
 	checkZMQCommand(request, response, t)
@@ -154,7 +154,7 @@ func TestGetField(t *testing.T) {
 	var response [][]byte
 
 	//Check field 0
-	request = append(request, []byte("get_field\x00"))                       //Command name
+	request = append(request, []byte("setup_get_field\x00"))                 //Command name
 	request = append(request, binary.LittleEndian.AppendUint32([]byte{}, 0)) //Field index
 
 	response = append(response, []byte{0x01})                                                               //Valid
@@ -168,7 +168,7 @@ func TestGetField(t *testing.T) {
 	//Check field 1
 	request = make([][]byte, 0)
 	response = make([][]byte, 0)
-	request = append(request, []byte("get_field\x00"))                       //Command name
+	request = append(request, []byte("setup_get_field\x00"))                 //Command name
 	request = append(request, binary.LittleEndian.AppendUint32([]byte{}, 1)) //Field index
 
 	response = append(response, []byte{0x01})                                                        //Valid
@@ -186,7 +186,7 @@ func TestDetectInt(t *testing.T) {
 	var response [][]byte
 
 	//Check detect int with idx 0
-	request = append(request, []byte("detect_int\x00"))                      //Command name
+	request = append(request, []byte("setup_detect_int\x00"))                //Command name
 	request = append(request, binary.LittleEndian.AppendUint32([]byte{}, 0)) //Index
 
 	response = append(response, []byte{0x01})                                    //Valid
@@ -199,7 +199,7 @@ func TestDetectInt(t *testing.T) {
 	response = make([][]byte, 0)
 
 	//Check detect int with idx 1
-	request = append(request, []byte("detect_int\x00"))                      //Command name
+	request = append(request, []byte("setup_detect_int\x00"))                //Command name
 	request = append(request, binary.LittleEndian.AppendUint32([]byte{}, 1)) //Index
 
 	response = append(response, []byte{0x01})                                    //Valid
@@ -212,7 +212,7 @@ func TestDetectInt(t *testing.T) {
 	response = make([][]byte, 0)
 
 	//Check detect int with idx 2 (too far, will fail)
-	request = append(request, []byte("detect_int\x00"))                      //Command name
+	request = append(request, []byte("setup_detect_int\x00"))                //Command name
 	request = append(request, binary.LittleEndian.AppendUint32([]byte{}, 2)) //Index
 
 	response = append(response, []byte{0x00}) //Invalid
@@ -224,7 +224,7 @@ func TestDetectString(t *testing.T) {
 	var response [][]byte
 
 	//Check detect string with idx 0
-	request = append(request, []byte("detect_string\x00"))                   //Command name
+	request = append(request, []byte("setup_detect_string\x00"))             //Command name
 	request = append(request, binary.LittleEndian.AppendUint32([]byte{}, 0)) //Index
 
 	response = append(response, []byte{0x01})                 //Valid
@@ -237,7 +237,7 @@ func TestDetectString(t *testing.T) {
 	response = make([][]byte, 0)
 
 	//Check detect string with idx 1
-	request = append(request, []byte("detect_string\x00"))                   //Command name
+	request = append(request, []byte("setup_detect_string\x00"))             //Command name
 	request = append(request, binary.LittleEndian.AppendUint32([]byte{}, 1)) //Index
 
 	response = append(response, []byte{0x01})                 //Valid
@@ -250,7 +250,7 @@ func TestDetectString(t *testing.T) {
 	response = make([][]byte, 0)
 
 	//Check detect string with idx 2 (too far, will fail)
-	request = append(request, []byte("detect_string\x00"))                   //Command name
+	request = append(request, []byte("setup_detect_string\x00"))             //Command name
 	request = append(request, binary.LittleEndian.AppendUint32([]byte{}, 2)) //Index
 
 	response = append(response, []byte{0x00}) //Invalid
@@ -262,7 +262,7 @@ func TestDetectHeuristicParents(t *testing.T) {
 	var response [][]byte
 
 	//Check detect string with idx 0
-	request = append(request, []byte("detect_heuristic_parent\x00"))         //Command name
+	request = append(request, []byte("setup_detect_heuristic_parent\x00"))   //Command name
 	request = append(request, binary.LittleEndian.AppendUint32([]byte{}, 0)) //Index
 
 	response = append(response, []byte{0x01})        //Valid
@@ -274,7 +274,7 @@ func TestDetectHeuristicParents(t *testing.T) {
 	response = make([][]byte, 0)
 
 	//Check detect string with idx 1
-	request = append(request, []byte("detect_heuristic_parent\x00"))         //Command name
+	request = append(request, []byte("setup_detect_heuristic_parent\x00"))   //Command name
 	request = append(request, binary.LittleEndian.AppendUint32([]byte{}, 1)) //Index
 
 	response = append(response, []byte{0x01})        //Valid
@@ -286,7 +286,7 @@ func TestDetectHeuristicParents(t *testing.T) {
 	response = make([][]byte, 0)
 
 	//Check detect string with idx 2 (too far, will fail)
-	request = append(request, []byte("detect_heuristic_parent\x00"))         //Command name
+	request = append(request, []byte("setup_detect_heuristic_parent\x00"))   //Command name
 	request = append(request, binary.LittleEndian.AppendUint32([]byte{}, 2)) //Index
 
 	response = append(response, []byte{0x00}) //Invalid
@@ -298,7 +298,7 @@ func TestDetectionHeuristic(t *testing.T) {
 	var response [][]byte
 
 	//Heuristic detection with "good" packet
-	request = append(request, []byte("detection_heuristic\x00"))                  //Command name
+	request = append(request, []byte("process_heuristic\x00"))                    //Command name
 	request = append(request, binary.LittleEndian.AppendUint32([]byte{}, 123456)) //Packet number
 	request = append(request, []byte("1.2.3.4"))                                  //Src
 	request = append(request, []byte("4.3.2.1"))                                  //Dest
@@ -314,7 +314,7 @@ func TestDetectionHeuristic(t *testing.T) {
 	response = make([][]byte, 0)
 
 	//Heuristic detection with "bad" packet
-	request = append(request, []byte("detection_heuristic\x00"))                  //Command name
+	request = append(request, []byte("process_heuristic\x00"))                    //Command name
 	request = append(request, binary.LittleEndian.AppendUint32([]byte{}, 123456)) //Packet number
 	request = append(request, []byte("1.2.3.4"))                                  //Src
 	request = append(request, []byte("4.3.2.1"))                                  //Dest
@@ -331,7 +331,7 @@ func TestDissectPacket(t *testing.T) {
 	var response [][]byte
 
 	//Dissect packet
-	request = append(request, []byte("dissect_packet\x00"))                       //Command name
+	request = append(request, []byte("process_dissect_packet\x00"))               //Command name
 	request = append(request, binary.LittleEndian.AppendUint32([]byte{}, 123456)) //Packet number
 	request = append(request, []byte("1.2.3.4"))                                  //Src
 	request = append(request, []byte("4.3.2.1"))                                  //Dest
@@ -350,7 +350,7 @@ func TestResultGetProtocol(t *testing.T) {
 	wg := helperSetupWirego(t)
 
 	//Dissect packet
-	request = append(request, []byte("dissect_packet\x00"))                       //Command name
+	request = append(request, []byte("process_dissect_packet\x00"))               //Command name
 	request = append(request, binary.LittleEndian.AppendUint32([]byte{}, 123456)) //Packet number
 	request = append(request, []byte("1.2.3.4"))                                  //Src
 	request = append(request, []byte("4.3.2.1"))                                  //Dest
@@ -382,7 +382,7 @@ func TestResultGetInfo(t *testing.T) {
 	wg := helperSetupWirego(t)
 
 	//Dissect packet
-	request = append(request, []byte("dissect_packet\x00"))                       //Command name
+	request = append(request, []byte("process_dissect_packet\x00"))               //Command name
 	request = append(request, binary.LittleEndian.AppendUint32([]byte{}, 123456)) //Packet number
 	request = append(request, []byte("1.2.3.4"))                                  //Src
 	request = append(request, []byte("4.3.2.1"))                                  //Dest
@@ -414,7 +414,7 @@ func TestResultGetFieldsCount(t *testing.T) {
 	wg := helperSetupWirego(t)
 
 	//Dissect packet
-	request = append(request, []byte("dissect_packet\x00"))                       //Command name
+	request = append(request, []byte("process_dissect_packet\x00"))               //Command name
 	request = append(request, binary.LittleEndian.AppendUint32([]byte{}, 123456)) //Packet number
 	request = append(request, []byte("1.2.3.4"))                                  //Src
 	request = append(request, []byte("4.3.2.1"))                                  //Dest
@@ -446,7 +446,7 @@ func TestResultGetField(t *testing.T) {
 	wg := helperSetupWirego(t)
 
 	//Dissect packet
-	request = append(request, []byte("dissect_packet\x00"))                       //Command name
+	request = append(request, []byte("process_dissect_packet\x00"))               //Command name
 	request = append(request, binary.LittleEndian.AppendUint32([]byte{}, 123456)) //Packet number
 	request = append(request, []byte("1.2.3.4"))                                  //Src
 	request = append(request, []byte("4.3.2.1"))                                  //Dest
@@ -527,7 +527,7 @@ func TestResultRelease(t *testing.T) {
 	wg := helperSetupWirego(t)
 
 	//Dissect packet
-	request = append(request, []byte("dissect_packet\x00"))                       //Command name
+	request = append(request, []byte("process_dissect_packet\x00"))               //Command name
 	request = append(request, binary.LittleEndian.AppendUint32([]byte{}, 123456)) //Packet number
 	request = append(request, []byte("1.2.3.4"))                                  //Src
 	request = append(request, []byte("4.3.2.1"))                                  //Dest

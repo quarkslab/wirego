@@ -30,7 +30,7 @@ int dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *da
 
 
   full_layer = compile_network_stack(pinfo);
-  dissectHandle = wirego_dissect_packet_cb(wirego_h, pinfo->num, src, dst, full_layer, tvb_get_ptr(tvb, 0, pdu_len), pdu_len);
+  dissectHandle = wirego_process_dissect_packet(wirego_h, pinfo->num, src, dst, full_layer, tvb_get_ptr(tvb, 0, pdu_len), pdu_len);
   free(full_layer);
   full_layer = NULL;
 
@@ -45,13 +45,13 @@ int dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *da
   //Analyse plugin results
 
   //Flag protocol name
-  char * protocol = wirego_result_get_protocol_cb(wirego_h, dissectHandle);
+  char * protocol = wirego_result_get_protocol(wirego_h, dissectHandle);
   if (protocol)
     col_set_str(pinfo->cinfo, COL_PROTOCOL, protocol);
 
 
   //Fill "info" column
-  char * info = wirego_result_get_info_cb(wirego_h, dissectHandle);
+  char * info = wirego_result_get_info(wirego_h, dissectHandle);
   if (info)
     col_set_str(pinfo->cinfo, COL_INFO, info);
 
@@ -61,7 +61,7 @@ int dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *da
     goto DONE;
 
   //How many custom fields did the plugin return?
-  int result_fields_count = wirego_result_get_fields_count_cb(wirego_h, dissectHandle);
+  int result_fields_count = wirego_result_get_fields_count(wirego_h, dissectHandle);
 
   if (result_fields_count <= 0)
     goto DONE;
@@ -86,7 +86,7 @@ int dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *da
 
 
     //Ask plugin for result
-    if (wirego_result_get_field_cb(wirego_h, dissectHandle, i, &parent_idx, &wirego_field_id, &offset, &length) == -1)
+    if (wirego_result_get_field(wirego_h, dissectHandle, i, &parent_idx, &wirego_field_id, &offset, &length) == -1)
       break;
 
     if (parent_idx == -1)
@@ -94,7 +94,7 @@ int dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *da
   }
 
 DONE:
-  wirego_result_release_cb(wirego_h, dissectHandle);
+  wirego_result_release(wirego_h, dissectHandle);
   return tvb_captured_length(tvb);
 }
 
@@ -107,7 +107,7 @@ void tree_add_item(wirego_t *wirego_h, proto_item *parent_node, int dissectHandl
 
 
   //Ask plugin for result
-  wirego_result_get_field_cb(wirego_h, dissectHandle, idx, &parent_idx, &wirego_field_id, &offset, &length);
+  wirego_result_get_field(wirego_h, dissectHandle, idx, &parent_idx, &wirego_field_id, &offset, &length);
 
   //Convert plugin field id to wireshark id
   wireshark_field_id = get_wireshark_field_id_from_wirego_field_id(wirego_field_id);
@@ -125,7 +125,7 @@ void tree_add_item(wirego_t *wirego_h, proto_item *parent_node, int dissectHandl
   proto_tree *subsub = NULL;
 
   for (int i = 0; i < count; i++) {
-    wirego_result_get_field_cb(wirego_h, dissectHandle, i, &parent_idx, &wirego_field_id, &offset, &length);
+    wirego_result_get_field(wirego_h, dissectHandle, i, &parent_idx, &wirego_field_id, &offset, &length);
     if (parent_idx == idx) {
       if (!subsub)
         subsub = proto_item_add_subtree(sub, wirego_h->ett_wirego);
