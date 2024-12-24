@@ -9,6 +9,10 @@
 
 include(WiresharkPlugin)
 
+if(APPLE AND EXISTS /opt/homebrew/lib/)
+	link_directories(/opt/homebrew/lib/)
+endif()
+	
 # Plugin name and version info (major minor micro extra)
 set_module_info(wirego 0 2 0 0)
 

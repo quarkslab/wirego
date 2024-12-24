@@ -38,7 +38,15 @@
 static wirego_t wirego_h;
 
 int wirego_is_plugin_loaded(void);
+
+//In wireshark 4.4, heur_dissector_add prototype has changed
+#define __WS_VERSION (WIRESHARK_VERSION_MAJOR *100 + WIRESHARK_VERSION_MINOR)
+#if __WS_VERSION <= 402
+static gboolean wirego_heuristic_check(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data);
+#else
 static bool wirego_heuristic_check(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data);
+#endif
+
 
 wirego_t * get_wirego_h(void) {
   return &wirego_h;
@@ -282,7 +290,13 @@ int wirego_is_plugin_loaded(void) {
 
 // wirego_heuristic_check is called by Wireshark for heuristic detections, everytime one of the registered "heuristic parent"
 // is found
+#define __WS_VERSION (WIRESHARK_VERSION_MAJOR *100 + WIRESHARK_VERSION_MINOR)
+
+#if __WS_VERSION <= 402
+static gboolean wirego_heuristic_check(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data)
+#else
 static bool wirego_heuristic_check(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data)
+#endif
 {
   int pdu_len;
   char src[255];
