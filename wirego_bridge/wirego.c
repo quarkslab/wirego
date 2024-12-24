@@ -38,7 +38,7 @@
 static wirego_t wirego_h;
 
 int wirego_is_plugin_loaded(void);
-static gboolean wirego_heuristic_check(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data);
+static bool wirego_heuristic_check(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data);
 
 wirego_t * get_wirego_h(void) {
   return &wirego_h;
@@ -282,7 +282,7 @@ int wirego_is_plugin_loaded(void) {
 
 // wirego_heuristic_check is called by Wireshark for heuristic detections, everytime one of the registered "heuristic parent"
 // is found
-static gboolean wirego_heuristic_check(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data)
+static bool wirego_heuristic_check(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data)
 {
   int pdu_len;
   char src[255];
