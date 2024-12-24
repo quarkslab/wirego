@@ -9,15 +9,19 @@
 
 include(WiresharkPlugin)
 
+if(APPLE AND EXISTS /opt/homebrew/lib/)
+	link_directories(/opt/homebrew/lib/)
+endif()
+	
 # Plugin name and version info (major minor micro extra)
-set_module_info(wirego 0 1 0 0)
+set_module_info(wirego 0 2 0 0)
 
 set(DISSECTOR_SRC
-	plugin-loader.c
+	zmq_relay.c
 	helpers.c
 	preferences.c
 	dissect.c
-	packet-wirego.c
+	wirego.c
 )
 
 set(PLUGIN_FILES
@@ -38,7 +42,7 @@ register_plugin_files(plugin.c
 
 add_wireshark_plugin_library(wirego epan)
 
-target_link_libraries(wirego epan)
+target_link_libraries(wirego epan zmq)
 
 install_plugin(wirego epan)
 

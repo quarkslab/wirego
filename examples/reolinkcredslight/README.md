@@ -16,34 +16,25 @@ Credentials and response are transmitted using simple JSON structures over HTTP.
 
 ## Implementation
 
-During **init**, which is called at package initialization (hence when the plugin is loaded), we register to the Wirego package. As previously explained, the cache is disabled: in order to flag the requests as "valid" or "invalid" we need to be able to update the http request result.
+The **main** function implementation is very similar to the one using on the minimalis example.
+The cache is enable because we will process all packed as they come and we won't need to update a packet description based on what follows.
 
 ```golang
 type WiregoReolinkCreds struct {
 }
 
-// Unused (but mandatory)
-func main() {}
-
-// Called at golang environment initialization (you should probably not touch this)
-func init() {
+func main() {
 	var wge WiregoReolinkCreds
+	lastSeenRequest = nil
 
-	//Register to the wirego package
-	wirego.Register(wge)
+	wg, err := wirego.New("ipc:///tmp/wirego0", false, wge)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	wg.ResultsCacheEnable(true)
 
-  //Enable the Wirego cache, so that Wireshark will not ask us to parse the same packet multiple times
-	wirego.ResultsCacheEnable(true)
-}
-```
-
-In the **Setup** we just initialize a pointer to the last seen request to nil.
-
-```golang
-// This function is called when the plugin is loaded.
-func (WiregoReolinkCreds) Setup() error {
-  lastSeenRequest = nil
-	return nil
+	wg.Listen()
 }
 ```
 

@@ -12,10 +12,10 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        wireshark_version: ["4.0", "4.2"]
+        wireshark_version: ["4.0", "4.2", "4.4"]
     steps:
       - name: Install wireshark deps on linux
-        run: sudo apt-get install -y git build-essential cmake libgcrypt-dev libpcap-dev libgcrypt20-dev libglib2.0-dev flex bison libpcre2-dev libnghttp2-dev libc-ares-dev libspeexdsp-dev
+        run: sudo apt-get install -y git build-essential cmake libgcrypt-dev libpcap-dev libgcrypt20-dev libglib2.0-dev flex bison libpcre2-dev libnghttp2-dev libc-ares-dev libspeexdsp-dev libzmq5-dev
 
       - name: Clone Wirego plugin
         uses: actions/checkout@v3
@@ -30,7 +30,7 @@ jobs:
           ref: release-${{ matrix.wireshark_version }}
 
       - name: Create plugin link
-        run: ln -s ${{ github.workspace }}/wirego/wirego_plugin ${{ github.workspace }}/wireshark/plugins/epan/wirego
+        run: ln -s ${{ github.workspace }}/wirego/wirego_bridge ${{ github.workspace }}/wireshark/plugins/epan/wirego
 
       - name: Create output dir
         run: mkdir ${{ github.workspace }}/build

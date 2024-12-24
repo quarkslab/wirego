@@ -1,9 +1,10 @@
-# Wirego
+# Wirego 
 
-A Wireshark plugin wrapper for golang
+|    |    |
+| -- | -- |
+| ![Wirego Logo](./doc/img/wirego_logo_small.png) |  A Wireshark plugin framework based on ZMQ, supporting Golang and hopefully more languages soon.
+|
 
-
-![Wirego Logo](./img/wirego_logo_small.png)
 
 ## Introduction
 
@@ -11,32 +12,43 @@ Writing plugins for Wireshark in C/C++ can be opaque: the APIs are quite powerfu
 
 Another alternative is to use LUA, but first of all you need to know this language. So again, you'll spend more time trying to learn that new language than actually writing this quick and dirty plugin.
 
-Wirego is a plugin for Wireshark, written in C that actually loads a plugin written in Go language.
+Wirego is a composed of:
 
-You basically don't have to touch the Wirego plugin and you will be given a dummy empty golang plugin to start with.
+  - a Wireshark plugin (wirego_bridge), written in C that will transmit all calls from Wireshark to a remote ZMQ endpoint
+  - A set of packages for several languages receiving those ZMQ calls and converting them to a simple API that you can use
+
+![screenshot](./doc/img/schema.png)
+
+
+As a starter, a **golang** package is provided and more languages will come later.
 
 ![screenshot](./examples/minimal/screenshot.png)
 
-## Overview
+In all Wirego's code and documentations we will refer to:
+
+  - **Wirego bridge** : the Wireshark plugin, written in C (you won't have to touch this one)
+  - **Wirego package** : a package/class/bundle/sdk for a given language, used to make things easier on your side
+  - **Wirego remote** : the application that you will develop using the **Wirego package**
+
+## Overview (in Go)
 
 In order to setup Wirego, you will need follow 3 steps:
 
-  1. Install or build the Wirego plugin for Wireshark
-  2. Develop your own plugin, using the "wirego" Go package
-  3. Start Wireshark and tell Wirego where your plugin is
+  1. Install or build the **Wirego bridge plugin** for Wireshark
+  2. Develop your own plugin, using a **Wirego package**
+  3. Start Wireshark and tell the Wirego bridge where your ZMQ endpoint is
 
 You may use prebuilt binaries for **step 1**, those can be downloaded [here](https://github.com/quarkslab/wirego/releases).
-If prefer building the plugin (or if prebuilt binaries fails), refer to the following documentation [here](BUILD_WIREGO.md)
+If prefer building the plugin (or if prebuilt binaries fails), refer to the following documentation [here](./doc/BUILD_WIREGO.md)
 
 
-For **step 2**, you will basically just have to __import "wirego"__ and implement the following interface:
+The **step 2** will obviously depend on the language you're using. For Go you will basically just have to copy/paste the **main()** function from one of our examples and implement the following interface:
 
 ```golang
     // WiregoInterface is implemented by the actual wirego plugin
     type WiregoInterface interface {
       GetName() string
       GetFilter() string
-      Setup() error
       GetFields() []WiresharkField
       GetDetectionFilters() []DetectionFilterType
       GetDetectionHeuristicsParent() []string
@@ -45,28 +57,46 @@ For **step 2**, you will basically just have to __import "wirego"__ and implemen
     }
 ```
 
-Now it's time for **step 3**: [install the Wirego plugin and start Wireshark](RUNNING.md)!
+Now it's time for **step 3**: [install the Wirego plugin and start Wireshark](./doc/RUNNING.md)!
 
 ## Examples
 
 A few plugin examples are available :
 
-  - [Minimal](./examples/minimal/) ; a minimalistic example showing the basic usage of Wirego
+  - [Minimal](./examples/minimal/) : a minimalistic example showing the basic usage of Wirego
   - [Reolink Credentials light](./examples/reolinkcredslight/) : a lightweight version of a Reolink camera credentials parser
-  - [Reolink Credentials](./examples/reolinkcreds/) : a advanced version of a Reolink camera credentials parser
+  - [Reolink Credentials](./examples/reolinkcreds/) : an advanced version of a Reolink camera credentials parser
 
+## Implementing a new language
 
-## Next steps
-
-That project is still under development, many things needs to be improved.
-Here's a partial list:
-
-  - The fields type list is incomplete
-  - Support payload split into several packets
+If you plan to implement a package for a currently unsupported language, please take a look at the [Wirego ZMQ specifications](./doc/PROTOCOL.md).
 
 ## Additional notes
 
-When the path to your plugin in Go is modified, you will be required to restart Wireshark, here's why:
+When the ZMQ endpoint used by your **Wirego remote plugin** is modified, you will be required to restart Wireshark, here's why:
 
   - we need to setup everything (plugin name, fields..) during the proto_register_wirego call
-  - preferences values are only loaded during the proto_reg_handoff_wirego call, which is too late for us
+  - preferences values, hence the ZMQ endpoint, are only loaded afterwards during the proto_reg_handoff_wirego call
+
+## Changelog
+
+
+### Wirego 0.9 (18/12/2023)
+
+First public release of Wirego
+
+### Wirego 1.0 (26/03/2024)
+
+  - Plugins ABI updates to 1.1
+  - A detection heuristics function can now be defined
+  - Renamed DissectorFilter to DetectionFilters for more clarity
+
+### Wirego 2.0 (24/12/2024)
+
+Wirego 2.0 is a major update from Wirego 1.0.
+The communication between the Wireshark plugin and the end user plugin has been fully rewritten to allow more languages to be integrated later (Python, Rust...).
+
+  - Wirego's Wireshark plugin (wirego bridge) now uses ZMQ
+  - Golang package (wireshark remote) now receives commands from Wirego bridge
+  - Specification for ZMQ protocol (see doc/PROTOCOL.md)
+

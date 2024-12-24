@@ -1,6 +1,6 @@
 #include "helpers.h"
 #include <wsutil/to_str.h>
-#include "packet-wirego.h"
+#include "wirego.h"
 
 //Extract src and dst addresses from packet_info structure. It can be an IPv4, IPv6 or Ethernet address
 void extract_adresses_from_packet_info(packet_info *pinfo, char *src, char *dst) {

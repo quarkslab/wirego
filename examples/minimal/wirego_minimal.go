@@ -17,22 +17,17 @@ const (
 type WiregoMinimalExample struct {
 }
 
-// Unused (but mandatory)
-func main() {}
-
-// Called at golang environment initialization (you should probably not touch this)
-func init() {
+func main() {
 	var wge WiregoMinimalExample
 
-	//Register to the wirego package
-	wirego.Register(wge)
-	wirego.ResultsCacheEnable(false)
-}
+	wg, err := wirego.New("ipc:///tmp/wirego0", false, wge)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	wg.ResultsCacheEnable(false)
 
-// This function is called when the plugin is loaded.
-func (WiregoMinimalExample) Setup() error {
-
-	return nil
+	wg.Listen()
 }
 
 // This function shall return the plugin name
@@ -95,15 +90,17 @@ func (WiregoMinimalExample) DissectPacket(packetNumber int, src string, dst stri
 	res.Info = fmt.Sprintf("Info example pkt %d", packetNumber)
 
 	//Add a few fields and refer to them using our own "internalId"
-	res.Fields = append(res.Fields, wirego.DissectField{WiregoFieldId: FieldIdCustom1, Offset: 0, Length: 2})
-	res.Fields = append(res.Fields, wirego.DissectField{WiregoFieldId: FieldIdCustom2, Offset: 2, Length: 4})
-
+	if len(packet) > 6 {
+		res.Fields = append(res.Fields, wirego.DissectField{WiregoFieldId: FieldIdCustom1, Offset: 0, Length: 2})
+		res.Fields = append(res.Fields, wirego.DissectField{WiregoFieldId: FieldIdCustom2, Offset: 2, Length: 4})
+	}
 	//Add a field with two sub field
-	subField1 := wirego.DissectField{WiregoFieldId: FieldIdCustom1, Offset: 6, Length: 2}
-	subField2 := wirego.DissectField{WiregoFieldId: FieldIdCustom1, Offset: 8, Length: 2}
-	field := wirego.DissectField{WiregoFieldId: FieldIdCustomWithSubFields, Offset: 6, Length: 4, SubFields: []wirego.DissectField{subField1, subField2}}
-	res.Fields = append(res.Fields, field)
-
+	if len(packet) > 10 {
+		subField1 := wirego.DissectField{WiregoFieldId: FieldIdCustom1, Offset: 6, Length: 2}
+		subField2 := wirego.DissectField{WiregoFieldId: FieldIdCustom1, Offset: 8, Length: 2}
+		field := wirego.DissectField{WiregoFieldId: FieldIdCustomWithSubFields, Offset: 6, Length: 4, SubFields: []wirego.DissectField{subField1, subField2}}
+		res.Fields = append(res.Fields, field)
+	}
 	//Dump packet contents
 	//fmt.Println(layer, " ", src, " to ", dst)
 	//fmt.Println(hex.Dump(packet))

@@ -89,24 +89,18 @@ type WiregoReolinkCreds struct {
 
 var lastSeenRequest *http.Request
 
-// Unused (but mandatory)
-func main() {}
-
-// Called at golang environment initialization (you should probably not touch this)
-func init() {
+func main() {
 	var wge WiregoReolinkCreds
-
-	//Register to the wirego package
-	wirego.Register(wge)
-
-	//Enable the Wirego cache, so that Wireshark will not ask us to parse the same packet multiple times
-	wirego.ResultsCacheEnable(true)
-}
-
-// This function is called when the plugin is loaded.
-func (WiregoReolinkCreds) Setup() error {
 	lastSeenRequest = nil
-	return nil
+
+	wg, err := wirego.New("ipc:///tmp/wirego0", false, wge)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	wg.ResultsCacheEnable(true)
+
+	wg.Listen()
 }
 
 // This function shall return the plugin name
