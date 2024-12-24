@@ -77,3 +77,26 @@ When the ZMQ endpoint used by your **Wirego remote plugin** is modified, you wil
 
   - we need to setup everything (plugin name, fields..) during the proto_register_wirego call
   - preferences values, hence the ZMQ endpoint, are only loaded afterwards during the proto_reg_handoff_wirego call
+
+## Changelog
+
+
+### Wirego 0.9 (18/12/2023)
+
+First public release of Wirego
+
+### Wirego 1.0 (26/03/2024)
+
+  - Plugins ABI updates to 1.1
+  - A detection heuristics function can now be defined
+  - Renamed DissectorFilter to DetectionFilters for more clarity
+
+### Wirego 2.0 (24/12/2024)
+
+Wirego 2.0 is a major update from Wirego 1.0.
+The communication between the Wireshark plugin and the end user plugin has been fully rewritten to allow more languages to be integrated later (Python, Rust...).
+
+  - Wirego's Wireshark plugin (wirego bridge) now uses ZMQ
+  - Golang package (wireshark remote) now receives commands from Wirego bridge
+  - Specification for ZMQ protocol (see doc/PROTOCOL.md)
+
