@@ -2,8 +2,7 @@
 
 |    |    |
 | -- | -- |
-| ![Wirego Logo](./doc/img/wirego_logo_small.png) |  A Wireshark plugin framework based on ZMQ, supporting Golang and hopefully more languages soon.
-|
+| ![Wirego Logo](./doc/img/wirego_logo_small.png) |  A Wireshark plugin framework based on ZMQ, supporting Golang and hopefully more languages soon. |
 
 
 ## Introduction
@@ -35,8 +34,9 @@ In all Wirego's code and documentations we will refer to:
 In order to setup Wirego, you will need follow 3 steps:
 
   1. Install or build the **Wirego bridge plugin** for Wireshark
-  2. Develop your own plugin, using a **Wirego package**
-  3. Start Wireshark and tell the Wirego bridge where your ZMQ endpoint is
+  2. Develop your **Wirego remote**, using a **Wirego package**
+  3. Start your **Wirego remote** program
+  4. Start Wireshark and tell the Wirego bridge where your ZMQ endpoint is
 
 You may use prebuilt binaries for **step 1**, those can be downloaded [here](https://github.com/quarkslab/wirego/releases).
 If prefer building the plugin (or if prebuilt binaries fails), refer to the following documentation [here](./doc/BUILD_WIREGO.md)
