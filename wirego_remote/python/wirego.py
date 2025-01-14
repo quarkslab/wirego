@@ -97,11 +97,11 @@ class WiregoListener(ABC):
         pass
 
     @abstractmethod
-    def detection_heuristic(packetNumber: int, src: str, dst: str, stack: str, packet: bytes) -> bool:
+    def detection_heuristic(self, packet_number: int, src: str, dst: str, stack: str, packet: bytes) -> bool:
         pass
 
     @abstractmethod
-    def dissect_packet(packetNumber: int, src: str, dst: str, stack: str, packet: bytes) -> DissectResult:
+    def dissect_packet(self, packet_number: int, src: str, dst: str, stack: str, packet: bytes) -> DissectResult:
         pass
 
 
@@ -139,15 +139,11 @@ class Wirego:
               case "utility_ping\x00":
                   socket.send(b"\x01")
               case "utility_get_version\x00":
-                  socket.send(b"\x01", zmq.SNDMORE)
-                  socket.send(b"\x02", zmq.SNDMORE)
-                  socket.send(b"\x00")
+                self._utility_get_version(socket, messageFrames)
               case "setup_get_plugin_name\x00":
-                  socket.send(b"\x01", zmq.SNDMORE)
-                  socket.send(self.wglistener.get_name().encode()  + b'\x00')
+                self._setup_get_plugin_name(socket, messageFrames)
               case "setup_get_plugin_filter\x00":
-                  socket.send(b"\x01", zmq.SNDMORE)
-                  socket.send(self.wglistener.get_filter().encode()  + b'\x00')
+                self._setup_get_plugin_filter(socket, messageFrames)
               case "setup_detect_string\x00":
                 self._setup_detect_string(socket, messageFrames)
               case "setup_detect_int\x00":
@@ -155,84 +151,114 @@ class Wirego:
               case "setup_get_fields_count\x00":
                 self._setup_get_fields_count(socket, messageFrames)
               case "setup_get_field\x00":
-                  if len(messageFrames) != 2:
-                    socket.send(b"\x00")
-                  else:
-                    idx = int.from_bytes(messageFrames[1], 'little')
-                    if idx >= len(self.fields):
-                        socket.send(b"\x00")
-                    else:
-                        socket.send(b"\x01", zmq.SNDMORE)
-                        socket.send(self.fields[idx].wirego_field_id.to_bytes(4, 'little'), zmq.SNDMORE)
-                        socket.send(self.fields[idx].name.encode()  + b'\x00', zmq.SNDMORE)
-                        socket.send(self.fields[idx].filter.encode()  + b'\x00', zmq.SNDMORE)
-                        socket.send(self.fields[idx].value_type.to_bytes(4, 'little'), zmq.SNDMORE)
-                        socket.send(self.fields[idx].display_mode.to_bytes(4, 'little'))
+                self._setup_get_field(socket, messageFrames)
               case "setup_detect_heuristic_parent\x00":
-                  if len(messageFrames) != 2:
-                    socket.send(b"\x00")
-                  else:
-                    idx = int.from_bytes(messageFrames[1], 'little')
-                    if idx >= len(self.heuristics_parents):
-                      socket.send(b"\x00")
-                    else:
-                      socket.send(b"\x01", zmq.SNDMORE)
-                      socket.send(self.heuristics_parents[idx].encode()  + b'\x00')
+                self._setup_detect_heuristic_parent(socket, messageFrames)
               case "process_heuristic\x00":
-                  if len(messageFrames) != 6:
-                      socket.send(b"\x00")
-                  else:
-                      packet_number = messageFrames[1]
-                      src = messageFrames[2]
-                      dst = messageFrames[3]
-                      layer = messageFrames[4]
-                      packet_data = messageFrames[5]
-                      result = self.wglistener.detection_heuristic(packet_number, src, dst, layer, packet_data)
-                      socket.send(b"\x01", zmq.SNDMORE)
-                      if result:
-                        socket.send(b"\x01", zmq.SNDMORE)
-                      else:
-                        socket.send(b"\x00")
+                self._process_heuristic(socket, messageFrames)
               case "process_dissect_packet\x00":
-                  if len(messageFrames) != 6:
-                      socket.send(b"\x00")
-                  else:
-                      packet_number = messageFrames[1]
-                      src = messageFrames[2]
-                      dst = messageFrames[3]
-                      layer = messageFrames[4]
-                      packet_data = messageFrames[5]
-                      result = self.wglistener.dissect_packet(packet_number, src, dst, layer, packet_data)
-                      self.cache[packet_number] = result
-                      socket.send(b"\x01", zmq.SNDMORE)
-                      socket.send(packet_number.to_bytes(4, 'little')) # use pkt number as dissect handler   
+                self._process_dissect_packet(socket, messageFrames)
               case "result_get_protocol\x00":
-                  if len(messageFrames) != 2:
-                    socket.send(b"\x00")
-                  else:
-                    packet_number = int.from_bytes(messageFrames[1], 'little')
-                    if not packet_number in self.cache:
-                      socket.send(b"\x00")
-                    else:
-                      socket.send(b"\x01", zmq.SNDMORE)
-                      socket.send(self.cache[packet_number].protocol  + b'\x00')
+                self._result_get_protocol(socket, messageFrames)
               case "result_get_info\x00":
-                  if len(messageFrames) != 2:
-                    socket.send(b"\x00")
-                  else:
-                    packet_number = int.from_bytes(messageFrames[1], 'little')
-                    if not packet_number in self.cache:
-                      socket.send(b"\x00")
-                    else:
-                      socket.send(b"\x01", zmq.SNDMORE)
-                      socket.send(self.cache[packet_number].info  + b'\x00')                     
+                self._result_get_info(socket, messageFrames)                   
               case _:
                 print("!!!!! Unknown message type: ", msg_type)
                 socket.send(b"\x00")
-
         return
 
+    def _utility_get_version(self, socket, messageFrames):
+      socket.send(b"\x01", zmq.SNDMORE)
+      socket.send(b"\x02", zmq.SNDMORE)
+      socket.send(b"\x00")
 
+    def _setup_get_plugin_filter(self, socket, messageFrames):
+      socket.send(b"\x01", zmq.SNDMORE)
+      socket.send(self.wglistener.get_filter().encode()  + b'\x00')
+  
+    def _setup_get_plugin_name(self, socket, messageFrames):
+      socket.send(b"\x01", zmq.SNDMORE)
+      socket.send(self.wglistener.get_name().encode()  + b'\x00')
+
+    def _setup_get_field(self, socket, messageFrames):
+      if len(messageFrames) != 2:
+        socket.send(b"\x00")
+        return
+      idx = int.from_bytes(messageFrames[1], 'little')
+      if idx >= len(self.fields):
+          socket.send(b"\x00")
+          return
+      socket.send(b"\x01", zmq.SNDMORE)
+      socket.send(self.fields[idx].wirego_field_id.to_bytes(4, 'little'), zmq.SNDMORE)
+      socket.send(self.fields[idx].name.encode()  + b'\x00', zmq.SNDMORE)
+      socket.send(self.fields[idx].filter.encode()  + b'\x00', zmq.SNDMORE)
+      socket.send(self.fields[idx].value_type.to_bytes(4, 'little'), zmq.SNDMORE)
+      socket.send(self.fields[idx].display_mode.to_bytes(4, 'little'))
+
+    def _setup_detect_heuristic_parent(self, socket, messageFrames):
+      if len(messageFrames) != 2:
+        socket.send(b"\x00")
+        return
+      idx = int.from_bytes(messageFrames[1], 'little')
+      if idx >= len(self.heuristics_parents):
+        socket.send(b"\x00")
+        return
+      socket.send(b"\x01", zmq.SNDMORE)
+      socket.send(self.heuristics_parents[idx].encode()  + b'\x00')
+
+    def _process_heuristic(self, socket, messageFrames):
+      if len(messageFrames) != 6:
+        socket.send(b"\x00")
+        return
+      packet_number = messageFrames[1]
+      src = messageFrames[2]
+      dst = messageFrames[3]
+      layer = messageFrames[4]
+      packet_data = messageFrames[5]
+      result = self.wglistener.detection_heuristic(packet_number, src, dst, layer, packet_data)
+      socket.send(b"\x01", zmq.SNDMORE)
+      if result:
+        socket.send(b"\x01", zmq.SNDMORE)
+      else:
+        socket.send(b"\x00")
+
+    def _process_dissect_packet(self, socket, messageFrames):
+      if len(messageFrames) != 6:
+        socket.send(b"\x00")
+        return
+      pktnum = int.from_bytes(messageFrames[1], 'little')
+      src = messageFrames[2].bytes.decode('utf-8')
+      dst = messageFrames[3].bytes.decode('utf-8')
+      layer = messageFrames[4].bytes.decode('utf-8')
+      packet_data = messageFrames[5]
+      
+      result = self.wglistener.dissect_packet(pktnum, src, dst, layer, packet_data)
+      self.cache[pktnum] = result
+      socket.send(b"\x01", zmq.SNDMORE)
+      socket.send(pktnum.to_bytes(4, 'little')) # use pkt number as dissect handler 
+
+    def _result_get_protocol(self, socket, messageFrames):
+      if len(messageFrames) != 2:
+        socket.send(b"\x00")
+        return
+      packet_number = int.from_bytes(messageFrames[1], 'little')
+      if not packet_number in self.cache:
+        socket.send(b"\x00")
+        return
+      socket.send(b"\x01", zmq.SNDMORE)
+      socket.send(self.cache[packet_number].protocol.encode()  + b'\x00')
+
+    def _result_get_info(self, socket, messageFrames):
+        if len(messageFrames) != 2:
+          socket.send(b"\x00")
+          return
+        packet_number = int.from_bytes(messageFrames[1], 'little')
+        if not packet_number in self.cache:
+          socket.send(b"\x00")
+          return
+        socket.send(b"\x01", zmq.SNDMORE)
+        socket.send(self.cache[packet_number].info.encode()  + b'\x00')  
+ 
     def _setup_get_fields_count(self, socket, messageFrames):
         socket.send(b"\x01", zmq.SNDMORE)
         socket.send(len(self.fields).to_bytes(4, 'little'))

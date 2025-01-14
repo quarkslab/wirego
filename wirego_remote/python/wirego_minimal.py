@@ -45,31 +45,31 @@ class WiregoMinimal(wirego.WiregoListener):
         "http",
       ]
 
-    def detection_heuristic(packetNumber: int, src: str, dst: str, stack: str, packet: bytes) -> bool:
+    def detection_heuristic(self, packet_number: int, src: str, dst: str, stack: str, packet: bytes) -> bool:
       #All packets starting with 0x00 should be passed to our dissector (super advanced heuristic)
       if (len(packet) != 0) and (packet[0] == 0x00):
         return True
       return False
 
     #dissect_packet provides the packet payload to be parsed.
-    def dissect_packet(packetNumber: int, src: str, dst: str, stack: str, packet: bytes) -> wirego.DissectResult:
+    def dissect_packet(self, packet_number: int, src: str, dst: str, stack: str, packet: bytes) -> wirego.DissectResult:
       #This string will appear on the packet being parsed
       protocol = "Protocol name example"
 
       #This (optional) string will appear in the info section
-      info = "Info example pkt ", packetNumber
+      info = "Info example pkt " + str(packet_number)
 
-      fields: List[wirego.DissectField]
+      fields = []
 
       #Add a few fields and refer to them using our own "internalId"
       if len(packet) > 6:
-        fields.append(wirego.DissectField(FieldEnum.FieldIdCustom1, 0, 2))
-        fields.append(wirego.DissectField(FieldEnum.FieldIdCustom2, 2, 4))
+        fields.append(wirego.DissectField(FieldEnum.FieldIdCustom1, 0, 2, []))
+        fields.append(wirego.DissectField(FieldEnum.FieldIdCustom2, 2, 4, []))
     
     	#Add a field with two sub field
       if len(packet) > 10:
-        subField1 = wirego.DissectField(FieldEnum.FieldIdCustom1, 6, 2)
-        subField2 = wirego.DissectField(FieldEnum.FieldIdCustom1, 8, 2)
+        subField1 = wirego.DissectField(FieldEnum.FieldIdCustom1, 6, 2, [])
+        subField2 = wirego.DissectField(FieldEnum.FieldIdCustom1, 8, 2, [])
         field = wirego.DissectField(FieldEnum.FieldIdCustomWithSubFields, 6, 4, [subField1, subField2])
         fields.append(field)
       
