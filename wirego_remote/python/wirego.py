@@ -133,8 +133,11 @@ class Wirego:
           print("message type: ", msg_type)
           match msg_type:
               case "utility_ping\x00":
-                  print("got ping")
                   socket.send(b"\x01")
+              case "utility_get_version\x00":
+                  socket.send(b"\x01", zmq.SNDMORE)
+                  socket.send(b"\x02", zmq.SNDMORE)
+                  socket.send(b"\x00")
               case _:
                 print("unknown message type: ", msg_type)
                 socket.send(b"\x00")
