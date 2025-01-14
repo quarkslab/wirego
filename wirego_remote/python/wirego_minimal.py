@@ -79,5 +79,6 @@ class WiregoMinimal(wirego.WiregoListener):
 tl = WiregoMinimal()
 
 # Instanciate wirego
-wg = wirego.Wirego(tl)
+wg = wirego.Wirego("ipc:///tmp/wirego0", True, tl)
+wg.results_cache_enable(True)
 

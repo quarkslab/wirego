@@ -105,9 +105,17 @@ class WiregoListener(ABC):
 
 class Wirego:
     
-    def __init__(self, wglistener: WiregoListener):
-        print("init")
+    def __init__(self, zmq_endpoint: str, verbose: bool, wglistener: WiregoListener):
+        self.zmq_endpoint = zmq_endpoint
+        self.verbose = verbose
         self.wglistener = wglistener
+        self.cache_enable = False
+
         print(wglistener.get_fields())
         print(wglistener.get_detection_filters())
+
+    def results_cache_enable(self, enable: bool):
+        self.cache_enable = enable
   
+    def listen(self):
+         return
