@@ -112,7 +112,7 @@ class Wirego:
         self.verbose = verbose
         self.wglistener = wglistener
         self.cache_enable = False
-
+        self.cache = {}
         print(wglistener.get_fields())
         print(wglistener.get_detection_filters())
 
@@ -120,6 +120,10 @@ class Wirego:
         self.cache_enable = enable
   
     def listen(self):
+        self.fields = self.wglistener.get_fields()
+        self.heuristics_parents = self.wglistener.get_detection_heuristics_parents()
+        self.detection_filters = self.wglistener.get_detection_filters()
+
         context = zmq.Context()
         socket = context.socket(zmq.REP)
         socket.bind(self.zmq_endpoint)
@@ -138,8 +142,140 @@ class Wirego:
                   socket.send(b"\x01", zmq.SNDMORE)
                   socket.send(b"\x02", zmq.SNDMORE)
                   socket.send(b"\x00")
+              case "setup_get_plugin_name\x00":
+                  socket.send(b"\x01", zmq.SNDMORE)
+                  socket.send(self.wglistener.get_name().encode()  + b'\x00')
+              case "setup_get_plugin_filter\x00":
+                  socket.send(b"\x01", zmq.SNDMORE)
+                  socket.send(self.wglistener.get_filter().encode()  + b'\x00')
+              case "setup_detect_string\x00":
+                self._setup_detect_string(socket, messageFrames)
+              case "setup_detect_int\x00":
+                self._setup_detect_int(socket, messageFrames)
+              case "setup_get_fields_count\x00":
+                self._setup_get_fields_count(socket, messageFrames)
+              case "setup_get_field\x00":
+                  if len(messageFrames) != 2:
+                    socket.send(b"\x00")
+                  else:
+                    idx = int.from_bytes(messageFrames[1], 'little')
+                    if idx >= len(self.fields):
+                        socket.send(b"\x00")
+                    else:
+                        socket.send(b"\x01", zmq.SNDMORE)
+                        socket.send(self.fields[idx].wirego_field_id.to_bytes(4, 'little'), zmq.SNDMORE)
+                        socket.send(self.fields[idx].name.encode()  + b'\x00', zmq.SNDMORE)
+                        socket.send(self.fields[idx].filter.encode()  + b'\x00', zmq.SNDMORE)
+                        socket.send(self.fields[idx].value_type.to_bytes(4, 'little'), zmq.SNDMORE)
+                        socket.send(self.fields[idx].display_mode.to_bytes(4, 'little'))
+              case "setup_detect_heuristic_parent\x00":
+                  if len(messageFrames) != 2:
+                    socket.send(b"\x00")
+                  else:
+                    idx = int.from_bytes(messageFrames[1], 'little')
+                    if idx >= len(self.heuristics_parents):
+                      socket.send(b"\x00")
+                    else:
+                      socket.send(b"\x01", zmq.SNDMORE)
+                      socket.send(self.heuristics_parents[idx].encode()  + b'\x00')
+              case "process_heuristic\x00":
+                  if len(messageFrames) != 6:
+                      socket.send(b"\x00")
+                  else:
+                      packet_number = messageFrames[1]
+                      src = messageFrames[2]
+                      dst = messageFrames[3]
+                      layer = messageFrames[4]
+                      packet_data = messageFrames[5]
+                      result = self.wglistener.detection_heuristic(packet_number, src, dst, layer, packet_data)
+                      socket.send(b"\x01", zmq.SNDMORE)
+                      if result:
+                        socket.send(b"\x01", zmq.SNDMORE)
+                      else:
+                        socket.send(b"\x00")
+              case "process_dissect_packet\x00":
+                  if len(messageFrames) != 6:
+                      socket.send(b"\x00")
+                  else:
+                      packet_number = messageFrames[1]
+                      src = messageFrames[2]
+                      dst = messageFrames[3]
+                      layer = messageFrames[4]
+                      packet_data = messageFrames[5]
+                      result = self.wglistener.dissect_packet(packet_number, src, dst, layer, packet_data)
+                      self.cache[packet_number] = result
+                      socket.send(b"\x01", zmq.SNDMORE)
+                      socket.send(packet_number.to_bytes(4, 'little')) # use pkt number as dissect handler   
+              case "result_get_protocol\x00":
+                  if len(messageFrames) != 2:
+                    socket.send(b"\x00")
+                  else:
+                    packet_number = int.from_bytes(messageFrames[1], 'little')
+                    if not packet_number in self.cache:
+                      socket.send(b"\x00")
+                    else:
+                      socket.send(b"\x01", zmq.SNDMORE)
+                      socket.send(self.cache[packet_number].protocol  + b'\x00')
+              case "result_get_info\x00":
+                  if len(messageFrames) != 2:
+                    socket.send(b"\x00")
+                  else:
+                    packet_number = int.from_bytes(messageFrames[1], 'little')
+                    if not packet_number in self.cache:
+                      socket.send(b"\x00")
+                    else:
+                      socket.send(b"\x01", zmq.SNDMORE)
+                      socket.send(self.cache[packet_number].info  + b'\x00')                     
               case _:
-                print("unknown message type: ", msg_type)
+                print("!!!!! Unknown message type: ", msg_type)
                 socket.send(b"\x00")
 
         return
+
+
+    def _setup_get_fields_count(self, socket, messageFrames):
+        socket.send(b"\x01", zmq.SNDMORE)
+        socket.send(len(self.fields).to_bytes(4, 'little'))
+        print(len(self.fields).to_bytes(4, 'little'))
+
+    def _setup_detect_string(self, socket, messageFrames):
+        if len(messageFrames) != 2:
+          socket.send(b"\x00")
+          return
+        idx = int.from_bytes(messageFrames[1], 'little')
+        if idx >= len(self.fields):
+            socket.send(b"\x00")
+            return
+        cnt = 0
+        for f in self.detection_filters:
+            if f.filter_type == DetectionFilterType.DetectionFilterTypeStr:
+                if cnt == idx:
+                    socket.send(b"\x01", zmq.SNDMORE)
+                    socket.send(f.name.encode()  + b'\x00', zmq.SNDMORE)
+                    socket.send(f.value_str.encode()  + b'\x00')
+                    return
+                else:
+                    cnt = cnt + 1
+        #gone too far, no more strings
+        socket.send(b"\x00")
+
+    def _setup_detect_int(self, socket, messageFrames):
+      if len(messageFrames) != 2:
+          socket.send(b"\x00")
+          return
+      idx = int.from_bytes(messageFrames[1], 'little')
+      if idx >= len(self.fields):
+          socket.send(b"\x00")
+          return
+      cnt = 0
+      for f in self.detection_filters:
+          if f.filter_type == DetectionFilterType.DetectionFilterTypeInt:
+              if cnt == idx:
+                  socket.send(b"\x01", zmq.SNDMORE)
+                  socket.send(f.name.encode()  + b'\x00', zmq.SNDMORE)
+                  socket.send(f.value_int.to_bytes(4, 'little'))
+                  return
+              else:
+                  cnt = cnt + 1
+      #gone too far, no more int
+      socket.send(b"\x00")

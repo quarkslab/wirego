@@ -120,8 +120,8 @@ For each field, the remote plugin will provide:
 | REQ   | 1         | int    | index                  | Field index on the fields array         |
 | REP   | 0         | byte   | 0/1                    | Command status (0 failure / 1 success)  |
 | REP   | 1         | int    | *                      | Wirego field id                         |
-| REP   | 2         | int    | *                      | Field name                              |
-| REP   | 3         | int    | *                      | Field filter                            |
+| REP   | 2         | string | *                      | Field name                              |
+| REP   | 3         | string | *                      | Field filter                            |
 | REP   | 4         | int    | *                      | Field value type                        |
 | REP   | 5         | int    | *                      | Field display mode                      |
 
