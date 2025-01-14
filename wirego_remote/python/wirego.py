@@ -7,6 +7,8 @@ from enum import IntEnum
 from typing import NewType
 from typing import List
 from typing import Optional
+import zmq
+
 
 __title__       = "Wirego Remote"
 __description__ = "Python class for Wirego remote"
@@ -118,4 +120,23 @@ class Wirego:
         self.cache_enable = enable
   
     def listen(self):
-         return
+        context = zmq.Context()
+        socket = context.socket(zmq.REP)
+        socket.bind(self.zmq_endpoint)
+        while True:
+          #  Wait for next request from client
+          messageFrames = socket.recv_multipart(0, False, False)
+          #TODO handle frames (usually 1) execept for DetectionHeuristics and Packets dissector
+          print("Received request: %s" % messageFrames)
+
+          msg_type = messageFrames[0].bytes.decode('utf-8')
+          print("message type: ", msg_type)
+          match msg_type:
+              case "utility_ping\x00":
+                  print("got ping")
+                  socket.send(b"\x01")
+              case _:
+                print("unknown message type: ", msg_type)
+                socket.send(b"\x00")
+
+        return
