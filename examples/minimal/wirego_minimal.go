@@ -65,7 +65,7 @@ func (WiregoMinimalExample) GetDetectionFilters() []wirego.DetectionFilter {
 	return filters
 }
 
-// GetDissectorFilterHeuristics returns a list of protocols on top of which detection heuristic
+// GetDetectionHeuristicsParents returns a list of protocols on top of which detection heuristic
 // should be called.
 func (WiregoMinimalExample) GetDetectionHeuristicsParents() []string {
 	//We want to apply our detection heuristic on all tcp payloads
