@@ -74,6 +74,22 @@ class DissectResult:
   fields: List[DissectField]
 
 
+# Stores a given field from a dissection result
+@dataclass
+class DissectResultFieldFlatten:
+  parent_idx: int #Index of parent field (for nested fields)
+  wirego_field_id: FieldId # Field id (Wirego)
+  offset: int # Field Offset in packet
+  length: int # Field length
+
+
+@dataclass
+class DissectResultFlattenEntry:
+  protocol: str  # Protocol column for Wireshark
+  info: str # Info column for Wireshark
+  fields: List[DissectResultFieldFlatten] # List of fields for Wireshark
+
+
 class WiregoListener(ABC):
 
     @abstractmethod
@@ -113,8 +129,6 @@ class Wirego:
         self.wglistener = wglistener
         self.cache_enable = False
         self.cache = {}
-        print(wglistener.get_fields())
-        print(wglistener.get_detection_filters())
 
     def results_cache_enable(self, enable: bool):
         self.cache_enable = enable
@@ -130,11 +144,10 @@ class Wirego:
         while True:
           #  Wait for next request from client
           messageFrames = socket.recv_multipart(0, False, False)
-          #TODO handle frames (usually 1) execept for DetectionHeuristics and Packets dissector
           print("Received request: %s" % messageFrames)
 
           msg_type = messageFrames[0].bytes.decode('utf-8')
-          print("message type: ", msg_type)
+          print("Message type: ", msg_type)
           match msg_type:
               case "utility_ping\x00":
                   socket.send(b"\x01")
@@ -289,8 +302,7 @@ class Wirego:
       # Not in cache, dissect packet
       if not pktnum in self.cache:
         result = self.wglistener.dissect_packet(pktnum, src, dst, layer, packet_data)
-        # FIXME: flatten result (see Go: addFieldsRecursive)
-        self.cache[pktnum] = result
+        self._add_result_to_cache(result, pktnum)
 
       socket.send(b"\x01", zmq.SNDMORE)
       socket.send(pktnum.to_bytes(4, 'little')) # use pkt number as dissect handler 
@@ -363,3 +375,19 @@ class Wirego:
 
       socket.send(b"\x01")
       return
+
+    def _add_result_to_cache(self, result, pktnum):
+      # Flatten results to a simple list with parenIdx pointing to parent's entry
+      flatten = DissectResultFlattenEntry(result.info, result.info, [])
+      for r in result.fields:
+        self._add_fields_recursive(flatten, -1, r)
+      self.cache[pktnum] = flatten # Since we have one result per packet number, use pktnum as key
+
+    def _add_fields_recursive(self, flatten: DissectResultFlattenEntry, parent_idx: int, field: DissectField):
+      new_parent_idx: int
+      field_flatten = DissectResultFieldFlatten(parent_idx, field.wirego_field_id, field.offset, field.length)
+      flatten.fields.append(field_flatten)
+
+      new_parent_idx = len(flatten.fields) - 1
+      for sub in field.sub_fields:
+        self._add_fields_recursive(flatten, new_parent_idx, sub)
