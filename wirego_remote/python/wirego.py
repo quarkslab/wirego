@@ -8,7 +8,7 @@ from typing import NewType
 from typing import List
 from typing import Optional
 import zmq
-
+import logging
 
 __title__       = "Wirego Remote"
 __description__ = "Python class for Wirego remote"
@@ -129,11 +129,16 @@ class Wirego:
         self.wglistener = wglistener
         self.cache_enable = False
         self.cache = {}
+        if self.verbose:
+          logging.basicConfig(level=logging.DEBUG)
+        else:
+          logging.basicConfig(level=logging.WARNING)
 
     def results_cache_enable(self, enable: bool):
         self.cache_enable = enable
   
     def listen(self):
+        logging.warning("Waiting for Wirego bridge commands...")
         self.fields = self.wglistener.get_fields()
         self.heuristics_parents = self.wglistener.get_detection_heuristics_parents()
         self.detection_filters = self.wglistener.get_detection_filters()
@@ -144,12 +149,16 @@ class Wirego:
         while True:
           #  Wait for next request from client
           messageFrames = socket.recv_multipart(0, False, False)
-          print("Received request: %s" % messageFrames)
+          if len(messageFrames) < 1:
+             logging.error("Received empty request from Wirego bridge.")
+             return
 
+          logging.debug("Received request: %s" % messageFrames)
           msg_type = messageFrames[0].bytes.decode('utf-8')
-          print("Message type: ", msg_type)
+          logging.debug("-> Message type: "+msg_type)
           match msg_type:
               case "utility_ping\x00":
+                  logging.warning("Received ping request from Wirego Bridge.")
                   socket.send(b"\x01")
               case "utility_get_version\x00":
                 self._utility_get_version(socket, messageFrames)
@@ -182,7 +191,7 @@ class Wirego:
               case "result_release\x00":
                 self._result_release(socket, messageFrames)          
               case _:
-                print("!!!!! Unknown message type: ", msg_type)
+                logging.warning("!!!!! Unknown message type: ", msg_type)
                 socket.send(b"\x00")
         return
 
@@ -229,7 +238,6 @@ class Wirego:
     def _setup_get_fields_count(self, socket, messageFrames):
         socket.send(b"\x01", zmq.SNDMORE)
         socket.send(len(self.fields).to_bytes(4, 'little'))
-        print(len(self.fields).to_bytes(4, 'little'))
 
     def _setup_detect_string(self, socket, messageFrames):
         if len(messageFrames) != 2:
@@ -357,7 +365,7 @@ class Wirego:
         socket.send(b"\x00")
         return
       socket.send(b"\x01", zmq.SNDMORE)
-      socket.send(int(0).to_bytes(4, 'little'), zmq.SNDMORE) # FIXME : use flattened value
+      socket.send(result.fields[idx].parent_idx.to_bytes(4, byteorder='little', signed=True), zmq.SNDMORE)
       socket.send(result.fields[idx].wirego_field_id.to_bytes(4, 'little'), zmq.SNDMORE)
       socket.send(result.fields[idx].offset.to_bytes(4, 'little'), zmq.SNDMORE) 
       socket.send(result.fields[idx].length.to_bytes(4, 'little'))

@@ -2,8 +2,6 @@ import wirego
 from typing import List
 from enum import IntEnum
 
-print("Wirego remote Python example")
-
 class FieldEnum(IntEnum):
 	FieldIdCustom1  = 0x01
 	FieldIdCustom2  = 0x02
@@ -75,11 +73,13 @@ class WiregoMinimal(wirego.WiregoListener):
       
       return wirego.DissectResult(protocol, info, fields)
 
+print("Wirego remote Python example")
+
 # Create our listener
 tl = WiregoMinimal()
 
 # Instanciate wirego
-wg = wirego.Wirego("ipc:///tmp/wirego0", True, tl)
+wg = wirego.Wirego("ipc:///tmp/wirego0", False, tl)
 wg.results_cache_enable(True)
 
 wg.listen()
