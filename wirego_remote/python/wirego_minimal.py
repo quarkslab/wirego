@@ -43,6 +43,7 @@ class WiregoMinimal(wirego.WiregoListener):
         "http",
       ]
 
+    # detection_heuristic applies an heuristic to identify the protocol.
     def detection_heuristic(self, packet_number: int, src: str, dst: str, stack: str, packet: bytes) -> bool:
       #All packets starting with 0x00 should be passed to our dissector (super advanced heuristic)
       if (len(packet) != 0) and (packet[0] == 0x00):

@@ -72,6 +72,7 @@ func (WiregoMinimalExample) GetDetectionHeuristicsParents() []string {
 	return []string{"udp", "http"}
 }
 
+// DetectionHeuristic applies an heuristic to identify the protocol.
 func (WiregoMinimalExample) DetectionHeuristic(packetNumber int, src string, dst string, layer string, packet []byte) bool {
 	//All packets starting with 0x00 should be passed to our dissector (super advanced heuristic)
 	if len(packet) != 0 && packet[0] == 0x00 {
