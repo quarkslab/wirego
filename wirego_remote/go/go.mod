@@ -1,4 +1,4 @@
-module github.com/quarkslab/wirego
+module github.com/quarkslab/wirego/wirego
 
 go 1.21
 
