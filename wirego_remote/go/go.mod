@@ -1,4 +1,4 @@
-module github.com/quarkslab/wirego/wirego_remote/go
+module github.com/quarkslab/wirego/wirego_remote/go/wirego/wirego
 
 go 1.21
 
