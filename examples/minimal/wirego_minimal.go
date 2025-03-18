@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/quarkslab/wirego/wirego/wirego"
+	"github.com/quarkslab/wirego/wirego_remote/go/wirego/wirego"
 )
 
 // Define here enum identifiers, used to refer to a specific field
