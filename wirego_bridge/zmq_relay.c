@@ -492,13 +492,13 @@ int wirego_process_heuristic(wirego_t* wirego_h, int packet_number, char* src, c
   if (zmq_send(wirego_h->zsock, &packet_number, sizeof(int), ZMQ_SNDMORE) == -1) {
     return -1;
   }
-  if (zmq_send(wirego_h->zsock, src, sizeof(src), ZMQ_SNDMORE) == -1) {
+  if (zmq_send(wirego_h->zsock, src, strlen(src)+1, ZMQ_SNDMORE) == -1) {
     return -1;
   }
-  if (zmq_send(wirego_h->zsock, dst, sizeof(dst), ZMQ_SNDMORE) == -1) {
+  if (zmq_send(wirego_h->zsock, dst, strlen(dst)+1, ZMQ_SNDMORE) == -1) {
     return -1;
   }
-  if (zmq_send(wirego_h->zsock, layer, sizeof(layer), ZMQ_SNDMORE) == -1) {
+  if (zmq_send(wirego_h->zsock, layer, strlen(layer)+1, ZMQ_SNDMORE) == -1) {
     return -1;
   }
   if (zmq_send(wirego_h->zsock, packet, packet_size, 0) == -1) {
@@ -551,13 +551,14 @@ int wirego_process_dissect_packet(wirego_t* wirego_h, int packet_number, char* s
   if (zmq_send(wirego_h->zsock, &packet_number, sizeof(int), ZMQ_SNDMORE) == -1) {
     return -1;
   }
-  if (zmq_send(wirego_h->zsock, src, sizeof(src), ZMQ_SNDMORE) == -1) {
+
+  if (zmq_send(wirego_h->zsock, src, strlen(src)+1, ZMQ_SNDMORE) == -1) {
     return -1;
   }
-  if (zmq_send(wirego_h->zsock, dst, sizeof(dst), ZMQ_SNDMORE) == -1) {
+  if (zmq_send(wirego_h->zsock, dst, strlen(dst)+1, ZMQ_SNDMORE) == -1) {
     return -1;
   }
-  if (zmq_send(wirego_h->zsock, layer, sizeof(layer), ZMQ_SNDMORE) == -1) {
+  if (zmq_send(wirego_h->zsock, layer, strlen(layer)+1, ZMQ_SNDMORE) == -1) {
     return -1;
   }
   if (zmq_send(wirego_h->zsock, packet, packet_size, 0) == -1) {
