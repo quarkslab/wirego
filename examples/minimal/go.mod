@@ -2,9 +2,7 @@ module wirego_minimal
 
 go 1.21.5
 
-replace github.com/quarkslab/wirego/wirego => ../../wirego_remote/go
-
-require github.com/quarkslab/wirego/wirego v0.0.0-20240401141356-ea0d385400fc
+require github.com/quarkslab/wirego/wirego_remote/go/wirego v0.0.0-20240401141356-ea0d385400fc
 
 require (
        github.com/go-zeromq/goczmq/v4 v4.2.2 // indirect
