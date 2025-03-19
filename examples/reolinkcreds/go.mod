@@ -1,10 +1,8 @@
 module reolinkcreds
 
-go 1.21.5
+go 1.23.4
 
-replace github.com/quarkslab/wirego/wirego => ../../wirego_remote/go
-
-require github.com/quarkslab/wirego/wirego v0.0.0-20240401141356-ea0d385400fc
+require github.com/quarkslab/wirego/wirego_remote/go v0.0.0-20250319130123-88faa0773c89
 
 require (
 	github.com/go-zeromq/goczmq/v4 v4.2.2 // indirect

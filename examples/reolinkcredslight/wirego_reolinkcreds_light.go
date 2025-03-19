@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/quarkslab/wirego/wirego/wirego"
+	"github.com/quarkslab/wirego/wirego_remote/go/wirego"
 )
 
 type AuthStatus int
