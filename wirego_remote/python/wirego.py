@@ -314,7 +314,7 @@ class Wirego:
       src = messageFrames[2]
       dst = messageFrames[3]
       layer = messageFrames[4]
-      packet_data = messageFrames[5]
+      packet_data = messageFrames[5].bytes
       # Call the user defined heuristic
       result = self.wglistener.detection_heuristic(packet_number, src, dst, layer, packet_data)
       socket.send(b"\x01", zmq.SNDMORE)
@@ -333,7 +333,7 @@ class Wirego:
       src = messageFrames[2].bytes.decode('utf-8')
       dst = messageFrames[3].bytes.decode('utf-8')
       layer = messageFrames[4].bytes.decode('utf-8')
-      packet_data = messageFrames[5]
+      packet_data = messageFrames[5].bytes
       
       # Not in cache, dissect packet.
       if not pktnum in self.cache:
@@ -425,7 +425,7 @@ class Wirego:
     # _add_result_to_cache add a dissection result to the cache
     def _add_result_to_cache(self, result, pktnum):
       # Flatten results to a simple list with parenIdx pointing to parent's entry
-      flatten = DissectResultFlattenEntry(result.protocol, result.info, [])
+      flatten = DissectResultFlattenEntry(result.info, result.info, [])
       for r in result.fields:
         self._add_fields_recursive(flatten, -1, r)
       self.cache[pktnum] = flatten # Since we have one result per packet number, use pktnum as key
