@@ -17,6 +17,9 @@ __email__       = "bgirard@quarkslab.com"
 __license__     = 'GPL-2.0-or-later'
 __copyright__   = 'Copyright (c) 2024 Benoit Girard'
 
+__WIREGO_VERSION_MAJOR__ = b"\x01"
+__WIREGO_VERSION_MINOR__ = b"\x02"
+
 # FieldId type (just overloading int type)
 FieldId = NewType('FieldId', int)
 
@@ -41,8 +44,8 @@ class DisplayMode(IntEnum):
 
 # DetectionFilterType defines the type of a declared detection filter
 class DetectionFilterType(IntEnum):
-	DetectionFilterTypeInt = 0x01
-	DetectionFilterTypeStr = 0x02
+	DetectionFilterTypeInt = 0x01 # Filter type value is integer
+	DetectionFilterTypeStr = 0x02 # Filter type value is string
 
 # WiregoField holds the description of a field
 @dataclass
@@ -67,7 +70,7 @@ class DissectField:
     wirego_field_id: FieldId          # Field id (Wirego)
     offset: int                       # Field Offset in packet
     length: int                       # Field length
-    sub_fields: List['DissectField']  # Sub fields
+    sub_fields: List['DissectField']  # Sub fields (optional)
 
 # DissectResult holds a dissection result for a given packet
 @dataclass
@@ -85,7 +88,7 @@ class DissectResultFieldFlatten:
   offset: int               # Field Offset in packet
   length: int               # Field length
 
-
+# DissectResultFlattenEntry stores a complete dissection result as a flat list
 @dataclass
 class DissectResultFlattenEntry:
   protocol: str                           # Protocol column for Wireshark
@@ -143,7 +146,7 @@ class Wirego:
   
     # listen waits for Wirego bridge commands and loop
     def listen(self):
-        logging.warning("Waiting for Wirego bridge commands...")
+        logging.warning("Waiting for Wirego bridge commands on endpoint "+self.zmq_endpoint)
 
         # Locally store some implementation structures
         self.fields = self.wglistener.get_fields()
@@ -208,8 +211,8 @@ class Wirego:
 
     # _utility_get_version returns the Wirego ZMQ API version
     def _utility_get_version(self, socket, messageFrames):
-      socket.send(b"\x01", zmq.SNDMORE)
-      socket.send(b"\x02", zmq.SNDMORE)
+      socket.send(__WIREGO_VERSION_MAJOR__, zmq.SNDMORE)
+      socket.send(__WIREGO_VERSION_MINOR__, zmq.SNDMORE)
       socket.send(b"\x00")
 
     # _setup_get_plugin_name returns the plugin name

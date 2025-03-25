@@ -83,7 +83,7 @@ print("Wirego remote Python example")
 tl = WiregoMinimal()
 
 # Instanciate wirego
-wg = wirego.Wirego("ipc:///tmp/wirego0", True, tl)
+wg = wirego.Wirego("ipc:///tmp/wirego0", False, tl)
 wg.results_cache_enable(True)
 
 wg.listen()
