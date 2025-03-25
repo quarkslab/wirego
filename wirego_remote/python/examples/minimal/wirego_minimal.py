@@ -1,7 +1,10 @@
+import sys
+sys.path.append('../../')
 import wirego
 from typing import List
 from enum import IntEnum
 
+# Define here enum identifiers, used to refer to a specific field
 class FieldEnum(IntEnum):
 	FieldIdCustom1  = 0x01
 	FieldIdCustom2  = 0x02
@@ -22,7 +25,7 @@ class WiregoMinimal(wirego.WiregoListener):
     def get_fields(self):
       return [
         wirego.WiregoField(FieldEnum.FieldIdCustom1, "Custom1", "wirego.custom01", wirego.ValueType.ValueTypeUInt8, wirego.DisplayMode.DisplayModeHexadecimal),
-        wirego.WiregoField(FieldEnum.FieldIdCustom1, "Custom2", "wirego.custom02", wirego.ValueType.ValueTypeUInt16, wirego.DisplayMode.DisplayModeDecimal),
+        wirego.WiregoField(FieldEnum.FieldIdCustom2, "Custom2", "wirego.custom02", wirego.ValueType.ValueTypeUInt16, wirego.DisplayMode.DisplayModeDecimal),
         wirego.WiregoField(FieldEnum.FieldIdCustomWithSubFields, "Custom With Subs", "wirego.custom_subs", wirego.ValueType.ValueTypeUInt32, wirego.DisplayMode.DisplayModeHexadecimal),
       ]
 
@@ -80,7 +83,7 @@ print("Wirego remote Python example")
 tl = WiregoMinimal()
 
 # Instanciate wirego
-wg = wirego.Wirego("ipc:///tmp/wirego0", False, tl)
+wg = wirego.Wirego("ipc:///tmp/wirego0", True, tl)
 wg.results_cache_enable(True)
 
 wg.listen()
