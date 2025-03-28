@@ -24,9 +24,9 @@ class WiregoMinimal(wirego.WiregoListener):
     # when dissecting a packet payload
     def get_fields(self):
       return [
-        wirego.WiregoField(FieldEnum.FieldIdCustom1, "Custom1", "wirego.custom01", wirego.ValueType.ValueTypeUInt8, wirego.DisplayMode.DisplayModeHexadecimal),
-        wirego.WiregoField(FieldEnum.FieldIdCustom2, "Custom2", "wirego.custom02", wirego.ValueType.ValueTypeUInt16, wirego.DisplayMode.DisplayModeDecimal),
-        wirego.WiregoField(FieldEnum.FieldIdCustomWithSubFields, "Custom With Subs", "wirego.custom_subs", wirego.ValueType.ValueTypeUInt32, wirego.DisplayMode.DisplayModeHexadecimal),
+        wirego.WiregoField(FieldEnum.FieldIdCustom1, "Custom1", "wgminexample.custom01", wirego.ValueType.ValueTypeUInt8, wirego.DisplayMode.DisplayModeHexadecimal),
+        wirego.WiregoField(FieldEnum.FieldIdCustom2, "Custom2", "wgminexample.custom02", wirego.ValueType.ValueTypeUInt16, wirego.DisplayMode.DisplayModeDecimal),
+        wirego.WiregoField(FieldEnum.FieldIdCustomWithSubFields, "Custom With Subs", "wgminexample.custom_subs", wirego.ValueType.ValueTypeUInt32, wirego.DisplayMode.DisplayModeHexadecimal),
       ]
 
     # get_detection_filters returns a wireshark filter that will select which packets
@@ -43,7 +43,6 @@ class WiregoMinimal(wirego.WiregoListener):
     def get_detection_heuristics_parents(self):
       return [
         "udp", 
-        "http",
       ]
 
     # detection_heuristic applies an heuristic to identify the protocol.

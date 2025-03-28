@@ -46,9 +46,9 @@ func (WiregoMinimalExample) GetFields() []wirego.WiresharkField {
 	var fields []wirego.WiresharkField
 
 	//Setup our wireshark custom fields
-	fields = append(fields, wirego.WiresharkField{WiregoFieldId: FieldIdCustom1, Name: "Custom1", Filter: "wirego.custom01", ValueType: wirego.ValueTypeUInt8, DisplayMode: wirego.DisplayModeHexadecimal})
-	fields = append(fields, wirego.WiresharkField{WiregoFieldId: FieldIdCustom2, Name: "Custom2", Filter: "wirego.custom02", ValueType: wirego.ValueTypeUInt16, DisplayMode: wirego.DisplayModeDecimal})
-	fields = append(fields, wirego.WiresharkField{WiregoFieldId: FieldIdCustomWithSubFields, Name: "CustomWith Subs", Filter: "wirego.custom_subs", ValueType: wirego.ValueTypeUInt32, DisplayMode: wirego.DisplayModeHexadecimal})
+	fields = append(fields, wirego.WiresharkField{WiregoFieldId: FieldIdCustom1, Name: "Custom1", Filter: "wgminexample.custom01", ValueType: wirego.ValueTypeUInt8, DisplayMode: wirego.DisplayModeHexadecimal})
+	fields = append(fields, wirego.WiresharkField{WiregoFieldId: FieldIdCustom2, Name: "Custom2", Filter: "wgminexample.custom02", ValueType: wirego.ValueTypeUInt16, DisplayMode: wirego.DisplayModeDecimal})
+	fields = append(fields, wirego.WiresharkField{WiregoFieldId: FieldIdCustomWithSubFields, Name: "CustomWith Subs", Filter: "wgminexample.custom_subs", ValueType: wirego.ValueTypeUInt32, DisplayMode: wirego.DisplayModeHexadecimal})
 
 	return fields
 }
@@ -69,7 +69,7 @@ func (WiregoMinimalExample) GetDetectionFilters() []wirego.DetectionFilter {
 // should be called.
 func (WiregoMinimalExample) GetDetectionHeuristicsParents() []string {
 	//We want to apply our detection heuristic on all tcp payloads
-	return []string{"udp", "http"}
+	return []string{"udp"}
 }
 
 // DetectionHeuristic applies an heuristic to identify the protocol.
