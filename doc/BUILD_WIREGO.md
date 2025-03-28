@@ -19,10 +19,9 @@ Use the following Dockerfile:
     # Link the wirego plugin folder to the Wireshark plugins source folder
     RUN ln -s /go/wirego/wirego_plugin /go/wireshark/plugins/epan/wirego
     # Build Wireshark and plugins
-    RUN cd /go/wireshark && git checkout release-4.2 && mkdir build && cd build && cmake -DCUSTOM_PLUGIN_SRC_DIR=/go/wireshark/plugins/epan/wirego .. && make
+    RUN cd /go/wireshark && git checkout release-4.4.2 && mkdir build && cd build && cmake -DCUSTOM_PLUGIN_SRC_DIR=/go/wireshark/plugins/epan/wirego .. && make
 
 ```
-
 
 Build the Docker image using:
 
@@ -32,9 +31,10 @@ Extract the built files from the image:
 
     id=$(docker create wiregobuild)
     docker cp $id:/go/wireshark/build/run/wireshark - > wireshark.so.tar
-    docker cp $id:./wireshark/build/run/plugins/4.2/epan/wirego.so - > wirego.so.tar        
+    docker cp $id:./wireshark/build/run/plugins/4.4.2/epan/wirego.so - > wirego.so.tar        
     docker rm -v $id
 
+__Note__ You may want to change **4.4.2** to match your Wireshark version.
 
 ## Manually
 

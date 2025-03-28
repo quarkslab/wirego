@@ -21,7 +21,7 @@ Wirego is a composed of:
 
 As a starter, a **golang** package is provided and more languages will come later.
 
-![screenshot](./examples/minimal/screenshot.png)
+![screenshot](./wirego_remote/go/examples/minimal/screenshot.png)
 
 In all Wirego's code and documentations we will refer to:
 
@@ -29,7 +29,7 @@ In all Wirego's code and documentations we will refer to:
   - **Wirego package** : a package/class/bundle/sdk for a given language, used to make things easier on your side
   - **Wirego remote** : the application that you will develop using the **Wirego package**
 
-## Overview (in Go)
+## Getting started
 
 In order to setup Wirego, you will need follow 3 steps:
 
@@ -42,7 +42,11 @@ You may use prebuilt binaries for **step 1**, those can be downloaded [here](htt
 If prefer building the plugin (or if prebuilt binaries fails), refer to the following documentation [here](./doc/BUILD_WIREGO.md)
 
 
-The **step 2** will obviously depend on the language you're using. For Go you will basically just have to copy/paste the **main()** function from one of our examples and implement the following interface:
+The **step 2** will obviously depend on the language you're using.
+
+### Overview in Go
+
+For Go you will basically just have to copy/paste the **main()** function from one of our examples and implement the following interface:
 
 ```golang
     // WiregoInterface is implemented by the actual wirego plugin
@@ -57,15 +61,83 @@ The **step 2** will obviously depend on the language you're using. For Go you wi
     }
 ```
 
+It's probably time for you to take a look at the minimal Go example found in [./wirego_remote/go/examples/minimal/](./wirego_remote/go/examples/minimal/README.md)
+
+### Overview in Python
+
+When using Python, you will need to declare a class inheriting **wirego.WiregoListener** from the **wirego** python package.
+
+The following methods (callbacks) needs to be implemented:
+
+```python
+class WiregoListener(ABC):
+
+    @abstractmethod
+    def get_name(self) -> str:
+        pass
+
+    @abstractmethod
+    def get_filter(self) -> str:
+        pass
+
+    @abstractmethod
+    def get_fields(self) -> List[WiregoField]:
+        pass
+
+    @abstractmethod
+    def get_detection_filters(self) -> List[DetectionFilter]:
+        pass
+
+    @abstractmethod
+    def get_detection_heuristics_parents(self) -> List[str]:
+        pass
+
+    @abstractmethod
+    def detection_heuristic(self, packet_number: int, src: str, dst: str, stack: str, packet: bytes) -> bool:
+        pass
+
+    @abstractmethod
+    def dissect_packet(self, packet_number: int, src: str, dst: str, stack: str, packet: bytes) -> DissectResult:
+        pass
+```
+
+When it's done simply register your class to Wirego and start listening for Wireshark's commands:
+
+```python
+print("Wirego remote Python example")
+
+# Create our listener
+tl = WiregoMinimal()
+
+# Instanciate wirego
+wg = wirego.Wirego("ipc:///tmp/wirego0", True, tl)
+wg.results_cache_enable(True)
+
+wg.listen()
+```
+
+It's probably time for you to take a look at the minimal Python example found in [./wirego_remote/python/examples/minimal/](./wirego_remote/python/examples/minimal/README.md)
+
+
+### Running Wirego
+
 Now it's time for **step 3**: [install the Wirego plugin and start Wireshark](./doc/RUNNING.md)!
 
 ## Examples
 
-A few plugin examples are available :
+A few plugin examples are available for each languages:
 
-  - [Minimal](./examples/minimal/) : a minimalistic example showing the basic usage of Wirego
-  - [Reolink Credentials light](./examples/reolinkcredslight/) : a lightweight version of a Reolink camera credentials parser
-  - [Reolink Credentials](./examples/reolinkcreds/) : an advanced version of a Reolink camera credentials parser
+**In Go:**
+
+  - [Minimal](./wirego_remote/go/examples/minimal/) : a minimalistic example showing the basic usage of Wirego
+  - [Reolink Credentials light](./wirego_remote/go/examples/reolinkcredslight/) : a lightweight version of a Reolink camera credentials parser
+  - [Reolink Credentials](./wirego_remote/go/examples/reolinkcreds/) : an advanced version of a Reolink camera credentials parser
+
+
+**In Python:**
+
+  - [Minimal](./wirego_remote/python/examples/minimal/) : a minimalistic example showing the basic usage of Wirego
+
 
 ## Implementing a new language
 
@@ -100,3 +172,11 @@ The communication between the Wireshark plugin and the end user plugin has been 
   - Golang package (wireshark remote) now receives commands from Wirego bridge
   - Specification for ZMQ protocol (see doc/PROTOCOL.md)
 
+### Wirego 2.1 (25/03/2025)
+
+Wirego 2.1 is a simply a cosmetic update of version 2.0.
+
+  - Moved Go examples to the wirego_remote Go subfolder
+  - Added example for Python Package
+  - Reviewed all documentations
+  
