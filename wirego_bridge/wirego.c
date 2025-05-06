@@ -62,7 +62,7 @@ void proto_register_wirego(void) {
   wirego_h.proto_wirego = -1;
   wirego_h.fields_mapping = NULL;
 
-  ws_warning("Wirego starting with czmq %d.%d\n", ZMQ_VERSION_MAJOR, ZMQ_VERSION_MINOR);
+  ws_warning("Wirego (v%d.%d) starting with czmq %d.%d\n", WIREGO_VERSION_MAJOR, WIREGO_VERSION_MINOR, ZMQ_VERSION_MAJOR, ZMQ_VERSION_MINOR);
 
   //Register preferences menu (used to set the ZMQ endpoint)
   register_preferences_menu();
@@ -119,9 +119,9 @@ void proto_register_wirego(void) {
     ws_warning("Wirego: failed to retrieve remote version");
     return;
   }
-  ws_warning("Wirego bridge version: %d.%d", WIREGO_VERSION_MAJOR, WIREGO_VERSION_MINOR);
+  ws_warning("Wirego bridge version: %d.%d", WIREGO_API_VERSION_MAJOR, WIREGO_API_VERSION_MINOR);
   ws_warning("Wirego remote version: %d.%d", vmajor, vminor);
-  if ((vmajor != WIREGO_VERSION_MAJOR) || (vminor != WIREGO_VERSION_MINOR)) {
+  if ((vmajor != WIREGO_API_VERSION_MAJOR) || (vminor != WIREGO_API_VERSION_MINOR)) {
     ws_warning("Wirego versions differs, aborting.");
     return;
   }
