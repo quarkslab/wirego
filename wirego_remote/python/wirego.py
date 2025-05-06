@@ -253,7 +253,7 @@ class Wirego:
           socket.send(b"\x00")
           return
         idx = int.from_bytes(messageFrames[1], 'little') # Frame 1 contains index
-        if idx >= len(self.fields):
+        if idx >= len(self.detection_filters):
             socket.send(b"\x00")
             return
         # Iterate over all detection filters and look for strings
@@ -276,7 +276,7 @@ class Wirego:
           socket.send(b"\x00")
           return
       idx = int.from_bytes(messageFrames[1], 'little') # Frame 1 contains index
-      if idx >= len(self.fields):
+      if idx >= len(self.detection_filters):
           socket.send(b"\x00")
           return
       # Iterate over all detection filters and look for integers
