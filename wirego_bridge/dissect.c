@@ -63,8 +63,10 @@ int dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *da
   //How many custom fields did the plugin return?
   int result_fields_count = wirego_result_get_fields_count(wirego_h, dissectHandle);
 
-  if (result_fields_count <= 0)
+  if (result_fields_count <= 0) {
+    proto_tree_add_item(tree, wirego_h->proto_wirego, tvb, 0, -1, ENC_BIG_ENDIAN);
     goto DONE;
+  }
 
   //Add a subtree on this packet
   proto_item *ti = proto_tree_add_item(tree, wirego_h->proto_wirego, tvb, 0, -1, ENC_BIG_ENDIAN);
