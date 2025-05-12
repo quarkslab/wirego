@@ -1,0 +1,10 @@
+[package]
+name = "wirego"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+log = "0.4.27"
+zeromq = "0.4.1"
+futures = "0.3.31"
+bytes = "1.10.1"
