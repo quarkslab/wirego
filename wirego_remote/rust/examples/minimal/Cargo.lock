@@ -687,6 +687,7 @@ dependencies = [
  "bytes",
  "futures",
  "log",
+ "tokio",
  "zeromq",
 ]
 

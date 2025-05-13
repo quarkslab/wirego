@@ -113,7 +113,7 @@ pub struct DissectResultFlattenEntry {
     pub dissected_fields: Vec<DissectResultFieldFlatten>,
 }
 
-pub trait WiregoListener {
+pub trait WiregoListener: Send {
     fn get_name(&self) -> String;
     fn get_filter(&self) -> String;
     fn get_fields(&self) -> Vec<WiresharkField>;
@@ -163,7 +163,7 @@ pub struct Wirego {
 impl Wirego {
     pub async fn new(
         zmq_endpoint: &str,
-        wirego_listener: Box<dyn WiregoListener>,
+        wirego_listener: Box<dyn WiregoListener + Send>,
     ) -> Result<Self, WiregoError> {
         let plugin_name = wirego_listener.get_name();
         let plugin_filter = wirego_listener.get_filter();
@@ -382,8 +382,11 @@ impl Wirego {
 
                 send_zmq_message(&mut self.zmq_socket, zmq_response).await
             }
+            ZmqCommandReq::ProcessHeuristic(process_heuristic) => {
+                todo!("Process heuristic not implemented, it's still to be done :<");
+            }
             ZmqCommandReq::ProcessDissectPacket(process_dissect_packet) => {
-                if let Some(dissected_packet) =
+                if let Some(_dissected_packet) =
                     self.cache.get(&process_dissect_packet.packet_number)
                 {
                     let zmq_response: ZmqMessage =
@@ -495,16 +498,6 @@ impl Wirego {
 
                 send_zmq_message(&mut self.zmq_socket, zmq_response).await
             }
-            ZmqCommandReq::ResultRelease(result_release) => {
-                let dissect_handler = result_release.dissect_handler;
-                self.cache.remove(&dissect_handler);
-
-                let zmq_response: ZmqMessage = ZmqCommandResp::ResultRelease(ResultReleaseResp {
-                    command_status: WIREGO_RESPONSE_SUCCESS.clone(),
-                })
-                .try_into()?;
-                send_zmq_message(&mut self.zmq_socket, zmq_response).await
-            }
             ZmqCommandReq::ResultGetFieldsCount(result_get_fields_count) => {
                 let dissect_handler = result_get_fields_count.dissect_handler;
                 let dissected_packet = self.cache.get(&dissect_handler).ok_or_else(|| {
@@ -558,8 +551,15 @@ impl Wirego {
 
                 send_zmq_message(&mut self.zmq_socket, zmq_response).await
             }
-            _ => {
-                todo!("Unknown command: {:?}", wirego_zmq_command);
+            ZmqCommandReq::ResultRelease(result_release) => {
+                let dissect_handler = result_release.dissect_handler;
+                self.cache.remove(&dissect_handler);
+
+                let zmq_response: ZmqMessage = ZmqCommandResp::ResultRelease(ResultReleaseResp {
+                    command_status: WIREGO_RESPONSE_SUCCESS.clone(),
+                })
+                .try_into()?;
+                send_zmq_message(&mut self.zmq_socket, zmq_response).await
             }
         }
     }

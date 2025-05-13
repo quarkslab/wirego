@@ -419,7 +419,7 @@ func (wg *Wirego) returnFailure(err error) error {
 	return wg.zmqSocket.Send(response)
 }
 
-// getStringFromFrame extrazcts a C-String from a given frame. Upon error, an empty string is returned.
+// getStringFromFrame extracts a C-String from a given frame. Upon error, an empty string is returned.
 func getStringFromFrame(frame []byte) string {
 	//Make sure it's a C string
 	if frame[len(frame)-1] != 0x00 {
