@@ -106,7 +106,7 @@ pub struct SetupDetectHeuristicParentResp {
 
 #[derive(Debug, Clone)]
 pub struct ProcessHeuristicReq {
-    pub packet_number: i32,
+    pub packet_number: u32,
     pub src: String,
     pub dst: String,
     pub layer: String,
@@ -254,7 +254,7 @@ impl TryFrom<ZmqMessage> for ZmqCommandReq {
                 ))
             }
             b"process_heuristic\x00" => {
-                let packet_number: i32 = parse_nth_frame_as_numeric(1, &zmq_message)?;
+                let packet_number: u32 = parse_nth_frame_as_numeric(1, &zmq_message)?;
                 let src: String = parse_nth_frame_as_string(2, &zmq_message)?;
                 let dst: String = parse_nth_frame_as_string(3, &zmq_message)?;
                 let layer: String = parse_nth_frame_as_string(4, &zmq_message)?;

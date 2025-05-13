@@ -383,7 +383,27 @@ impl Wirego {
                 send_zmq_message(&mut self.zmq_socket, zmq_response).await
             }
             ZmqCommandReq::ProcessHeuristic(process_heuristic) => {
-                todo!("Process heuristic not implemented, it's still to be done :<");
+                match self.wirego_listener.detection_heuristic(
+                    process_heuristic.packet_number,
+                    process_heuristic.src,
+                    process_heuristic.dst,
+                    process_heuristic.layer,
+                    &process_heuristic.data,
+                ) {
+                    true => {
+                        let zmq_response: ZmqMessage =
+                            ZmqCommandResp::ProcessHeuristic(ProcessHeuristicResp {
+                                command_status: WIREGO_RESPONSE_SUCCESS.clone(),
+                                detection_result: WIREGO_RESPONSE_SUCCESS.clone(),
+                            })
+                            .try_into()?;
+                        send_zmq_message(&mut self.zmq_socket, zmq_response).await
+                    }
+                    false => {
+                        let zmq_response: ZmqMessage = ZmqCommandResp::Failure.try_into()?;
+                        send_zmq_message(&mut self.zmq_socket, zmq_response).await
+                    }
+                }
             }
             ZmqCommandReq::ProcessDissectPacket(process_dissect_packet) => {
                 if let Some(_dissected_packet) =
