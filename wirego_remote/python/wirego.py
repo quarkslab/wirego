@@ -428,7 +428,7 @@ class Wirego:
     # _add_result_to_cache add a dissection result to the cache
     def _add_result_to_cache(self, result, pktnum):
       # Flatten results to a simple list with parenIdx pointing to parent's entry
-      flatten = DissectResultFlattenEntry(result.info, result.info, [])
+      flatten = DissectResultFlattenEntry(result.protocol, result.info, [])
       for r in result.fields:
         self._add_fields_recursive(flatten, -1, r)
       self.cache[pktnum] = flatten # Since we have one result per packet number, use pktnum as key
