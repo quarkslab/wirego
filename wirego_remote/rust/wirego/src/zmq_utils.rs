@@ -1,4 +1,3 @@
-use bytes::Bytes;
 use zeromq::{Socket, SocketRecv, SocketSend};
 
 use crate::error::WiregoError;

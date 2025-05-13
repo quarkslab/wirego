@@ -197,6 +197,12 @@ impl Wirego {
         }
     }
 
+    fn create_failure_response(&self) -> ZmqMessage {
+        ZmqCommandResp::Failure
+            .try_into()
+            .expect("Failed to create failure response")
+    }
+
     async fn handle_wirego_zmq_command(
         &mut self,
         wirego_zmq_command: ZmqCommandReq,
@@ -208,7 +214,8 @@ impl Wirego {
                 let zmq_response: ZmqMessage = ZmqCommandResp::UtilityPing(UtilityPingResp {
                     command_status: WIREGO_RESPONSE_SUCCESS.clone(),
                 })
-                .try_into()?;
+                .try_into()
+                .unwrap_or_else(|_| self.create_failure_response());
 
                 send_zmq_message(&mut self.zmq_socket, zmq_response).await
             }
@@ -219,7 +226,8 @@ impl Wirego {
                         major: WIREGO_API_VERSION_MAJOR.clone(),
                         minor: WIREGO_API_VERSION_MINOR.clone(),
                     })
-                    .try_into()?;
+                    .try_into()
+                    .unwrap_or_else(|_| self.create_failure_response());
 
                 send_zmq_message(&mut self.zmq_socket, zmq_response).await
             }
@@ -229,7 +237,8 @@ impl Wirego {
                         command_status: WIREGO_RESPONSE_SUCCESS.clone(),
                         plugin_name: self.plugin_name.clone(),
                     })
-                    .try_into()?;
+                    .try_into()
+                    .unwrap_or_else(|_| self.create_failure_response());
 
                 send_zmq_message(&mut self.zmq_socket, zmq_response).await
             }
@@ -239,7 +248,8 @@ impl Wirego {
                         command_status: WIREGO_RESPONSE_SUCCESS.clone(),
                         plugin_filter: self.plugin_filter.clone(),
                     })
-                    .try_into()?;
+                    .try_into()
+                    .unwrap_or_else(|_| self.create_failure_response());
 
                 send_zmq_message(&mut self.zmq_socket, zmq_response).await
             }
@@ -249,7 +259,8 @@ impl Wirego {
                         command_status: WIREGO_RESPONSE_SUCCESS.clone(),
                         fields_count: self.plugin_fields.len() as u32,
                     })
-                    .try_into()?;
+                    .try_into()
+                    .unwrap_or_else(|_| self.create_failure_response());
 
                 send_zmq_message(&mut self.zmq_socket, zmq_response).await
             }
@@ -262,8 +273,7 @@ impl Wirego {
                         self.plugin_fields.len()
                     );
 
-                    let zmq_response: ZmqMessage = ZmqCommandResp::Failure.try_into()?;
-
+                    let zmq_response: ZmqMessage = self.create_failure_response();
                     return send_zmq_message(&mut self.zmq_socket, zmq_response).await;
                 }
 
@@ -278,7 +288,8 @@ impl Wirego {
                     field_value_type: field.value_type.clone(),
                     field_display_mode: field.display_mode.clone(),
                 })
-                .try_into()?;
+                .try_into()
+                .unwrap_or_else(|_| self.create_failure_response());
 
                 println!("Field from listener: {:?}", field);
                 println!("Response: {:?}", zmq_response);
@@ -293,8 +304,7 @@ impl Wirego {
                         self.plugin_detection_filters.len()
                     );
 
-                    let zmq_response: ZmqMessage = ZmqCommandResp::Failure.try_into()?;
-
+                    let zmq_response: ZmqMessage = self.create_failure_response();
                     return send_zmq_message(&mut self.zmq_socket, zmq_response).await;
                 }
 
@@ -307,7 +317,8 @@ impl Wirego {
                                 filter_value: detection_filter_int.filter_value as u32,
                                 filter_name: detection_filter_int.filter_name.clone(),
                             })
-                            .try_into()?;
+                            .try_into()
+                            .unwrap_or_else(|_| self.create_failure_response());
 
                         send_zmq_message(&mut self.zmq_socket, zmq_response).await
                     }
@@ -316,8 +327,8 @@ impl Wirego {
                             "Unsupported detection filter type for SetupDetectInt: {:?}",
                             detection_filter
                         );
-                        let zmq_response: ZmqMessage = ZmqCommandResp::Failure.try_into()?;
-                        send_zmq_message(&mut self.zmq_socket, zmq_response).await
+                        let zmq_response: ZmqMessage = self.create_failure_response();
+                        return send_zmq_message(&mut self.zmq_socket, zmq_response).await;
                     }
                 }
             }
@@ -330,8 +341,7 @@ impl Wirego {
                         self.plugin_detection_filters.len()
                     );
 
-                    let zmq_response: ZmqMessage = ZmqCommandResp::Failure.try_into()?;
-
+                    let zmq_response: ZmqMessage = self.create_failure_response();
                     return send_zmq_message(&mut self.zmq_socket, zmq_response).await;
                 }
 
@@ -344,7 +354,8 @@ impl Wirego {
                                 filter_value: detection_filter_string.filter_value.clone(),
                                 filter_name: detection_filter_string.filter_name.clone(),
                             })
-                            .try_into()?;
+                            .try_into()
+                            .unwrap_or_else(|_| self.create_failure_response());
 
                         send_zmq_message(&mut self.zmq_socket, zmq_response).await
                     }
@@ -353,8 +364,8 @@ impl Wirego {
                             "Unsupported detection filter type for SetupDetectString: {:?}",
                             detection_filter
                         );
-                        let zmq_response: ZmqMessage = ZmqCommandResp::Failure.try_into()?;
-                        send_zmq_message(&mut self.zmq_socket, zmq_response).await
+                        let zmq_response: ZmqMessage = self.create_failure_response();
+                        return send_zmq_message(&mut self.zmq_socket, zmq_response).await;
                     }
                 }
             }
@@ -367,7 +378,7 @@ impl Wirego {
                         self.plugin_detection_heuristics_parents.len()
                     );
 
-                    let zmq_response: ZmqMessage = ZmqCommandResp::Failure.try_into()?;
+                    let zmq_response: ZmqMessage = self.create_failure_response();
                     return send_zmq_message(&mut self.zmq_socket, zmq_response).await;
                 }
 
@@ -378,7 +389,8 @@ impl Wirego {
                         command_status: WIREGO_RESPONSE_SUCCESS.clone(),
                         plugin_detection_heuristic_parent: detection_heuristic_parent.clone(),
                     })
-                    .try_into()?;
+                    .try_into()
+                    .unwrap_or_else(|_| self.create_failure_response());
 
                 send_zmq_message(&mut self.zmq_socket, zmq_response).await
             }
@@ -396,11 +408,20 @@ impl Wirego {
                                 command_status: WIREGO_RESPONSE_SUCCESS.clone(),
                                 detection_result: WIREGO_RESPONSE_SUCCESS.clone(),
                             })
-                            .try_into()?;
+                            .try_into()
+                            .unwrap_or_else(|_| self.create_failure_response());
+
                         send_zmq_message(&mut self.zmq_socket, zmq_response).await
                     }
                     false => {
-                        let zmq_response: ZmqMessage = ZmqCommandResp::Failure.try_into()?;
+                        let zmq_response: ZmqMessage =
+                            ZmqCommandResp::ProcessHeuristic(ProcessHeuristicResp {
+                                command_status: WIREGO_RESPONSE_SUCCESS.clone(),
+                                detection_result: WIREGO_RESPONSE_FAILURE.clone(),
+                            })
+                            .try_into()
+                            .unwrap_or_else(|_| self.create_failure_response());
+
                         send_zmq_message(&mut self.zmq_socket, zmq_response).await
                     }
                 }
@@ -414,7 +435,8 @@ impl Wirego {
                             command_status: WIREGO_RESPONSE_SUCCESS.clone(),
                             dissect_handler: process_dissect_packet.packet_number,
                         })
-                        .try_into()?;
+                        .try_into()
+                        .unwrap_or_else(|_| self.create_failure_response());
 
                     return send_zmq_message(&mut self.zmq_socket, zmq_response).await;
                 }
@@ -435,7 +457,7 @@ impl Wirego {
                             dissected_field.offset,
                             process_dissect_packet.data.len()
                         );
-                        let zmq_response: ZmqMessage = ZmqCommandResp::Failure.try_into()?;
+                        let zmq_response: ZmqMessage = self.create_failure_response();
                         return send_zmq_message(&mut self.zmq_socket, zmq_response).await;
                     }
 
@@ -447,7 +469,7 @@ impl Wirego {
                             dissected_field.length,
                             process_dissect_packet.data.len()
                         );
-                        let zmq_response: ZmqMessage = ZmqCommandResp::Failure.try_into()?;
+                        let zmq_response: ZmqMessage = self.create_failure_response();
                         return send_zmq_message(&mut self.zmq_socket, zmq_response).await;
                     }
                 }
@@ -477,12 +499,14 @@ impl Wirego {
                         command_status: WIREGO_RESPONSE_SUCCESS.clone(),
                         dissect_handler: process_dissect_packet.packet_number,
                     })
-                    .try_into()?;
+                    .try_into()
+                    .unwrap_or_else(|_| self.create_failure_response());
 
                 send_zmq_message(&mut self.zmq_socket, zmq_response).await
             }
             ZmqCommandReq::ResultGetProtocol(result_get_protocol) => {
                 let dissect_handler = result_get_protocol.dissect_handler;
+                // TODO: instead of ok_or_else, the Failure message should be sent
                 let dissected_packet = self.cache.get(&dissect_handler).ok_or_else(|| {
                     WiregoError::ParseError(format!(
                         "Dissect handler {} not found in cache",
@@ -496,12 +520,14 @@ impl Wirego {
                         command_status: WIREGO_RESPONSE_SUCCESS.clone(),
                         protocol_column_name,
                     })
-                    .try_into()?;
+                    .try_into()
+                    .unwrap_or_else(|_| self.create_failure_response());
 
                 send_zmq_message(&mut self.zmq_socket, zmq_response).await
             }
             ZmqCommandReq::ResultGetInfo(result_get_info) => {
                 let dissect_handler = result_get_info.dissect_handler;
+                // TODO: instead of ok_or_else, the Failure message should be sent
                 let dissected_packet = self.cache.get(&dissect_handler).ok_or_else(|| {
                     WiregoError::ParseError(format!(
                         "Dissect handler {} not found in cache",
@@ -514,12 +540,14 @@ impl Wirego {
                     command_status: WIREGO_RESPONSE_SUCCESS.clone(),
                     protocol_column_info: protocol_info_str,
                 })
-                .try_into()?;
+                .try_into()
+                .unwrap_or_else(|_| self.create_failure_response());
 
                 send_zmq_message(&mut self.zmq_socket, zmq_response).await
             }
             ZmqCommandReq::ResultGetFieldsCount(result_get_fields_count) => {
                 let dissect_handler = result_get_fields_count.dissect_handler;
+                // TODO: instead of ok_or_else, the Failure message should be sent
                 let dissected_packet = self.cache.get(&dissect_handler).ok_or_else(|| {
                     WiregoError::ParseError(format!(
                         "Dissect handler {} not found in cache",
@@ -533,12 +561,14 @@ impl Wirego {
                         command_status: WIREGO_RESPONSE_SUCCESS.clone(),
                         fields_count,
                     })
-                    .try_into()?;
+                    .try_into()
+                    .unwrap_or_else(|_| self.create_failure_response());
 
                 send_zmq_message(&mut self.zmq_socket, zmq_response).await
             }
             ZmqCommandReq::ResultGetField(result_get_field) => {
                 let dissect_handler = result_get_field.dissect_handler;
+                // TODO: instead of ok_or_else, the Failure message should be sent
                 let dissected_packet = self.cache.get(&dissect_handler).ok_or_else(|| {
                     WiregoError::ParseError(format!(
                         "Dissect handler {} not found in cache",
@@ -554,8 +584,7 @@ impl Wirego {
                         dissected_packet.dissected_fields.len()
                     );
 
-                    let zmq_response: ZmqMessage = ZmqCommandResp::Failure.try_into()?;
-
+                    let zmq_response: ZmqMessage = self.create_failure_response();
                     return send_zmq_message(&mut self.zmq_socket, zmq_response).await;
                 }
 
@@ -567,7 +596,8 @@ impl Wirego {
                     offset: dissected_field.offset as u32,
                     length: dissected_field.length as u32,
                 })
-                .try_into()?;
+                .try_into()
+                .unwrap_or_else(|_| self.create_failure_response());
 
                 send_zmq_message(&mut self.zmq_socket, zmq_response).await
             }
@@ -578,7 +608,14 @@ impl Wirego {
                 let zmq_response: ZmqMessage = ZmqCommandResp::ResultRelease(ResultReleaseResp {
                     command_status: WIREGO_RESPONSE_SUCCESS.clone(),
                 })
-                .try_into()?;
+                .try_into()
+                .unwrap_or_else(|_| self.create_failure_response());
+
+                send_zmq_message(&mut self.zmq_socket, zmq_response).await
+            }
+            ZmqCommandReq::InvalidMessage(invalid_message) => {
+                eprintln!("Invalid message: {:?}", invalid_message);
+                let zmq_response: ZmqMessage = self.create_failure_response();
                 send_zmq_message(&mut self.zmq_socket, zmq_response).await
             }
         }

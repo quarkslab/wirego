@@ -210,6 +210,7 @@ pub enum ZmqCommandReq {
     ResultGetFieldsCount(ResultGetFieldsCountReq),
     ResultGetField(ResultGetFieldReq),
     ResultRelease(ResultReleaseReq),
+    InvalidMessage(String),
 }
 
 /// Converts a ZMQ message into a ZmqCommandReq
@@ -217,43 +218,78 @@ impl TryFrom<ZmqMessage> for ZmqCommandReq {
     type Error = WiregoError;
 
     fn try_from(zmq_message: ZmqMessage) -> Result<Self, Self::Error> {
+        // TODO: this function has to be refactored so that instead of returning the WiregoError
+        // it returns a ZmqCommandReq::InvalidMessage with the error message. This way the
+        // communication with WiregoBridge will not cause the main loop to exit.
+        fn check_number_of_frames(
+            zmq_message: &ZmqMessage,
+            expected: usize,
+        ) -> Result<(), WiregoError> {
+            if zmq_message.len() != expected {
+                return Err(WiregoError::ParseError(format!(
+                    "Expected {} frames, got {}. Command: {}",
+                    expected,
+                    zmq_message.len(),
+                    parse_nth_frame_as_string(0, &zmq_message)
+                        .expect("At this point frame 0 should already exist"),
+                )));
+            }
+            Ok(())
+        }
+
         let command: String = parse_nth_frame_as_string(0, &zmq_message)?;
 
         match command.to_string().as_bytes() {
-            b"utility_ping\x00" => Ok(ZmqCommandReq::UtilityPing(UtilityPingReq {})),
+            b"utility_ping\x00" => {
+                check_number_of_frames(&zmq_message, 1)?;
+                Ok(ZmqCommandReq::UtilityPing(UtilityPingReq {}))
+            }
             b"utility_get_version\x00" => {
+                check_number_of_frames(&zmq_message, 1)?;
                 Ok(ZmqCommandReq::UtilityGetVersion(UtilityGetVersionReq {}))
             }
             b"setup_get_plugin_name\x00" => {
+                check_number_of_frames(&zmq_message, 1)?;
                 Ok(ZmqCommandReq::SetupGetPluginName(SetupGetPluginNameReq {}))
             }
-            b"setup_get_plugin_filter\x00" => Ok(ZmqCommandReq::SetupGetPluginFilter(
-                SetupGetPluginFilterReq {},
-            )),
-            b"setup_get_fields_count\x00" => Ok(ZmqCommandReq::SetupGetFieldsCount(
-                SetupGetFieldsCountReq {},
-            )),
+            b"setup_get_plugin_filter\x00" => {
+                check_number_of_frames(&zmq_message, 1)?;
+                Ok(ZmqCommandReq::SetupGetPluginFilter(
+                    SetupGetPluginFilterReq {},
+                ))
+            }
+            b"setup_get_fields_count\x00" => {
+                check_number_of_frames(&zmq_message, 1)?;
+                Ok(ZmqCommandReq::SetupGetFieldsCount(
+                    SetupGetFieldsCountReq {},
+                ))
+            }
             b"setup_get_field\x00" => {
+                check_number_of_frames(&zmq_message, 2)?;
                 let index: u32 = parse_nth_frame_as_numeric(1, &zmq_message)?;
                 Ok(ZmqCommandReq::SetupGetField(SetupGetFieldReq { index }))
             }
             b"setup_detect_int\x00" => {
+                check_number_of_frames(&zmq_message, 2)?;
                 let index: u32 = parse_nth_frame_as_numeric(1, &zmq_message)?;
                 Ok(ZmqCommandReq::SetupDetectInt(SetupDetectIntReq { index }))
             }
             b"setup_detect_string\x00" => {
+                check_number_of_frames(&zmq_message, 2)?;
                 let index: u32 = parse_nth_frame_as_numeric(1, &zmq_message)?;
                 Ok(ZmqCommandReq::SetupDetectString(SetupDetectStringReq {
                     index,
                 }))
             }
             b"setup_detect_heuristic_parent\x00" => {
+                check_number_of_frames(&zmq_message, 2)?;
                 let index: u32 = parse_nth_frame_as_numeric(1, &zmq_message)?;
                 Ok(ZmqCommandReq::SetupDetectHeuristicParent(
                     SetupDetectHeuristicParentReq { index },
                 ))
             }
             b"process_heuristic\x00" => {
+                check_number_of_frames(&zmq_message, 6)?;
                 let packet_number: u32 = parse_nth_frame_as_numeric(1, &zmq_message)?;
                 let src: String = parse_nth_frame_as_string(2, &zmq_message)?;
                 let dst: String = parse_nth_frame_as_string(3, &zmq_message)?;
@@ -272,6 +308,7 @@ impl TryFrom<ZmqMessage> for ZmqCommandReq {
                 }))
             }
             b"process_dissect_packet\x00" => {
+                check_number_of_frames(&zmq_message, 6)?;
                 let packet_number: u32 = parse_nth_frame_as_numeric(1, &zmq_message)?;
                 let src: String = parse_nth_frame_as_string(2, &zmq_message)?;
                 let dst: String = parse_nth_frame_as_string(3, &zmq_message)?;
@@ -291,18 +328,21 @@ impl TryFrom<ZmqMessage> for ZmqCommandReq {
                 ))
             }
             b"result_get_protocol\x00" => {
+                check_number_of_frames(&zmq_message, 2)?;
                 let dissect_handler: u32 = parse_nth_frame_as_numeric(1, &zmq_message)?;
                 Ok(ZmqCommandReq::ResultGetProtocol(ResultGetProtocolReq {
                     dissect_handler,
                 }))
             }
             b"result_get_info\x00" => {
+                check_number_of_frames(&zmq_message, 2)?;
                 let dissect_handler: u32 = parse_nth_frame_as_numeric(1, &zmq_message)?;
                 Ok(ZmqCommandReq::ResultGetInfo(ResultGetInfoReq {
                     dissect_handler,
                 }))
             }
             b"result_get_fields_count\x00" => {
+                check_number_of_frames(&zmq_message, 2)?;
                 let dissect_handler: u32 = parse_nth_frame_as_numeric(1, &zmq_message)?;
                 Ok(ZmqCommandReq::ResultGetFieldsCount(
                     ResultGetFieldsCountReq { dissect_handler },
@@ -317,17 +357,13 @@ impl TryFrom<ZmqMessage> for ZmqCommandReq {
                 }))
             }
             b"result_release\x00" => {
+                check_number_of_frames(&zmq_message, 2)?;
                 let dissect_handler: u32 = parse_nth_frame_as_numeric(1, &zmq_message)?;
                 Ok(ZmqCommandReq::ResultRelease(ResultReleaseReq {
                     dissect_handler,
                 }))
             }
-            _ => {
-                return Err(WiregoError::InvalidMessage(format!(
-                    "Unknown command: {:?}",
-                    command
-                )));
-            }
+            _ => Ok(ZmqCommandReq::InvalidMessage(command)),
         }
     }
 }
@@ -410,6 +446,10 @@ impl TryFrom<ZmqCommandResp> for ZmqMessage {
                 frames.push(Bytes::copy_from_slice(&resp.command_status));
                 frames.push(Bytes::copy_from_slice(&resp.dissect_handler.to_le_bytes()));
             }
+            ZmqCommandResp::ProcessHeuristic(resp) => {
+                frames.push(Bytes::copy_from_slice(&resp.command_status));
+                frames.push(Bytes::copy_from_slice(&resp.detection_result));
+            }
             ZmqCommandResp::ResultGetProtocol(resp) => {
                 frames.push(Bytes::copy_from_slice(&resp.command_status));
                 frames.push(Bytes::from(resp.protocol_column_name + "\x00"));
@@ -434,9 +474,6 @@ impl TryFrom<ZmqCommandResp> for ZmqMessage {
             }
             ZmqCommandResp::Failure => {
                 frames.push(Bytes::copy_from_slice(WIREGO_RESPONSE_FAILURE));
-            }
-            _ => {
-                todo!("Not implemented response command: {:?}", zmq_command_resp);
             }
         }
 
