@@ -279,9 +279,9 @@ The **wirego bridge plugin** will iterate by increasing the index value in or or
 | REQ   | 2         | int    | index                       | The index on the fields list fore this packet result          |
 | REP   | 0         | byte   | 0/1                         | Command status (0 failure / 1 success)                        |
 | REP   | 1         | int    | parent_idx                  | When a tree is defined, point to the parent index (-1 if not) |
-| REP   | 1         | int    | wirego_field_id             | Refers to the field type, as defined with **get_field**       |
-| REP   | 1         | int    | offset                      | The field offset in the packet payload                        |
-| REP   | 1         | int    | length                      | The field size in the packet payload                          |
+| REP   | 2         | int    | wirego_field_id             | Refers to the field type, as defined with **get_field**       |
+| REP   | 3         | int    | offset                      | The field offset in the packet payload                        |
+| REP   | 4         | int    | length                      | The field size in the packet payload                          |
 
 ## result_release
 
