@@ -10,7 +10,7 @@ async fn main() {
     let minimal_listener = Box::new(WiregoMinimalListener);
     println!("minimal listener name: {}", minimal_listener.get_name());
 
-    let mut wirego = Wirego::new("ipc:///tmp/wirego2", minimal_listener).await;
+    let wirego = Wirego::new("ipc:///tmp/wirego2", minimal_listener).await;
     if wirego.is_err() {
         eprintln!("Error: {}", wirego.err().unwrap());
         return;

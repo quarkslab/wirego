@@ -188,8 +188,20 @@ impl Wirego {
     pub async fn listen(&mut self) -> Result<(), WiregoError> {
         loop {
             let received_message = zmq_utils::receive_zmq_message(&mut self.zmq_socket).await?;
-            let wirego_zmq_command = ZmqCommandReq::try_from(received_message)?;
-            let result = self.handle_wirego_zmq_command(wirego_zmq_command).await;
+            let wirego_zmq_command = ZmqCommandReq::try_from(received_message);
+            if wirego_zmq_command.is_err() {
+                eprintln!(
+                    "Failed to parse ZMQ message: {:?}",
+                    wirego_zmq_command.err()
+                );
+                let zmq_response: ZmqMessage = self.create_failure_response();
+                send_zmq_message(&mut self.zmq_socket, zmq_response).await?;
+                continue;
+            }
+
+            let result = self
+                .handle_wirego_zmq_command(wirego_zmq_command.unwrap())
+                .await;
 
             if result.is_err() {
                 return Err(result.err().unwrap());
