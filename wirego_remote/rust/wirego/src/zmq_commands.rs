@@ -1,6 +1,6 @@
 use crate::{
-    DisplayMode, ValueType,
     error::WiregoError,
+    types::{DisplayMode, ValueType},
     zmq_utils::{parse_nth_frame_as_numeric, parse_nth_frame_as_string},
 };
 use bytes::Bytes;
@@ -10,57 +10,57 @@ pub(crate) const WIREGO_RESPONSE_SUCCESS: &[u8; 1] = b"\x01";
 pub(crate) const WIREGO_RESPONSE_FAILURE: &[u8; 1] = b"\x00";
 
 #[derive(Debug, Clone)]
-pub struct UtilityPingReq {}
+pub(crate) struct UtilityPingReq {}
 
 #[derive(Debug, Clone)]
-pub struct UtilityPingResp {
+pub(crate) struct UtilityPingResp {
     pub command_status: [u8; 1],
 }
 
 #[derive(Debug, Clone)]
-pub struct UtilityGetVersionReq {}
+pub(crate) struct UtilityGetVersionReq {}
 
 #[derive(Debug, Clone)]
-pub struct UtilityGetVersionResp {
+pub(crate) struct UtilityGetVersionResp {
     pub command_status: [u8; 1],
     pub major: [u8; 1],
     pub minor: [u8; 1],
 }
 
 #[derive(Debug, Clone)]
-pub struct SetupGetPluginNameReq {}
+pub(crate) struct SetupGetPluginNameReq {}
 
 #[derive(Debug, Clone)]
-pub struct SetupGetPluginNameResp {
+pub(crate) struct SetupGetPluginNameResp {
     pub command_status: [u8; 1],
     pub plugin_name: String,
 }
 
 #[derive(Debug, Clone)]
-pub struct SetupGetPluginFilterReq {}
+pub(crate) struct SetupGetPluginFilterReq {}
 
 #[derive(Debug, Clone)]
-pub struct SetupGetPluginFilterResp {
+pub(crate) struct SetupGetPluginFilterResp {
     pub command_status: [u8; 1],
     pub plugin_filter: String,
 }
 
 #[derive(Debug, Clone)]
-pub struct SetupGetFieldsCountReq {}
+pub(crate) struct SetupGetFieldsCountReq {}
 
 #[derive(Debug, Clone)]
-pub struct SetupGetFieldsCountResp {
+pub(crate) struct SetupGetFieldsCountResp {
     pub command_status: [u8; 1],
     pub fields_count: u32,
 }
 
 #[derive(Debug, Clone)]
-pub struct SetupGetFieldReq {
+pub(crate) struct SetupGetFieldReq {
     pub index: u32,
 }
 
 #[derive(Debug, Clone)]
-pub struct SetupGetFieldResp {
+pub(crate) struct SetupGetFieldResp {
     pub command_status: [u8; 1],
     pub wirego_field_id: u32,
     pub field_name: String,
@@ -70,42 +70,42 @@ pub struct SetupGetFieldResp {
 }
 
 #[derive(Debug, Clone)]
-pub struct SetupDetectIntReq {
+pub(crate) struct SetupDetectIntReq {
     pub index: u32,
 }
 
 #[derive(Debug, Clone)]
-pub struct SetupDetectIntResp {
+pub(crate) struct SetupDetectIntResp {
     pub command_status: [u8; 1],
     pub filter_name: String,
     pub filter_value: u32,
 }
 
 #[derive(Debug, Clone)]
-pub struct SetupDetectStringReq {
+pub(crate) struct SetupDetectStringReq {
     pub index: u32,
 }
 
 #[derive(Debug, Clone)]
-pub struct SetupDetectStringResp {
+pub(crate) struct SetupDetectStringResp {
     pub command_status: [u8; 1],
     pub filter_name: String,
     pub filter_value: String,
 }
 
 #[derive(Debug, Clone)]
-pub struct SetupDetectHeuristicParentReq {
+pub(crate) struct SetupDetectHeuristicParentReq {
     pub index: u32,
 }
 
 #[derive(Debug, Clone)]
-pub struct SetupDetectHeuristicParentResp {
+pub(crate) struct SetupDetectHeuristicParentResp {
     pub command_status: [u8; 1],
     pub plugin_detection_heuristic_parent: String,
 }
 
 #[derive(Debug, Clone)]
-pub struct ProcessHeuristicReq {
+pub(crate) struct ProcessHeuristicReq {
     pub packet_number: u32,
     pub src: String,
     pub dst: String,
@@ -114,13 +114,13 @@ pub struct ProcessHeuristicReq {
 }
 
 #[derive(Debug, Clone)]
-pub struct ProcessHeuristicResp {
+pub(crate) struct ProcessHeuristicResp {
     pub command_status: [u8; 1],
     pub detection_result: [u8; 1],
 }
 
 #[derive(Debug, Clone)]
-pub struct ProcessDissectPacketReq {
+pub(crate) struct ProcessDissectPacketReq {
     pub packet_number: u32,
     pub src: String,
     pub dst: String,
@@ -129,52 +129,52 @@ pub struct ProcessDissectPacketReq {
 }
 
 #[derive(Debug, Clone)]
-pub struct ProcessDissectPacketResp {
+pub(crate) struct ProcessDissectPacketResp {
     pub command_status: [u8; 1],
     pub dissect_handler: u32,
 }
 
 #[derive(Debug, Clone)]
-pub struct ResultGetProtocolReq {
+pub(crate) struct ResultGetProtocolReq {
     pub dissect_handler: u32,
 }
 
 #[derive(Debug, Clone)]
-pub struct ResultGetProtocolResp {
+pub(crate) struct ResultGetProtocolResp {
     pub command_status: [u8; 1],
     pub protocol_column_name: String,
 }
 
 #[derive(Debug, Clone)]
-pub struct ResultGetInfoReq {
+pub(crate) struct ResultGetInfoReq {
     pub dissect_handler: u32,
 }
 
 #[derive(Debug, Clone)]
-pub struct ResultGetInfoResp {
+pub(crate) struct ResultGetInfoResp {
     pub command_status: [u8; 1],
     pub protocol_column_info: String,
 }
 
 #[derive(Debug, Clone)]
-pub struct ResultGetFieldsCountReq {
+pub(crate) struct ResultGetFieldsCountReq {
     pub dissect_handler: u32,
 }
 
 #[derive(Debug, Clone)]
-pub struct ResultGetFieldsCountResp {
+pub(crate) struct ResultGetFieldsCountResp {
     pub command_status: [u8; 1],
     pub fields_count: u32,
 }
 
 #[derive(Debug, Clone)]
-pub struct ResultGetFieldReq {
+pub(crate) struct ResultGetFieldReq {
     pub dissect_handler: u32,
     pub index: u32,
 }
 
 #[derive(Debug, Clone)]
-pub struct ResultGetFieldResp {
+pub(crate) struct ResultGetFieldResp {
     pub command_status: [u8; 1],
     pub parent_idx: i32,
     pub wirego_field_id: u32,
@@ -183,17 +183,17 @@ pub struct ResultGetFieldResp {
 }
 
 #[derive(Debug, Clone)]
-pub struct ResultReleaseReq {
+pub(crate) struct ResultReleaseReq {
     pub dissect_handler: u32,
 }
 
 #[derive(Debug, Clone)]
-pub struct ResultReleaseResp {
+pub(crate) struct ResultReleaseResp {
     pub command_status: [u8; 1],
 }
 
 #[derive(Debug, Clone)]
-pub enum ZmqCommandReq {
+pub(crate) enum ZmqCommandReq {
     UtilityPing(UtilityPingReq),
     UtilityGetVersion(UtilityGetVersionReq),
     SetupGetPluginName(SetupGetPluginNameReq),
@@ -369,7 +369,7 @@ impl TryFrom<ZmqMessage> for ZmqCommandReq {
 }
 
 #[derive(Debug, Clone)]
-pub enum ZmqCommandResp {
+pub(crate) enum ZmqCommandResp {
     UtilityPing(UtilityPingResp),
     UtilityGetVersion(UtilityGetVersionResp),
     SetupGetPluginName(SetupGetPluginNameResp),

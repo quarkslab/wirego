@@ -1,5 +1,5 @@
 use tokio;
-use wirego::{DissectResult, Wirego, WiregoListener};
+use wirego::{Wirego, WiregoListener};
 use zeromq::{Socket, SocketRecv, SocketSend, ZmqMessage};
 
 const TEST_ENDPOINT: &str = "/tmp/test_wirego";
@@ -16,32 +16,32 @@ impl WiregoListener for WiregoTestListener {
         "wgtestexample".to_string()
     }
 
-    fn get_fields(&self) -> Vec<wirego::WiresharkField> {
+    fn get_fields(&self) -> Vec<wirego::types::WiresharkField> {
         vec![
-            wirego::WiresharkField {
+            wirego::types::WiresharkField {
                 wirego_field_id: 1,
                 field_name: "Test Field 1".to_string(),
                 filter: "wgtestexample.test01".to_string(),
-                value_type: wirego::ValueType::Uint8,
-                display_mode: wirego::DisplayMode::Hexadecimal,
+                value_type: wirego::types::ValueType::Uint8,
+                display_mode: wirego::types::DisplayMode::Hexadecimal,
             },
-            wirego::WiresharkField {
+            wirego::types::WiresharkField {
                 wirego_field_id: 2,
                 field_name: "Test Field 2".to_string(),
                 filter: "wgtestexample.test02".to_string(),
-                value_type: wirego::ValueType::Uint16,
-                display_mode: wirego::DisplayMode::Decimal,
+                value_type: wirego::types::ValueType::Uint16,
+                display_mode: wirego::types::DisplayMode::Decimal,
             },
         ]
     }
 
-    fn get_detection_filters(&self) -> Vec<wirego::DetectionFilter> {
+    fn get_detection_filters(&self) -> Vec<wirego::types::DetectionFilter> {
         vec![
-            wirego::DetectionFilter::Int(wirego::DetectionFilterInt {
+            wirego::types::DetectionFilter::Int(wirego::types::DetectionFilterInt {
                 filter_name: "udp.port".to_string(),
                 filter_value: 12345,
             }),
-            wirego::DetectionFilter::String(wirego::DetectionFilterString {
+            wirego::types::DetectionFilter::String(wirego::types::DetectionFilterString {
                 filter_name: "bluetooth.uuid".to_string(),
                 filter_value: "5678".to_string(),
             }),
@@ -74,18 +74,18 @@ impl WiregoListener for WiregoTestListener {
         _dst: String,
         _stack: String,
         packet: &[u8],
-    ) -> DissectResult {
-        let mut dissected_fields: Vec<wirego::DissectField> = vec![];
+    ) -> wirego::types::DissectResult {
+        let mut dissected_fields: Vec<wirego::types::DissectField> = vec![];
 
         if packet.len() > 6 {
-            dissected_fields.push(wirego::DissectField {
+            dissected_fields.push(wirego::types::DissectField {
                 wirego_field_id: 1,
                 offset: 0,
                 length: 2,
                 sub_fields: vec![],
             });
 
-            dissected_fields.push(wirego::DissectField {
+            dissected_fields.push(wirego::types::DissectField {
                 wirego_field_id: 2,
                 offset: 2,
                 length: 4,
@@ -94,21 +94,21 @@ impl WiregoListener for WiregoTestListener {
         }
 
         if packet.len() > 10 {
-            let sub_field_1 = wirego::DissectField {
+            let sub_field_1 = wirego::types::DissectField {
                 wirego_field_id: 1,
                 offset: 6,
                 length: 2,
                 sub_fields: vec![],
             };
 
-            let sub_field_2 = wirego::DissectField {
+            let sub_field_2 = wirego::types::DissectField {
                 wirego_field_id: 1,
                 offset: 8,
                 length: 2,
                 sub_fields: vec![],
             };
 
-            dissected_fields.push(wirego::DissectField {
+            dissected_fields.push(wirego::types::DissectField {
                 wirego_field_id: 3,
                 offset: 6,
                 length: 4,
@@ -116,7 +116,7 @@ impl WiregoListener for WiregoTestListener {
             });
         }
 
-        DissectResult {
+        wirego::types::DissectResult {
             protocol_column_str: "Minimal protocol example".to_string(),
             protocol_info_str: format!("Info from packet #{}", packet_number),
             dissected_fields,

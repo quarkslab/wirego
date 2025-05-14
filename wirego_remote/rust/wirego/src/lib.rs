@@ -1,4 +1,5 @@
 mod error;
+pub mod types;
 mod zmq_commands;
 mod zmq_utils;
 
@@ -12,114 +13,47 @@ use zmq_commands::{
 use crate::zmq_commands::*;
 use crate::zmq_utils::send_zmq_message;
 
-pub const WIREGO_API_VERSION_MAJOR: &[u8; 1] = b"\x02";
-pub const WIREGO_API_VERSION_MINOR: &[u8; 1] = b"\x00";
+/// Wirego Major API version that is used to communicate with the Wirego Bridge.
+/// This version is hardcoded and if there is a version mismatch, the Wirego Bridge
+/// will not be able to communicate with the Wirego Remote.
+const WIREGO_API_VERSION_MAJOR: &[u8; 1] = b"\x02";
 
-#[derive(Debug, Copy, Clone)]
-pub enum ValueType {
-    None = 0x01,
-    Bool = 0x02,
-    Uint8 = 0x03,
-    Int8 = 0x04,
-    Uint16 = 0x05,
-    Int16 = 0x06,
-    Uint32 = 0x07,
-    Int32 = 0x08,
-    CString = 0x09,
-    String = 0x10,
-}
+/// Wirego Minor API version that is used to communicate with the Wirego Bridge.
+/// This version is hardcoded and if there is a version mismatch, the Wirego Bridge
+/// will not be able to communicate with the Wirego Remote.
+const WIREGO_API_VERSION_MINOR: &[u8; 1] = b"\x00";
 
-#[derive(Debug, Copy, Clone)]
-pub enum DisplayMode {
-    None = 0x01,
-    Decimal = 0x02,
-    Hexadecimal = 0x03,
-}
-
-#[derive(Debug, Clone)]
-pub struct DetectionFilterInt {
-    pub filter_name: String,
-    pub filter_value: i32,
-}
-
-#[derive(Debug, Clone)]
-pub struct DetectionFilterString {
-    pub filter_name: String,
-    pub filter_value: String,
-}
-
-/// DetectionFilter defines a detection filter, e.g. tcp.port = 12
-#[derive(Debug, Clone)]
-pub enum DetectionFilter {
-    Int(DetectionFilterInt),
-    String(DetectionFilterString),
-}
-
-/// WiresharkField holds the description of a field
-#[derive(Debug, Clone)]
-pub struct WiresharkField {
-    pub wirego_field_id: u32,
-    pub field_name: String,
-    pub filter: String,
-    pub value_type: ValueType,
-    pub display_mode: DisplayMode,
-}
-
-/// DissectField holds a dissection result field (refers to a WiresharkField and specifies offset+length)
-#[derive(Debug, Clone)]
-pub struct DissectField {
-    /// Wirego field ID
-    pub wirego_field_id: u32,
-    /// Field offset in the packet
-    pub offset: i64,
-    /// Field length in the packet
-    pub length: i64,
-    /// Sub fields (optional)
-    pub sub_fields: Vec<DissectField>,
-}
-
-/// DissectResult holds a dissection result for a given packet
-#[derive(Debug, Clone)]
-pub struct DissectResult {
-    /// Protocol column in Wireshark
-    pub protocol_column_str: String,
-    /// Info column in Wireshark
-    pub protocol_info_str: String,
-    /// List of dissected fields
-    pub dissected_fields: Vec<DissectField>,
-}
-
-/// DissectResultFieldFlatten stores a given field from a dissection result
-#[derive(Debug, Clone)]
-pub struct DissectResultFieldFlatten {
-    /// Index of the parent field (for nested fields)
-    pub parent_index: i64,
-    /// Wirego field ID
-    pub wirego_field_id: u32,
-    /// Field offset in the packet
-    pub offset: i64,
-    /// Field length in the packet
-    pub length: i64,
-}
-
-/// DissectResultFlattenEntry stores a complete dissection result as a flat list
-#[derive(Debug, Clone)]
-pub struct DissectResultFlattenEntry {
-    /// Protocol column for Wireshark
-    pub protocol_column_str: String,
-    /// Info column for Wireshark
-    pub protocol_info_str: String,
-    /// List of dissected fields for Wireshark
-    pub dissected_fields: Vec<DissectResultFieldFlatten>,
-}
-
+/// WiregoListener is a trait that should be implemented by the user to provide
+/// the dissecting logic for Wireshark packets. All methods are used for internal
+/// communication with the Wirego Bridge and should not be called directly.
 pub trait WiregoListener: Send {
+    /// get_name returns the name of the plugin that is used to identify the
+    /// plugin in the Wirego Bridge. This name is used to display the plugin name
+    /// in the Wirego Bridge and should be unique for each plugin. An example
+    /// of a plugin name could be "eCPRI 2.0".
     fn get_name(&self) -> String;
+
+    /// get_filter returns the filter that is used to identify the plugin in the
+    /// Wirego Bridge. This filter is used to display the plugin name in the
+    /// Wirego Bridge and should be unique for each plugin. An example of a plugin
+    /// filter could be "ecpri".
     fn get_filter(&self) -> String;
-    fn get_fields(&self) -> Vec<WiresharkField>;
-    fn get_detection_filters(&self) -> Vec<DetectionFilter>;
+
+    /// get_fields returns the fields that are decoded by the plugin.
+    fn get_fields(&self) -> Vec<types::WiresharkField>;
+
+    /// get_detection_filters returns the detection filters that are used to
+    /// filter the packets that are processed by the plugin.
+    fn get_detection_filters(&self) -> Vec<types::DetectionFilter>;
+
+    /// get_detection_heuristics_parents returns the detection heuristics parents
+    /// that are used to filter the packets that are processed by the plugin.
     fn get_detection_heuristics_parents(&self) -> Vec<String>;
 
+    /// detection_heuristic is a method that is called by the Wirego Bridge to
+    /// determine if the packet should be processed by the plugin. This method
+    /// should return true if the packet should be processed by the plugin and
+    /// false if the packet should not be processed by the plugin.
     fn detection_heuristic(
         &self,
         packet_number: u32,
@@ -129,6 +63,9 @@ pub trait WiregoListener: Send {
         packet_data: &[u8],
     ) -> bool;
 
+    /// dissect_packet is a method that is called by the Wirego Bridge to dissect
+    /// the packet. This method should return a dissected packet that contains
+    /// the dissected fields.
     fn dissect_packet(
         &self,
         packet_number: u32,
@@ -136,31 +73,35 @@ pub trait WiregoListener: Send {
         dst: String,
         layer: String,
         packet_data: &[u8],
-    ) -> DissectResult;
+    ) -> types::DissectResult;
 }
 
 pub struct Wirego {
-    /// ZMQ Socket
+    /// ZMQ Rep Socket that connects to the Wirego Bridge
     zmq_socket: zeromq::RepSocket,
     /// Wirego listener instance
     wirego_listener: Box<dyn WiregoListener>,
     /// Cache for storing dissected packets to speed up the plugin
-    cache: std::collections::HashMap<u32, DissectResultFlattenEntry>,
+    cache: std::collections::HashMap<u32, types::DissectResultFlattenEntry>,
     /// Set of all diefined field IDs for a quick access
     wirego_field_ids: std::collections::HashSet<u32>,
-    /// Fetched plugin name from the WiregoListener
+    /// Fetched plugin name from the WiregoListener for quicker access
     plugin_name: String,
-    /// Fetched plugin filter from the WiregoListener
+    /// Fetched plugin filter from the WiregoListener for quicker access
     plugin_filter: String,
-    /// Fetched plugin fields from the WiregoListener
-    plugin_fields: Vec<WiresharkField>,
-    /// Fetched plugin detection filters from the WiregoListener
-    plugin_detection_filters: Vec<DetectionFilter>,
-    /// Fetched plugin detection heuristics parents from the WiregoListener
+    /// Fetched plugin fields from the WiregoListener for quicker access
+    plugin_fields: Vec<types::WiresharkField>,
+    /// Fetched plugin detection filters from the WiregoListener for quicker access
+    plugin_detection_filters: Vec<types::DetectionFilter>,
+    /// Fetched plugin detection heuristics parents from the WiregoListener for quicker access
     plugin_detection_heuristics_parents: Vec<String>,
 }
 
+/// Wirego is the main part of the Wirego Remote that allow to communicate with
+/// the Wirego Bridge. It is responsible for handling all ZMQ messages from
+/// Wirego Bridge and responding with appropriate messages.
 impl Wirego {
+    /// Creates a new Wirego instance
     pub async fn new(
         zmq_endpoint: &str,
         wirego_listener: Box<dyn WiregoListener + Send>,
@@ -185,6 +126,8 @@ impl Wirego {
         })
     }
 
+    /// Starts the Wirego listener and listens for incoming ZMQ messages
+    /// from the Wirego Bridge. That is the main loop of the Wirego Remote.
     pub async fn listen(&mut self) -> Result<(), WiregoError> {
         loop {
             let received_message = zmq_utils::receive_zmq_message(&mut self.zmq_socket).await?;
@@ -209,12 +152,14 @@ impl Wirego {
         }
     }
 
+    /// Creates a failure response message just to avoid duplicating the code.
     fn create_failure_response(&self) -> ZmqMessage {
         ZmqCommandResp::Failure
             .try_into()
             .expect("Failed to create failure response")
     }
 
+    /// Handles the incoming ZMQ command from the Wirego Bridge.
     async fn handle_wirego_zmq_command(
         &mut self,
         wirego_zmq_command: ZmqCommandReq,
@@ -322,7 +267,7 @@ impl Wirego {
 
                 let detection_filter = &self.plugin_detection_filters[index];
                 match detection_filter {
-                    DetectionFilter::Int(detection_filter_int) => {
+                    types::DetectionFilter::Int(detection_filter_int) => {
                         let zmq_response: ZmqMessage =
                             ZmqCommandResp::SetupDetectInt(SetupDetectIntResp {
                                 command_status: WIREGO_RESPONSE_SUCCESS.clone(),
@@ -359,7 +304,7 @@ impl Wirego {
 
                 let detection_filter = &self.plugin_detection_filters[index];
                 match detection_filter {
-                    DetectionFilter::String(detection_filter_string) => {
+                    types::DetectionFilter::String(detection_filter_string) => {
                         let zmq_response: ZmqMessage =
                             ZmqCommandResp::SetupDetectString(SetupDetectStringResp {
                                 command_status: WIREGO_RESPONSE_SUCCESS.clone(),
@@ -486,7 +431,7 @@ impl Wirego {
                     }
                 }
 
-                let mut flattened_fields = DissectResultFlattenEntry {
+                let mut flattened_fields = types::DissectResultFlattenEntry {
                     protocol_column_str: result.protocol_column_str,
                     protocol_info_str: result.protocol_info_str,
                     dissected_fields: vec![],
@@ -633,15 +578,16 @@ impl Wirego {
         }
     }
 
+    /// Recursively adds fields to the flattened fields list.
     fn add_fields_recursively(
         &mut self,
-        flattened_fields: &mut DissectResultFlattenEntry,
+        flattened_fields: &mut types::DissectResultFlattenEntry,
         parent_index: i64,
-        dissected_field: &DissectField,
+        dissected_field: &types::DissectField,
     ) {
         flattened_fields
             .dissected_fields
-            .push(DissectResultFieldFlatten {
+            .push(types::DissectResultFieldFlatten {
                 parent_index,
                 wirego_field_id: dissected_field.wirego_field_id,
                 offset: dissected_field.offset,
