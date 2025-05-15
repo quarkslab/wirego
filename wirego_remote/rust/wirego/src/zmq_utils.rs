@@ -124,6 +124,7 @@ impl_from_frame_bytes!(i64, 8, |b: &[u8]| i64::from_le_bytes(b.try_into().unwrap
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bytes::Bytes;
     use zeromq::ZmqMessage;
 
     #[test]
@@ -146,13 +147,12 @@ mod tests {
 
     #[test]
     fn test_parse_nth_frame_as_string_with_multiple_frames() {
-        let mut frames: Vec<bytes::Bytes> = vec![];
+        let mut frames: Vec<Bytes> = vec![];
         frames.push("frame0".into());
         frames.push("frame1".into());
         frames.push("frame2".into());
 
-        let zmq_message =
-            zeromq::ZmqMessage::try_from(frames).expect("Failed to create ZMQ message");
+        let zmq_message = ZmqMessage::try_from(frames).expect("Failed to create ZMQ message");
         let result = parse_nth_frame_as_string(0, &zmq_message);
         assert_eq!(result.unwrap(), "frame0");
         let result = parse_nth_frame_as_string(1, &zmq_message);
@@ -192,13 +192,12 @@ mod tests {
 
     #[test]
     fn test_parse_nth_frame_as_numeric_with_multiple_frames() {
-        let mut frames: Vec<bytes::Bytes> = vec![];
+        let mut frames: Vec<Bytes> = vec![];
         frames.push(vec![42, 0, 0, 0].into());
         frames.push(vec![43, 0, 0, 0].into());
         frames.push(vec![44, 0, 0, 0].into());
 
-        let zmq_message =
-            zeromq::ZmqMessage::try_from(frames).expect("Failed to create ZMQ message");
+        let zmq_message = ZmqMessage::try_from(frames).expect("Failed to create ZMQ message");
         let result: Result<u32, WiregoError> = parse_nth_frame_as_numeric(0, &zmq_message);
         assert_eq!(result.unwrap(), 42);
         let result: Result<u32, WiregoError> = parse_nth_frame_as_numeric(1, &zmq_message);
