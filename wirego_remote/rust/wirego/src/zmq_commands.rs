@@ -387,10 +387,8 @@ pub(crate) enum ZmqCommandResp {
 }
 
 /// Converts a ZmqCommandReq into a ZMQ message
-impl TryFrom<ZmqCommandResp> for ZmqMessage {
-    type Error = WiregoError;
-
-    fn try_from(zmq_command_resp: ZmqCommandResp) -> Result<Self, Self::Error> {
+impl From<ZmqCommandResp> for ZmqMessage {
+    fn from(zmq_command_resp: ZmqCommandResp) -> Self {
         let mut frames: Vec<Bytes> = vec![];
 
         match zmq_command_resp {
@@ -474,10 +472,14 @@ impl TryFrom<ZmqCommandResp> for ZmqMessage {
             }
         }
 
-        let zmq_message = ZmqMessage::try_from(frames)
-            .map_err(|_| WiregoError::InvalidMessage("Failed to create ZMQ message".to_string()))?;
-
-        Ok(zmq_message)
+        match ZmqMessage::try_from(frames) {
+            Ok(zmq_message) => zmq_message,
+            Err(_) => {
+                // This part should never happen, but if it does, we create a failure message
+                // to avoid crashing the Wirego Bridge.
+                ZmqMessage::from(Vec::<u8>::from(WIREGO_RESPONSE_FAILURE))
+            }
+        }
     }
 }
 
@@ -532,10 +534,10 @@ mod tests {
 
         let result: Result<ZmqCommandReq, WiregoError> = zmq_message.try_into();
         assert!(result.is_ok());
-        matches!(
+        assert!(matches!(
             result.unwrap(),
             ZmqCommandReq::SetupGetField(SetupGetFieldReq { index: 5 })
-        );
+        ));
     }
 
     #[test]
@@ -548,10 +550,10 @@ mod tests {
 
         let result: Result<ZmqCommandReq, WiregoError> = zmq_message.try_into();
         assert!(result.is_ok());
-        matches!(
+        assert!(matches!(
             result.unwrap(),
             ZmqCommandReq::SetupDetectInt(SetupDetectIntReq { index: 5 })
-        );
+        ));
     }
 
     #[test]
@@ -564,10 +566,10 @@ mod tests {
 
         let result: Result<ZmqCommandReq, WiregoError> = zmq_message.try_into();
         assert!(result.is_ok());
-        matches!(
+        assert!(matches!(
             result.unwrap(),
             ZmqCommandReq::SetupDetectString(SetupDetectStringReq { index: 5 })
-        );
+        ));
     }
 
     #[test]
@@ -580,10 +582,10 @@ mod tests {
 
         let result: Result<ZmqCommandReq, WiregoError> = zmq_message.try_into();
         assert!(result.is_ok());
-        matches!(
+        assert!(matches!(
             result.unwrap(),
             ZmqCommandReq::SetupDetectHeuristicParent(SetupDetectHeuristicParentReq { index: 5 })
-        );
+        ));
     }
 
     #[test]
@@ -648,10 +650,10 @@ mod tests {
 
         let result: Result<ZmqCommandReq, WiregoError> = zmq_message.try_into();
         assert!(result.is_ok());
-        matches!(
+        assert!(matches!(
             result.unwrap(),
             ZmqCommandReq::ResultGetProtocol(ResultGetProtocolReq { dissect_handler: 5 })
-        );
+        ));
     }
 
     #[test]
@@ -664,10 +666,10 @@ mod tests {
 
         let result: Result<ZmqCommandReq, WiregoError> = zmq_message.try_into();
         assert!(result.is_ok());
-        matches!(
+        assert!(matches!(
             result.unwrap(),
             ZmqCommandReq::ResultGetInfo(ResultGetInfoReq { dissect_handler: 5 })
-        );
+        ));
     }
 
     #[test]
@@ -680,10 +682,10 @@ mod tests {
 
         let result: Result<ZmqCommandReq, WiregoError> = zmq_message.try_into();
         assert!(result.is_ok());
-        matches!(
+        assert!(matches!(
             result.unwrap(),
             ZmqCommandReq::ResultGetFieldsCount(ResultGetFieldsCountReq { dissect_handler: 5 })
-        );
+        ));
     }
 
     #[test]
@@ -697,13 +699,13 @@ mod tests {
 
         let result: Result<ZmqCommandReq, WiregoError> = zmq_message.try_into();
         assert!(result.is_ok());
-        matches!(
+        assert!(matches!(
             result.unwrap(),
             ZmqCommandReq::ResultGetField(ResultGetFieldReq {
                 dissect_handler: 5,
                 index: 10
             })
-        );
+        ));
     }
 
     #[test]
@@ -716,9 +718,266 @@ mod tests {
 
         let result: Result<ZmqCommandReq, WiregoError> = zmq_message.try_into();
         assert!(result.is_ok());
-        matches!(
+        assert!(matches!(
             result.unwrap(),
             ZmqCommandReq::ResultRelease(ResultReleaseReq { dissect_handler: 5 })
+        ));
+    }
+
+    #[test]
+    fn test_try_from_zmq_message_invalid_message() {
+        let zmq_message = ZmqMessage::from("invalid_command\x00");
+        let result: Result<ZmqCommandReq, WiregoError> = zmq_message.try_into();
+        assert!(result.is_ok());
+        assert!(matches!(result.unwrap(), ZmqCommandReq::InvalidMessage(_)));
+    }
+
+    #[test]
+    fn test_from_zmq_command_resp_utility_ping() {
+        let resp = ZmqCommandResp::UtilityPing(UtilityPingResp {
+            command_status: [15],
+        });
+        let zmq_message: ZmqMessage = resp.into();
+        assert_eq!(zmq_message.len(), 1);
+        assert_eq!(zmq_message.get(0).unwrap().to_owned(), vec![15]);
+    }
+
+    #[test]
+    fn test_from_zmq_command_resp_utility_get_version() {
+        let resp = ZmqCommandResp::UtilityGetVersion(UtilityGetVersionResp {
+            command_status: [15],
+            major: [1],
+            minor: [2],
+        });
+        let zmq_message: ZmqMessage = resp.into();
+        assert_eq!(zmq_message.len(), 3);
+        assert_eq!(zmq_message.get(0).unwrap().to_owned(), vec![15]);
+        assert_eq!(zmq_message.get(1).unwrap().to_owned(), vec![1]);
+        assert_eq!(zmq_message.get(2).unwrap().to_owned(), vec![2]);
+    }
+
+    #[test]
+    fn test_from_zmq_command_resp_setup_get_plugin_name() {
+        let resp = ZmqCommandResp::SetupGetPluginName(SetupGetPluginNameResp {
+            command_status: [15],
+            plugin_name: "plugin_name".to_string(),
+        });
+        let zmq_message: ZmqMessage = resp.into();
+        assert_eq!(zmq_message.len(), 2);
+        assert_eq!(zmq_message.get(0).unwrap().to_owned(), vec![15]);
+        assert_eq!(
+            zmq_message.get(1).unwrap().to_owned(),
+            b"plugin_name\x00".to_vec()
         );
+    }
+
+    #[test]
+    fn test_from_zmq_command_resp_setup_get_plugin_filter() {
+        let resp = ZmqCommandResp::SetupGetPluginFilter(SetupGetPluginFilterResp {
+            command_status: [15],
+            plugin_filter: "plugin_filter".to_string(),
+        });
+        let zmq_message: ZmqMessage = resp.into();
+        assert_eq!(zmq_message.len(), 2);
+        assert_eq!(zmq_message.get(0).unwrap().to_owned(), vec![15]);
+        assert_eq!(
+            zmq_message.get(1).unwrap().to_owned(),
+            b"plugin_filter\x00".to_vec()
+        );
+    }
+
+    #[test]
+    fn test_from_zmq_command_resp_setup_get_fields_count() {
+        let resp = ZmqCommandResp::SetupGetFieldsCount(SetupGetFieldsCountResp {
+            command_status: [15],
+            fields_count: 5,
+        });
+        let zmq_message: ZmqMessage = resp.into();
+        assert_eq!(zmq_message.len(), 2);
+        assert_eq!(zmq_message.get(0).unwrap().to_owned(), vec![15]);
+        assert_eq!(zmq_message.get(1).unwrap().to_owned(), vec![5, 0, 0, 0]);
+    }
+
+    #[test]
+    fn test_from_zmq_command_resp_setup_get_field() {
+        let resp = ZmqCommandResp::SetupGetField(SetupGetFieldResp {
+            command_status: [15],
+            wirego_field_id: 5,
+            field_name: "field_name".to_string(),
+            field_filter: "field_filter".to_string(),
+            field_value_type: ValueType::Int8,
+            field_display_mode: DisplayMode::Hexadecimal,
+        });
+        let zmq_message: ZmqMessage = resp.into();
+        assert_eq!(zmq_message.len(), 6);
+        assert_eq!(zmq_message.get(0).unwrap().to_owned(), vec![15]);
+        assert_eq!(zmq_message.get(1).unwrap().to_owned(), vec![5, 0, 0, 0]);
+        assert_eq!(
+            zmq_message.get(2).unwrap().to_owned(),
+            b"field_name\x00".to_vec()
+        );
+        assert_eq!(
+            zmq_message.get(3).unwrap().to_owned(),
+            b"field_filter\x00".to_vec()
+        );
+        assert_eq!(zmq_message.get(4).unwrap().to_owned(), vec![4, 0, 0, 0]);
+        assert_eq!(zmq_message.get(5).unwrap().to_owned(), vec![3, 0, 0, 0]);
+    }
+
+    #[test]
+    fn test_from_zmq_command_resp_setup_detect_int() {
+        let resp = ZmqCommandResp::SetupDetectInt(SetupDetectIntResp {
+            command_status: [15],
+            filter_name: "filter_name".to_string(),
+            filter_value: 5,
+        });
+        let zmq_message: ZmqMessage = resp.into();
+        assert_eq!(zmq_message.len(), 3);
+        assert_eq!(zmq_message.get(0).unwrap().to_owned(), vec![15]);
+        assert_eq!(
+            zmq_message.get(1).unwrap().to_owned(),
+            b"filter_name\x00".to_vec()
+        );
+        assert_eq!(zmq_message.get(2).unwrap().to_owned(), vec![5, 0, 0, 0]);
+    }
+
+    #[test]
+    fn test_from_zmq_command_resp_setup_detect_string() {
+        let resp = ZmqCommandResp::SetupDetectString(SetupDetectStringResp {
+            command_status: [15],
+            filter_name: "filter_name".to_string(),
+            filter_value: "filter_value".to_string(),
+        });
+        let zmq_message: ZmqMessage = resp.into();
+        assert_eq!(zmq_message.len(), 3);
+        assert_eq!(zmq_message.get(0).unwrap().to_owned(), vec![15]);
+        assert_eq!(
+            zmq_message.get(1).unwrap().to_owned(),
+            b"filter_name\x00".to_vec()
+        );
+        assert_eq!(
+            zmq_message.get(2).unwrap().to_owned(),
+            b"filter_value\x00".to_vec()
+        );
+    }
+
+    #[test]
+    fn test_from_zmq_command_resp_setup_detect_heuristic_parent() {
+        let resp = ZmqCommandResp::SetupDetectHeuristicParent(SetupDetectHeuristicParentResp {
+            command_status: [15],
+            plugin_detection_heuristic_parent: "plugin_detection_heuristic_parent".to_string(),
+        });
+        let zmq_message: ZmqMessage = resp.into();
+        assert_eq!(zmq_message.len(), 2);
+        assert_eq!(zmq_message.get(0).unwrap().to_owned(), vec![15]);
+        assert_eq!(
+            zmq_message.get(1).unwrap().to_owned(),
+            b"plugin_detection_heuristic_parent\x00".to_vec()
+        );
+    }
+
+    #[test]
+    fn test_from_zmq_command_resp_process_dissect_packet() {
+        let resp = ZmqCommandResp::ProcessDissectPacket(ProcessDissectPacketResp {
+            command_status: [15],
+            dissect_handler: 5,
+        });
+        let zmq_message: ZmqMessage = resp.into();
+        assert_eq!(zmq_message.len(), 2);
+        assert_eq!(zmq_message.get(0).unwrap().to_owned(), vec![15]);
+        assert_eq!(zmq_message.get(1).unwrap().to_owned(), vec![5, 0, 0, 0]);
+    }
+
+    #[test]
+    fn test_from_zmq_command_resp_process_heuristic() {
+        let resp = ZmqCommandResp::ProcessHeuristic(ProcessHeuristicResp {
+            command_status: [15],
+            detection_result: [1],
+        });
+        let zmq_message: ZmqMessage = resp.into();
+        assert_eq!(zmq_message.len(), 2);
+        assert_eq!(zmq_message.get(0).unwrap().to_owned(), vec![15]);
+        assert_eq!(zmq_message.get(1).unwrap().to_owned(), vec![1]);
+    }
+
+    #[test]
+    fn test_from_zmq_command_resp_result_get_protocol() {
+        let resp = ZmqCommandResp::ResultGetProtocol(ResultGetProtocolResp {
+            command_status: [15],
+            protocol_column_name: "protocol_column_name".to_string(),
+        });
+        let zmq_message: ZmqMessage = resp.into();
+        assert_eq!(zmq_message.len(), 2);
+        assert_eq!(zmq_message.get(0).unwrap().to_owned(), vec![15]);
+        assert_eq!(
+            zmq_message.get(1).unwrap().to_owned(),
+            b"protocol_column_name\x00".to_vec()
+        );
+    }
+
+    #[test]
+    fn test_from_zmq_command_resp_result_get_info() {
+        let resp = ZmqCommandResp::ResultGetInfo(ResultGetInfoResp {
+            command_status: [15],
+            protocol_column_info: "protocol_column_info".to_string(),
+        });
+        let zmq_message: ZmqMessage = resp.into();
+        assert_eq!(zmq_message.len(), 2);
+        assert_eq!(zmq_message.get(0).unwrap().to_owned(), vec![15]);
+        assert_eq!(
+            zmq_message.get(1).unwrap().to_owned(),
+            b"protocol_column_info\x00".to_vec()
+        );
+    }
+
+    #[test]
+    fn test_from_zmq_command_resp_result_get_fields_count() {
+        let resp = ZmqCommandResp::ResultGetFieldsCount(ResultGetFieldsCountResp {
+            command_status: [15],
+            fields_count: 5,
+        });
+        let zmq_message: ZmqMessage = resp.into();
+        assert_eq!(zmq_message.len(), 2);
+        assert_eq!(zmq_message.get(0).unwrap().to_owned(), vec![15]);
+        assert_eq!(zmq_message.get(1).unwrap().to_owned(), vec![5, 0, 0, 0]);
+    }
+
+    #[test]
+    fn test_from_zmq_command_resp_result_get_field() {
+        let resp = ZmqCommandResp::ResultGetField(ResultGetFieldResp {
+            command_status: [15],
+            parent_idx: -1,
+            wirego_field_id: 5,
+            offset: 10,
+            length: 20,
+        });
+        let zmq_message: ZmqMessage = resp.into();
+        assert_eq!(zmq_message.len(), 5);
+        assert_eq!(zmq_message.get(0).unwrap().to_owned(), vec![15]);
+        assert_eq!(
+            zmq_message.get(1).unwrap().to_owned(),
+            vec![255, 255, 255, 255]
+        );
+        assert_eq!(zmq_message.get(2).unwrap().to_owned(), vec![5, 0, 0, 0]);
+        assert_eq!(zmq_message.get(3).unwrap().to_owned(), vec![10, 0, 0, 0]);
+        assert_eq!(zmq_message.get(4).unwrap().to_owned(), vec![20, 0, 0, 0]);
+    }
+
+    #[test]
+    fn test_from_zmq_command_resp_result_release() {
+        let resp = ZmqCommandResp::ResultRelease(ResultReleaseResp {
+            command_status: [15],
+        });
+        let zmq_message: ZmqMessage = resp.into();
+        assert_eq!(zmq_message.len(), 1);
+        assert_eq!(zmq_message.get(0).unwrap().to_owned(), vec![15]);
+    }
+
+    #[test]
+    fn test_from_zmq_command_resp_failure() {
+        let resp = ZmqCommandResp::Failure;
+        let zmq_message: ZmqMessage = resp.into();
+        assert_eq!(zmq_message.len(), 1);
+        assert_eq!(zmq_message.get(0).unwrap().to_owned(), "\x00");
     }
 }

@@ -76,6 +76,9 @@ pub trait WiregoListener: Send {
     ) -> types::DissectResult;
 }
 
+/// Wirego is the main part of the Wirego Remote that allow to communicate with
+/// the Wirego Bridge. It is responsible for handling all ZMQ messages from
+/// Wirego Bridge and responding with appropriate messages.
 pub struct Wirego {
     /// ZMQ Rep Socket that connects to the Wirego Bridge
     zmq_socket: zeromq::RepSocket,
@@ -97,9 +100,6 @@ pub struct Wirego {
     plugin_detection_heuristics_parents: Vec<String>,
 }
 
-/// Wirego is the main part of the Wirego Remote that allow to communicate with
-/// the Wirego Bridge. It is responsible for handling all ZMQ messages from
-/// Wirego Bridge and responding with appropriate messages.
 impl Wirego {
     /// Creates a new Wirego instance
     pub async fn new(
