@@ -733,6 +733,18 @@ mod tests {
     }
 
     #[test]
+    fn test_try_from_zmq_message_utility_ping_with_wrong_number_of_frames() {
+        let frames: Vec<Bytes> = vec![
+            Bytes::from("utility_ping\x00"), // command
+            Bytes::copy_from_slice(&[1]),    // extra frame
+        ];
+        let zmq_message = ZmqMessage::try_from(frames).expect("Failed to create ZMQ message");
+
+        let result: Result<ZmqCommandReq, WiregoError> = zmq_message.try_into();
+        assert!(result.is_err());
+    }
+
+    #[test]
     fn test_from_zmq_command_resp_utility_ping() {
         let resp = ZmqCommandResp::UtilityPing(UtilityPingResp {
             command_status: [15],
