@@ -218,9 +218,6 @@ impl TryFrom<ZmqMessage> for ZmqCommandReq {
     type Error = WiregoError;
 
     fn try_from(zmq_message: ZmqMessage) -> Result<Self, Self::Error> {
-        // TODO: this function has to be refactored so that instead of returning the WiregoError
-        // it returns a ZmqCommandReq::InvalidMessage with the error message. This way the
-        // communication with WiregoBridge will not cause the main loop to exit.
         fn check_number_of_frames(
             zmq_message: &ZmqMessage,
             expected: usize,
@@ -481,5 +478,247 @@ impl TryFrom<ZmqCommandResp> for ZmqMessage {
             .map_err(|_| WiregoError::InvalidMessage("Failed to create ZMQ message".to_string()))?;
 
         Ok(zmq_message)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bytes::Bytes;
+    use zeromq::ZmqMessage;
+
+    #[test]
+    fn test_try_from_zmq_message_utility_ping() {
+        let zmq_message = ZmqMessage::from("utility_ping\x00");
+        let result: Result<ZmqCommandReq, WiregoError> = zmq_message.try_into();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_try_from_zmq_message_utility_get_version() {
+        let zmq_message = ZmqMessage::from("utility_get_version\x00");
+        let result: Result<ZmqCommandReq, WiregoError> = zmq_message.try_into();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_try_from_zmq_message_setup_get_plugin_name() {
+        let zmq_message = ZmqMessage::from("setup_get_plugin_name\x00");
+        let result: Result<ZmqCommandReq, WiregoError> = zmq_message.try_into();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_try_from_zmq_message_setup_get_plugin_filter() {
+        let zmq_message = ZmqMessage::from("setup_get_plugin_filter\x00");
+        let result: Result<ZmqCommandReq, WiregoError> = zmq_message.try_into();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_try_from_zmq_message_setup_get_fields_count() {
+        let zmq_message = ZmqMessage::from("setup_get_fields_count\x00");
+        let result: Result<ZmqCommandReq, WiregoError> = zmq_message.try_into();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_try_from_zmq_message_setup_get_field() {
+        let frames: Vec<Bytes> = vec![
+            Bytes::from("setup_get_field\x00"),          // command
+            Bytes::copy_from_slice(&5u32.to_le_bytes()), // index
+        ];
+        let zmq_message = ZmqMessage::try_from(frames).expect("Failed to create ZMQ message");
+
+        let result: Result<ZmqCommandReq, WiregoError> = zmq_message.try_into();
+        assert!(result.is_ok());
+        matches!(
+            result.unwrap(),
+            ZmqCommandReq::SetupGetField(SetupGetFieldReq { index: 5 })
+        );
+    }
+
+    #[test]
+    fn test_try_from_zmq_message_setup_detect_int() {
+        let frames: Vec<Bytes> = vec![
+            Bytes::from("setup_detect_int\x00"),         // command
+            Bytes::copy_from_slice(&5u32.to_le_bytes()), // index
+        ];
+        let zmq_message = ZmqMessage::try_from(frames).expect("Failed to create ZMQ message");
+
+        let result: Result<ZmqCommandReq, WiregoError> = zmq_message.try_into();
+        assert!(result.is_ok());
+        matches!(
+            result.unwrap(),
+            ZmqCommandReq::SetupDetectInt(SetupDetectIntReq { index: 5 })
+        );
+    }
+
+    #[test]
+    fn test_try_from_zmq_message_setup_detect_string() {
+        let frames: Vec<Bytes> = vec![
+            Bytes::from("setup_detect_string\x00"),      // command
+            Bytes::copy_from_slice(&5u32.to_le_bytes()), // index
+        ];
+        let zmq_message = ZmqMessage::try_from(frames).expect("Failed to create ZMQ message");
+
+        let result: Result<ZmqCommandReq, WiregoError> = zmq_message.try_into();
+        assert!(result.is_ok());
+        matches!(
+            result.unwrap(),
+            ZmqCommandReq::SetupDetectString(SetupDetectStringReq { index: 5 })
+        );
+    }
+
+    #[test]
+    fn test_try_from_zmq_message_setup_detect_heuristic_parent() {
+        let frames: Vec<Bytes> = vec![
+            Bytes::from("setup_detect_heuristic_parent\x00"), // command
+            Bytes::copy_from_slice(&5u32.to_le_bytes()),      // index
+        ];
+        let zmq_message = ZmqMessage::try_from(frames).expect("Failed to create ZMQ message");
+
+        let result: Result<ZmqCommandReq, WiregoError> = zmq_message.try_into();
+        assert!(result.is_ok());
+        matches!(
+            result.unwrap(),
+            ZmqCommandReq::SetupDetectHeuristicParent(SetupDetectHeuristicParentReq { index: 5 })
+        );
+    }
+
+    #[test]
+    fn test_try_from_zmq_message_process_heuristic() {
+        let frames: Vec<Bytes> = vec![
+            Bytes::from("process_heuristic\x00"),        // command
+            Bytes::copy_from_slice(&5u32.to_le_bytes()), // packet_number
+            Bytes::from("src"),                          // src
+            Bytes::from("dst"),                          // dst
+            Bytes::from("layer"),                        // layer
+            Bytes::copy_from_slice(&[1, 2, 3]),          // data
+        ];
+        let zmq_message = ZmqMessage::try_from(frames).expect("Failed to create ZMQ message");
+
+        let result: Result<ZmqCommandReq, WiregoError> = zmq_message.try_into();
+        assert!(result.is_ok());
+
+        if let ZmqCommandReq::ProcessHeuristic(req) = result.unwrap() {
+            assert_eq!(req.packet_number, 5);
+            assert_eq!(req.src, "src".to_string());
+            assert_eq!(req.dst, "dst".to_string());
+            assert_eq!(req.layer, "layer".to_string());
+            assert_eq!(req.data, vec![1, 2, 3]);
+        } else {
+            panic!("Result does not match expected variant");
+        }
+    }
+
+    #[test]
+    fn test_try_from_zmq_message_process_dissect_packet() {
+        let frames: Vec<Bytes> = vec![
+            Bytes::from("process_dissect_packet\x00"),   // command
+            Bytes::copy_from_slice(&5u32.to_le_bytes()), // packet_number
+            Bytes::from("src"),                          // src
+            Bytes::from("dst"),                          // dst
+            Bytes::from("layer"),                        // layer
+            Bytes::copy_from_slice(&[1, 2, 3]),          // data
+        ];
+        let zmq_message = ZmqMessage::try_from(frames).expect("Failed to create ZMQ message");
+
+        let result: Result<ZmqCommandReq, WiregoError> = zmq_message.try_into();
+        assert!(result.is_ok());
+
+        if let ZmqCommandReq::ProcessDissectPacket(req) = result.unwrap() {
+            assert_eq!(req.packet_number, 5);
+            assert_eq!(req.src, "src".to_string());
+            assert_eq!(req.dst, "dst".to_string());
+            assert_eq!(req.layer, "layer".to_string());
+            assert_eq!(req.data, vec![1, 2, 3]);
+        } else {
+            panic!("Result does not match expected variant");
+        }
+    }
+
+    #[test]
+    fn test_try_from_zmq_message_result_get_protocol() {
+        let frames: Vec<Bytes> = vec![
+            Bytes::from("result_get_protocol\x00"),      // command
+            Bytes::copy_from_slice(&5u32.to_le_bytes()), // dissect_handler
+        ];
+        let zmq_message = ZmqMessage::try_from(frames).expect("Failed to create ZMQ message");
+
+        let result: Result<ZmqCommandReq, WiregoError> = zmq_message.try_into();
+        assert!(result.is_ok());
+        matches!(
+            result.unwrap(),
+            ZmqCommandReq::ResultGetProtocol(ResultGetProtocolReq { dissect_handler: 5 })
+        );
+    }
+
+    #[test]
+    fn test_try_from_zmq_message_result_get_info() {
+        let frames: Vec<Bytes> = vec![
+            Bytes::from("result_get_info\x00"),          // command
+            Bytes::copy_from_slice(&5u32.to_le_bytes()), // dissect_handler
+        ];
+        let zmq_message = ZmqMessage::try_from(frames).expect("Failed to create ZMQ message");
+
+        let result: Result<ZmqCommandReq, WiregoError> = zmq_message.try_into();
+        assert!(result.is_ok());
+        matches!(
+            result.unwrap(),
+            ZmqCommandReq::ResultGetInfo(ResultGetInfoReq { dissect_handler: 5 })
+        );
+    }
+
+    #[test]
+    fn test_try_from_zmq_message_result_get_fields_count() {
+        let frames: Vec<Bytes> = vec![
+            Bytes::from("result_get_fields_count\x00"),  // command
+            Bytes::copy_from_slice(&5u32.to_le_bytes()), // dissect_handler
+        ];
+        let zmq_message = ZmqMessage::try_from(frames).expect("Failed to create ZMQ message");
+
+        let result: Result<ZmqCommandReq, WiregoError> = zmq_message.try_into();
+        assert!(result.is_ok());
+        matches!(
+            result.unwrap(),
+            ZmqCommandReq::ResultGetFieldsCount(ResultGetFieldsCountReq { dissect_handler: 5 })
+        );
+    }
+
+    #[test]
+    fn test_try_from_zmq_message_result_get_field() {
+        let frames: Vec<Bytes> = vec![
+            Bytes::from("result_get_field\x00"),          // command
+            Bytes::copy_from_slice(&5u32.to_le_bytes()),  // dissect_handler
+            Bytes::copy_from_slice(&10u32.to_le_bytes()), // index
+        ];
+        let zmq_message = ZmqMessage::try_from(frames).expect("Failed to create ZMQ message");
+
+        let result: Result<ZmqCommandReq, WiregoError> = zmq_message.try_into();
+        assert!(result.is_ok());
+        matches!(
+            result.unwrap(),
+            ZmqCommandReq::ResultGetField(ResultGetFieldReq {
+                dissect_handler: 5,
+                index: 10
+            })
+        );
+    }
+
+    #[test]
+    fn test_try_from_zmq_message_result_release() {
+        let frames: Vec<Bytes> = vec![
+            Bytes::from("result_release\x00"),           // command
+            Bytes::copy_from_slice(&5u32.to_le_bytes()), // dissect_handler
+        ];
+        let zmq_message = ZmqMessage::try_from(frames).expect("Failed to create ZMQ message");
+
+        let result: Result<ZmqCommandReq, WiregoError> = zmq_message.try_into();
+        assert!(result.is_ok());
+        matches!(
+            result.unwrap(),
+            ZmqCommandReq::ResultRelease(ResultReleaseReq { dissect_handler: 5 })
+        );
     }
 }
