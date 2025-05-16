@@ -161,6 +161,11 @@ async fn full_plugin_setup() {
         .await
         .expect("Failed to create ZMQ Req Socket");
 
+    // Validate the unknown command does not crash
+    validate_unknown_command_does_not_crash(&mut zmq_req_socket)
+        .await
+        .expect("Failed to validate unknown command");
+
     // Validate the utility_ping message
     validate_utility_ping(&mut zmq_req_socket)
         .await
@@ -170,6 +175,25 @@ async fn full_plugin_setup() {
     validate_utility_get_version(&mut zmq_req_socket)
         .await
         .expect("Failed to validate utility_get_version");
+}
+
+async fn validate_unknown_command_does_not_crash(
+    zmq_req_socket: &mut zeromq::ReqSocket,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let zmq_message = ZmqMessage::from("unknown_command\x00");
+    zmq_req_socket
+        .send(zmq_message)
+        .await
+        .expect("Failed to send unknown_command message");
+
+    let response: ZmqMessage = zmq_req_socket
+        .recv()
+        .await
+        .expect("Failed to receive unknown_command response");
+    assert_eq!(response.len(), 1);
+    assert_eq!(response.get(0).unwrap().to_vec(), b"\x00");
+
+    Ok(())
 }
 
 async fn validate_utility_ping(

@@ -98,9 +98,9 @@ macro_rules! impl_from_frame_bytes {
     ($t:ty, $size:expr, $from_bytes:expr) => {
         impl FromFrameBytes for $t {
             fn from_frame_bytes(bytes: &[u8]) -> Result<Self, WiregoError> {
-                if bytes.len() < $size {
+                if bytes.len() != $size {
                     return Err(WiregoError::ParseError(format!(
-                        "Too few bytes for {}: expected {}, got {}",
+                        "Wrong number of bytes for {}: expected {}, got {}",
                         stringify!($t),
                         $size,
                         bytes.len()
@@ -126,6 +126,62 @@ mod tests {
     use super::*;
     use bytes::Bytes;
     use zeromq::ZmqMessage;
+
+    fn get_random_tmp_path() -> String {
+        let random_ptr = Box::into_raw(Box::new(454545));
+        format!("/tmp/{:p}", random_ptr)
+    }
+
+    #[tokio::test]
+    async fn test_bind_zmq_socket_with_empty_endpoint() {
+        let result = bind_zmq_socket("").await;
+        match result {
+            Err(WiregoError::SocketInvalidEndpoint(msg)) => {
+                assert_eq!(msg, "Empty endpoint".to_string());
+            }
+            _ => panic!("Expected SocketInvalidEndpoint error"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_bind_zmq_socket_with_invalid_endpoint() {
+        let result = bind_zmq_socket("invalid://endpoint").await;
+        match result {
+            Err(WiregoError::SocketTypeNotSupported(msg)) => {
+                assert_eq!(
+                    msg,
+                    "Invalid endpoint, must start with tcp:// or ipc://".to_string()
+                );
+            }
+            _ => panic!("Expected SocketTypeNotSupported error"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_bind_zmq_socket_with_valid_endpoint() {
+        let random_addr = get_random_tmp_path();
+        let zmq_endpoint = format!("ipc://{}", random_addr);
+        let result = bind_zmq_socket(zmq_endpoint.as_str()).await;
+        assert!(result.is_ok());
+
+        // Cleanup the test endpoint
+        let _ = std::fs::remove_file(random_addr.to_owned());
+    }
+
+    #[tokio::test]
+    async fn test_bind_zmq_socket_fail_on_bind() {
+        let random_addr = get_random_tmp_path();
+        let zmq_endpoint = format!("ipc://{}", random_addr);
+        let result = bind_zmq_socket(zmq_endpoint.as_str()).await;
+        assert!(result.is_ok());
+
+        // Attempt to bind again to the same endpoint
+        let result = bind_zmq_socket(zmq_endpoint.as_str()).await;
+        assert!(result.is_err());
+        assert!(matches!(result, Err(WiregoError::SocketBindError(_))));
+
+        let _ = std::fs::remove_file(random_addr.to_owned());
+    }
 
     #[test]
     fn test_parse_nth_frame_as_string() {
@@ -162,21 +218,70 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_nth_frame_as_numeric() {
-        let zmq_message = ZmqMessage::from(vec![42, 0, 0, 0]);
-        let result: Result<u32, WiregoError> = parse_nth_frame_as_numeric(0, &zmq_message);
-        assert_eq!(result.unwrap(), 42);
+    fn test_parse_nth_frame_as_numeric_success() {
+        fn assert_frame_value<T>(zmq_message: &ZmqMessage, frame_index: usize, expected: T)
+        where
+            T: std::str::FromStr + FromFrameBytes + PartialEq + std::fmt::Debug,
+            T::Err: std::fmt::Debug,
+        {
+            assert_eq!(
+                parse_nth_frame_as_numeric::<T>(frame_index, zmq_message).unwrap(),
+                expected
+            );
+        }
+
+        let frames: Vec<Bytes> = vec![
+            vec![240].into(),                                    // frame idx: 0, type: i8
+            vec![240].into(),                                    // frame idx: 1, type: u8
+            vec![240, 240].into(),                               // frame idx: 2, type: i16
+            vec![240, 240].into(),                               // frame idx: 3, type: u16
+            vec![240, 240, 240, 240].into(),                     // frame idx: 4, type: i32
+            vec![240, 240, 240, 240].into(),                     // frame idx: 5, type: u32
+            vec![240, 240, 240, 240, 240, 240, 240, 240].into(), // frame idx: 6, type: i64
+            vec![240, 240, 240, 240, 240, 240, 240, 240].into(), // frame idx: 7, type: u64
+        ];
+
+        let zmq_message = ZmqMessage::try_from(frames).expect("Failed to create ZMQ message");
+        assert_frame_value::<i8>(&zmq_message, 0, -16);
+        assert_frame_value::<u8>(&zmq_message, 1, 240);
+        assert_frame_value::<i16>(&zmq_message, 2, -3856);
+        assert_frame_value::<u16>(&zmq_message, 3, 61680);
+        assert_frame_value::<i32>(&zmq_message, 4, -252645136);
+        assert_frame_value::<u32>(&zmq_message, 5, 4042322160);
+        assert_frame_value::<i64>(&zmq_message, 6, -1085102592571150096);
+        assert_frame_value::<u64>(&zmq_message, 7, 17361641481138401520);
     }
 
     #[test]
-    fn test_parse_nth_frame_as_numeric_error() {
-        let zmq_message = ZmqMessage::from(vec![0, 0, 0]);
-        let result: Result<u32, WiregoError> = parse_nth_frame_as_numeric(0, &zmq_message);
-        assert!(result.is_err());
-        assert_eq!(
-            result.unwrap_err().to_string(),
-            "Parse error: Too few bytes for u32: expected 4, got 3"
-        );
+    fn test_parse_nth_frame_as_numeric_wrong_number_of_input_bytes_error() {
+        fn assert_wrong_size<T>(zmq_message: &ZmqMessage, expected_bytes_count: usize)
+        where
+            T: std::str::FromStr + FromFrameBytes + PartialEq + std::fmt::Debug,
+            T::Err: std::fmt::Debug,
+        {
+            let result: Result<T, WiregoError> = parse_nth_frame_as_numeric(0, zmq_message);
+            assert!(result.is_err());
+            assert_eq!(
+                result.unwrap_err().to_string(),
+                format!(
+                    "Parse error: Wrong number of bytes for {}: expected {}, got {}",
+                    std::any::type_name::<T>(),
+                    expected_bytes_count,
+                    zmq_message.get(0).unwrap().len()
+                )
+            );
+        }
+
+        let zmq_message = ZmqMessage::from(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+
+        assert_wrong_size::<i8>(&zmq_message, 1);
+        assert_wrong_size::<u8>(&zmq_message, 1);
+        assert_wrong_size::<i16>(&zmq_message, 2);
+        assert_wrong_size::<u16>(&zmq_message, 2);
+        assert_wrong_size::<i32>(&zmq_message, 4);
+        assert_wrong_size::<u32>(&zmq_message, 4);
+        assert_wrong_size::<i64>(&zmq_message, 8);
+        assert_wrong_size::<u64>(&zmq_message, 8);
     }
 
     #[test]
