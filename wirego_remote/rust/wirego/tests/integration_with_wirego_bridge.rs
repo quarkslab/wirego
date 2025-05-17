@@ -184,8 +184,7 @@ async fn full_plugin_setup() {
     validate_setup_detect_heuristic_parent_too_big_index(&mut zmq_req_socket).await;
     validate_process_heuristic(&mut zmq_req_socket).await;
     validate_process_dissect_packet(&mut zmq_req_socket).await;
-    // Second process_dissect_packet gets the result from cache
-    validate_process_dissect_packet(&mut zmq_req_socket).await;
+    validate_process_dissect_packet(&mut zmq_req_socket).await; // get the dissected result from cache
     validate_result_get_protocol(&mut zmq_req_socket).await;
     validate_result_get_info(&mut zmq_req_socket).await;
     validate_result_get_fields_count(&mut zmq_req_socket).await;
