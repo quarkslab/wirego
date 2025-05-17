@@ -346,6 +346,7 @@ impl TryFrom<ZmqMessage> for ZmqCommandReq {
                 ))
             }
             b"result_get_field\x00" => {
+                check_number_of_frames(&zmq_message, 3)?;
                 let dissect_handler: u32 = parse_nth_frame_as_numeric(1, &zmq_message)?;
                 let index: u32 = parse_nth_frame_as_numeric(2, &zmq_message)?;
                 Ok(ZmqCommandReq::ResultGetField(ResultGetFieldReq {
