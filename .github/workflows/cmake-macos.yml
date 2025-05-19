@@ -2,9 +2,11 @@ name: Wirego plugin build on macos
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
+    paths: [".github/workflows/cmake-macos.yml", "wirego_bridge/**"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
+    paths: [".github/workflows/cmake-macos.yml", "wirego_bridge/**"]
 
 jobs:
   macos:
@@ -50,7 +52,6 @@ jobs:
           -S ${{ github.workspace }}/wireshark
 
       - name: Build
-        # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
         run: cmake --build ${{ github.workspace }}/build --config Release -- wirego
 
       - name: Debug ls
