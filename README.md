@@ -1,9 +1,12 @@
-# Wirego 
+# Wirego
 
-|    |    |
-| -- | -- |
-| ![Wirego Logo](./doc/img/wirego_logo_small.png) |  A Wireshark plugin framework based on ZMQ, supporting Golang and hopefully more languages soon. |
+<p align="center">
+  <img src="./doc/img/wirego_logo.png" height="250">
+</p>
 
+<p align="center">
+  A Wireshark plugin framework based on ZMQ, supporting Golang, Python and hopefully more languages soon.
+</p>
 
 ## Introduction
 
@@ -13,11 +16,10 @@ Another alternative is to use LUA, but first of all you need to know this langua
 
 Wirego is a composed of:
 
-  - a Wireshark plugin (wirego_bridge), written in C that will transmit all calls from Wireshark to a remote ZMQ endpoint
-  - A set of packages for several languages receiving those ZMQ calls and converting them to a simple API that you can use
+- a Wireshark plugin (wirego_bridge), written in C that will transmit all calls from Wireshark to a remote ZMQ endpoint
+- A set of packages for several languages receiving those ZMQ calls and converting them to a simple API that you can use
 
 ![screenshot](./doc/img/schema.png)
-
 
 As a starter, a **golang** package is provided and more languages will come later.
 
@@ -25,22 +27,21 @@ As a starter, a **golang** package is provided and more languages will come late
 
 In all Wirego's code and documentations we will refer to:
 
-  - **Wirego bridge** : the Wireshark plugin, written in C (you won't have to touch this one)
-  - **Wirego package** : a package/class/bundle/sdk for a given language, used to make things easier on your side
-  - **Wirego remote** : the application that you will develop using the **Wirego package**
+- **Wirego bridge** : the Wireshark plugin, written in C (you won't have to touch this one)
+- **Wirego package** : a package/class/bundle/sdk for a given language, used to make things easier on your side
+- **Wirego remote** : the application that you will develop using the **Wirego package**
 
 ## Getting started
 
 In order to setup Wirego, you will need follow 3 steps:
 
-  1. Install or build the **Wirego bridge plugin** for Wireshark
-  2. Develop your **Wirego remote**, using a **Wirego package**
-  3. Start your **Wirego remote** program
-  4. Start Wireshark and tell the Wirego bridge where your ZMQ endpoint is
+1. Install or build the **Wirego bridge plugin** for Wireshark
+2. Develop your **Wirego remote**, using a **Wirego package**
+3. Start your **Wirego remote** program
+4. Start Wireshark and tell the Wirego bridge where your ZMQ endpoint is
 
 You may use prebuilt binaries for **step 1**, those can be downloaded [here](https://github.com/quarkslab/wirego/releases).
 If prefer building the plugin (or if prebuilt binaries fails), refer to the following documentation [here](./doc/BUILD_WIREGO.md)
-
 
 The **step 2** will obviously depend on the language you're using.
 
@@ -118,7 +119,6 @@ wg.listen()
 
 It's probably time for you to take a look at the minimal Python example found in [./wirego_remote/python/examples/minimal/](./wirego_remote/python/examples/minimal/README.md)
 
-
 ### Running Wirego
 
 Now it's time for **step 3**: [install the Wirego plugin and start Wireshark](./doc/RUNNING.md)!
@@ -129,15 +129,13 @@ A few plugin examples are available for each languages:
 
 **In Go:**
 
-  - [Minimal](./wirego_remote/go/examples/minimal/) : a minimalistic example showing the basic usage of Wirego
-  - [Reolink Credentials light](./wirego_remote/go/examples/reolinkcredslight/) : a lightweight version of a Reolink camera credentials parser
-  - [Reolink Credentials](./wirego_remote/go/examples/reolinkcreds/) : an advanced version of a Reolink camera credentials parser
-
+- [Minimal](./wirego_remote/go/examples/minimal/) : a minimalistic example showing the basic usage of Wirego
+- [Reolink Credentials light](./wirego_remote/go/examples/reolinkcredslight/) : a lightweight version of a Reolink camera credentials parser
+- [Reolink Credentials](./wirego_remote/go/examples/reolinkcreds/) : an advanced version of a Reolink camera credentials parser
 
 **In Python:**
 
-  - [Minimal](./wirego_remote/python/examples/minimal/) : a minimalistic example showing the basic usage of Wirego
-
+- [Minimal](./wirego_remote/python/examples/minimal/) : a minimalistic example showing the basic usage of Wirego
 
 ## Implementing a new language
 
@@ -147,11 +145,10 @@ If you plan to implement a package for a currently unsupported language, please 
 
 When the ZMQ endpoint used by your **Wirego remote plugin** is modified, you will be required to restart Wireshark, here's why:
 
-  - we need to setup everything (plugin name, fields..) during the proto_register_wirego call
-  - preferences values, hence the ZMQ endpoint, are only loaded afterwards during the proto_reg_handoff_wirego call
+- we need to setup everything (plugin name, fields..) during the proto_register_wirego call
+- preferences values, hence the ZMQ endpoint, are only loaded afterwards during the proto_reg_handoff_wirego call
 
 ## Changelog
-
 
 ### Wirego 0.9 (18/12/2023)
 
@@ -159,24 +156,23 @@ First public release of Wirego
 
 ### Wirego 1.0 (26/03/2024)
 
-  - Plugins ABI updates to 1.1
-  - A detection heuristics function can now be defined
-  - Renamed DissectorFilter to DetectionFilters for more clarity
+- Plugins ABI updates to 1.1
+- A detection heuristics function can now be defined
+- Renamed DissectorFilter to DetectionFilters for more clarity
 
 ### Wirego 2.0 (24/12/2024)
 
 Wirego 2.0 is a major update from Wirego 1.0.
 The communication between the Wireshark plugin and the end user plugin has been fully rewritten to allow more languages to be integrated later (Python, Rust...).
 
-  - Wirego's Wireshark plugin (wirego bridge) now uses ZMQ
-  - Golang package (wireshark remote) now receives commands from Wirego bridge
-  - Specification for ZMQ protocol (see doc/PROTOCOL.md)
+- Wirego's Wireshark plugin (wirego bridge) now uses ZMQ
+- Golang package (wireshark remote) now receives commands from Wirego bridge
+- Specification for ZMQ protocol (see doc/PROTOCOL.md)
 
 ### Wirego 2.1 (25/03/2025)
 
 Wirego 2.1 is a simply a cosmetic update of version 2.0.
 
-  - Moved Go examples to the wirego_remote Go subfolder
-  - Added example for Python Package
-  - Reviewed all documentations
-  
+- Moved Go examples to the wirego_remote Go subfolder
+- Added example for Python Package
+- Reviewed all documentations
