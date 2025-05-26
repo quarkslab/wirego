@@ -86,7 +86,7 @@ pub struct Wirego {
     wirego_listener: Box<dyn WiregoListener>,
     /// Cache for storing dissected packets to speed up the plugin
     cache: std::collections::HashMap<u32, types::DissectResultFlattenEntry>,
-    /// Set of all diefined field IDs for a quick access
+    /// Set of all defined field IDs for a quick access
     wirego_field_ids: std::collections::HashSet<u32>,
     /// Fetched plugin name from the WiregoListener for quicker access
     plugin_name: String,
@@ -265,29 +265,33 @@ impl Wirego {
                     return send_zmq_message(&mut self.zmq_socket, zmq_response).await;
                 }
 
-                let detection_filter = &self.plugin_detection_filters[index];
-                match detection_filter {
-                    types::DetectionFilter::Int(detection_filter_int) => {
-                        let zmq_response: ZmqMessage =
-                            ZmqCommandResp::SetupDetectInt(SetupDetectIntResp {
-                                command_status: WIREGO_RESPONSE_SUCCESS.clone(),
-                                filter_value: detection_filter_int.filter_value as u32,
-                                filter_name: detection_filter_int.filter_name.clone(),
-                            })
-                            .try_into()
-                            .unwrap_or_else(|_| self.create_failure_response());
+                let mut setup_detect_int_counter: u32 = 0;
+                for detection_filter in &self.plugin_detection_filters {
+                    if let types::DetectionFilter::Int(detection_filter_int) = detection_filter {
+                        if setup_detect_int_counter == index as u32 {
+                            let zmq_response: ZmqMessage =
+                                ZmqCommandResp::SetupDetectInt(SetupDetectIntResp {
+                                    command_status: WIREGO_RESPONSE_SUCCESS.clone(),
+                                    filter_value: detection_filter_int.filter_value as u32,
+                                    filter_name: detection_filter_int.filter_name.clone(),
+                                })
+                                .try_into()
+                                .unwrap_or_else(|_| self.create_failure_response());
 
-                        send_zmq_message(&mut self.zmq_socket, zmq_response).await
-                    }
-                    _ => {
-                        eprintln!(
-                            "Unsupported detection filter type for SetupDetectInt: {:?}",
-                            detection_filter
-                        );
-                        let zmq_response: ZmqMessage = self.create_failure_response();
-                        return send_zmq_message(&mut self.zmq_socket, zmq_response).await;
+                            return send_zmq_message(&mut self.zmq_socket, zmq_response).await;
+                        }
+                        setup_detect_int_counter += 1;
                     }
                 }
+
+                eprintln!(
+                    "Invalid detection filter integer index: {}. Total detection filters count: {}",
+                    index,
+                    self.plugin_detection_filters.len()
+                );
+
+                let zmq_response: ZmqMessage = self.create_failure_response();
+                return send_zmq_message(&mut self.zmq_socket, zmq_response).await;
             }
             ZmqCommandReq::SetupDetectString(setup_detect_string) => {
                 let index = setup_detect_string.index as usize;
@@ -302,29 +306,35 @@ impl Wirego {
                     return send_zmq_message(&mut self.zmq_socket, zmq_response).await;
                 }
 
-                let detection_filter = &self.plugin_detection_filters[index];
-                match detection_filter {
-                    types::DetectionFilter::String(detection_filter_string) => {
-                        let zmq_response: ZmqMessage =
-                            ZmqCommandResp::SetupDetectString(SetupDetectStringResp {
-                                command_status: WIREGO_RESPONSE_SUCCESS.clone(),
-                                filter_value: detection_filter_string.filter_value.clone(),
-                                filter_name: detection_filter_string.filter_name.clone(),
-                            })
-                            .try_into()
-                            .unwrap_or_else(|_| self.create_failure_response());
+                let mut setup_detect_string_counter: u32 = 0;
+                for detection_filter in &self.plugin_detection_filters {
+                    if let types::DetectionFilter::String(detection_filter_string) =
+                        detection_filter
+                    {
+                        if setup_detect_string_counter == index as u32 {
+                            let zmq_response: ZmqMessage =
+                                ZmqCommandResp::SetupDetectString(SetupDetectStringResp {
+                                    command_status: WIREGO_RESPONSE_SUCCESS.clone(),
+                                    filter_value: detection_filter_string.filter_value.clone(),
+                                    filter_name: detection_filter_string.filter_name.clone(),
+                                })
+                                .try_into()
+                                .unwrap_or_else(|_| self.create_failure_response());
 
-                        send_zmq_message(&mut self.zmq_socket, zmq_response).await
-                    }
-                    _ => {
-                        eprintln!(
-                            "Unsupported detection filter type for SetupDetectString: {:?}",
-                            detection_filter
-                        );
-                        let zmq_response: ZmqMessage = self.create_failure_response();
-                        return send_zmq_message(&mut self.zmq_socket, zmq_response).await;
+                            return send_zmq_message(&mut self.zmq_socket, zmq_response).await;
+                        }
+                        setup_detect_string_counter += 1;
                     }
                 }
+
+                eprintln!(
+                    "Invalid detection filter string index: {}. Total detection filters count: {}",
+                    index,
+                    self.plugin_detection_filters.len()
+                );
+
+                let zmq_response: ZmqMessage = self.create_failure_response();
+                return send_zmq_message(&mut self.zmq_socket, zmq_response).await;
             }
             ZmqCommandReq::SetupDetectHeuristicParent(setup_detect_heuristic_parent) => {
                 let index = setup_detect_heuristic_parent.index as usize;

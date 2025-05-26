@@ -30,7 +30,7 @@ To implement the plugin, you may follow examples from the package. To have the p
 
 - `get_name` should return the protocol name, e.g. "eCPRI 2.0"
 - `get_filter` should return the protocol filter, e.g. "ecpri"
-- `get_fields` should return all fields that can be dissected by Wireshark
+- `get_fields` should return all fields that can be returned by your Wireshark plugin
 - `get_detection_filters` should return all "filters" to let Wireshark know which packets should be dissected by our dissector, e.g. `udp.port == 137` or `bluetooth.uuid == 1234`
 - `get_detection_heuristics_parents` should return all protocols on top of which detection heuristic should be called
 - `detection_heuristic` applies the heuristic to identify the protocol and returns whether the packet should be dissected by our dissector or not

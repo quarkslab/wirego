@@ -175,10 +175,8 @@ async fn full_plugin_setup() {
     validate_setup_get_field(&mut zmq_req_socket).await;
     validate_setup_get_field_too_big_index(&mut zmq_req_socket).await;
     validate_setup_detect_int(&mut zmq_req_socket).await;
-    validate_setup_detect_int_with_index_pointing_to_string(&mut zmq_req_socket).await;
     validate_setup_detect_int_too_big_index(&mut zmq_req_socket).await;
     validate_setup_detect_string(&mut zmq_req_socket).await;
-    validate_setup_detect_string_with_index_pointing_to_int(&mut zmq_req_socket).await;
     validate_setup_detect_string_too_big_index(&mut zmq_req_socket).await;
     validate_setup_detect_heuristic_parent(&mut zmq_req_socket).await;
     validate_setup_detect_heuristic_parent_too_big_index(&mut zmq_req_socket).await;
@@ -364,26 +362,10 @@ async fn validate_setup_detect_int(zmq_req_socket: &mut zeromq::ReqSocket) {
     assert_eq!(response.get(2).unwrap().to_vec(), &12345u32.to_le_bytes());
 }
 
-async fn validate_setup_detect_int_with_index_pointing_to_string(
-    zmq_req_socket: &mut zeromq::ReqSocket,
-) {
-    let frames: Vec<Bytes> = vec![
-        Bytes::from("setup_detect_int\x00"),
-        Bytes::from(1u32.to_le_bytes().to_vec()),
-    ];
-    let zmq_message = ZmqMessage::try_from(frames).expect("Failed to create ZmqMessage");
-
-    send(zmq_req_socket, zmq_message).await;
-    let response = receive(zmq_req_socket).await;
-
-    assert_eq!(response.len(), 1);
-    assert_eq!(response.get(0).unwrap().to_vec(), b"\x00");
-}
-
 async fn validate_setup_detect_int_too_big_index(zmq_req_socket: &mut zeromq::ReqSocket) {
     let frames: Vec<Bytes> = vec![
         Bytes::from("setup_detect_int\x00"),
-        Bytes::from(2u32.to_le_bytes().to_vec()),
+        Bytes::from(1u32.to_le_bytes().to_vec()),
     ];
     let zmq_message = ZmqMessage::try_from(frames).expect("Failed to create ZmqMessage");
 
@@ -397,7 +379,7 @@ async fn validate_setup_detect_int_too_big_index(zmq_req_socket: &mut zeromq::Re
 async fn validate_setup_detect_string(zmq_req_socket: &mut zeromq::ReqSocket) {
     let frames: Vec<Bytes> = vec![
         Bytes::from("setup_detect_string\x00"),
-        Bytes::from(1u32.to_le_bytes().to_vec()),
+        Bytes::from(0u32.to_le_bytes().to_vec()),
     ];
     let zmq_message = ZmqMessage::try_from(frames).expect("Failed to create ZmqMessage");
 
@@ -410,26 +392,10 @@ async fn validate_setup_detect_string(zmq_req_socket: &mut zeromq::ReqSocket) {
     assert_eq!(response.get(2).unwrap().to_vec(), b"5678\x00");
 }
 
-async fn validate_setup_detect_string_with_index_pointing_to_int(
-    zmq_req_socket: &mut zeromq::ReqSocket,
-) {
-    let frames: Vec<Bytes> = vec![
-        Bytes::from("setup_detect_string\x00"),
-        Bytes::from(0u32.to_le_bytes().to_vec()),
-    ];
-    let zmq_message = ZmqMessage::try_from(frames).expect("Failed to create ZmqMessage");
-
-    send(zmq_req_socket, zmq_message).await;
-    let response = receive(zmq_req_socket).await;
-
-    assert_eq!(response.len(), 1);
-    assert_eq!(response.get(0).unwrap().to_vec(), b"\x00");
-}
-
 async fn validate_setup_detect_string_too_big_index(zmq_req_socket: &mut zeromq::ReqSocket) {
     let frames: Vec<Bytes> = vec![
         Bytes::from("setup_detect_string\x00"),
-        Bytes::from(2u32.to_le_bytes().to_vec()),
+        Bytes::from(1u32.to_le_bytes().to_vec()),
     ];
     let zmq_message = ZmqMessage::try_from(frames).expect("Failed to create ZmqMessage");
 
