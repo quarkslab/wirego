@@ -132,7 +132,7 @@ async fn create_zmq_req_socket(zmq_endpoint: &str) -> Result<zeromq::ReqSocket, 
     Ok(socket)
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(target_family = "unix")]
 #[tokio::test]
 async fn full_plugin_setup_ipc() {
     const TEST_ENDPOINT_IPC: &str = "/tmp/test_wirego";
