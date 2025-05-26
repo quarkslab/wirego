@@ -3,9 +3,6 @@ use tokio;
 use wirego::{Wirego, WiregoListener};
 use zeromq::{Socket, SocketRecv, SocketSend, ZmqMessage};
 
-const TEST_ENDPOINT: &str = "/tmp/test_wirego";
-const ZMQ_TEST_ENDPOINT: &str = "ipc:///tmp/test_wirego";
-
 struct WiregoTestListener;
 unsafe impl Send for WiregoTestListener {}
 impl WiregoListener for WiregoTestListener {
@@ -125,27 +122,31 @@ impl WiregoListener for WiregoTestListener {
     }
 }
 
-async fn create_zmq_req_socket() -> Result<zeromq::ReqSocket, zeromq::ZmqError> {
+async fn create_zmq_req_socket(zmq_endpoint: &str) -> Result<zeromq::ReqSocket, zeromq::ZmqError> {
     let mut socket = zeromq::ReqSocket::new();
     socket
-        .connect(ZMQ_TEST_ENDPOINT)
+        .connect(zmq_endpoint)
         .await
         .expect("Failed to connect to socket");
 
     Ok(socket)
 }
 
+#[cfg(target_os = "linux")]
 #[tokio::test]
-async fn full_plugin_setup() {
+async fn full_plugin_setup_ipc() {
+    const TEST_ENDPOINT_IPC: &str = "/tmp/test_wirego";
+    const ZMQ_TEST_ENDPOINT_IPC: &str = "ipc:///tmp/test_wirego";
+
     // Cleanup the test endpoint if it exists
-    let _ = std::fs::remove_file(TEST_ENDPOINT);
+    let _ = std::fs::remove_file(TEST_ENDPOINT_IPC);
     tokio::time::sleep(tokio::time::Duration::from_millis(300)).await;
 
     // Start the Wirego listener in a separate task, so we can simulate the plugin behavior
     // and test the communication with the ZMQ Req Socket.
     tokio::task::spawn(async {
         let listener = WiregoTestListener;
-        let mut wirego = Wirego::new(ZMQ_TEST_ENDPOINT, Box::new(listener))
+        let mut wirego = Wirego::new(ZMQ_TEST_ENDPOINT_IPC, Box::new(listener))
             .await
             .expect("Failed to create Wirego instance");
         wirego
@@ -158,7 +159,60 @@ async fn full_plugin_setup() {
     tokio::time::sleep(tokio::time::Duration::from_millis(300)).await;
 
     // Create a ZMQ Req Socket to communicate with the Wirego listener
-    let mut zmq_req_socket = create_zmq_req_socket()
+    let mut zmq_req_socket = create_zmq_req_socket(ZMQ_TEST_ENDPOINT_IPC)
+        .await
+        .expect("Failed to create ZMQ Req Socket");
+
+    // Error scenarios - validation of no crashes
+    validate_unknown_command_does_not_crash(&mut zmq_req_socket).await;
+    validate_command_with_wrong_number_of_frames_does_not_crash(&mut zmq_req_socket).await;
+
+    // Valid scenarios - validation of correct responses
+    validate_utility_ping(&mut zmq_req_socket).await;
+    validate_utility_get_version(&mut zmq_req_socket).await;
+    validate_setup_get_plugin_name(&mut zmq_req_socket).await;
+    validate_setup_get_plugin_filter(&mut zmq_req_socket).await;
+    validate_setup_get_fields_count(&mut zmq_req_socket).await;
+    validate_setup_get_field(&mut zmq_req_socket).await;
+    validate_setup_get_field_too_big_index(&mut zmq_req_socket).await;
+    validate_setup_detect_int(&mut zmq_req_socket).await;
+    validate_setup_detect_int_too_big_index(&mut zmq_req_socket).await;
+    validate_setup_detect_string(&mut zmq_req_socket).await;
+    validate_setup_detect_string_too_big_index(&mut zmq_req_socket).await;
+    validate_setup_detect_heuristic_parent(&mut zmq_req_socket).await;
+    validate_setup_detect_heuristic_parent_too_big_index(&mut zmq_req_socket).await;
+    validate_process_heuristic(&mut zmq_req_socket).await;
+    validate_process_dissect_packet(&mut zmq_req_socket).await;
+    validate_process_dissect_packet(&mut zmq_req_socket).await; // get the dissected result from cache
+    validate_result_get_protocol(&mut zmq_req_socket).await;
+    validate_result_get_info(&mut zmq_req_socket).await;
+    validate_result_get_fields_count(&mut zmq_req_socket).await;
+    validate_result_get_field(&mut zmq_req_socket).await;
+    validate_result_release(&mut zmq_req_socket).await;
+}
+
+#[tokio::test]
+async fn full_plugin_setup_tcp() {
+    const ZMQ_TEST_ENDPOINT_TCP: &str = "tcp://127.0.0.1:12345";
+
+    // Start the Wirego listener in a separate task, so we can simulate the plugin behavior
+    // and test the communication with the ZMQ Req Socket.
+    tokio::task::spawn(async {
+        let listener = WiregoTestListener;
+        let mut wirego = Wirego::new(ZMQ_TEST_ENDPOINT_TCP, Box::new(listener))
+            .await
+            .expect("Failed to create Wirego instance");
+        wirego
+            .listen()
+            .await
+            .expect("Something wrong happened with the Wirego Remote");
+    });
+
+    // Make sure the listener is up and running
+    tokio::time::sleep(tokio::time::Duration::from_millis(300)).await;
+
+    // Create a ZMQ Req Socket to communicate with the Wirego listener
+    let mut zmq_req_socket = create_zmq_req_socket(ZMQ_TEST_ENDPOINT_TCP)
         .await
         .expect("Failed to create ZMQ Req Socket");
 
