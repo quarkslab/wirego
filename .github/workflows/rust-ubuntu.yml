@@ -26,6 +26,10 @@ jobs:
         run: cargo build --verbose
         working-directory: ${{ env.working-directory }}
 
+      - name: Check the formatting of the code
+        run: cargo fmt --all -- --check
+        working-directory: ${{ env.working-directory }}
+
       - name: Check the package and dependencies for errors
         run: cargo check --verbose
         working-directory: ${{ env.working-directory }}
