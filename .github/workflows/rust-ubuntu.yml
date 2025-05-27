@@ -1,0 +1,39 @@
+name: Rust Wirego Remote build on Linux
+
+on:
+  push:
+    branches: ["main"]
+    # examples could be run in the other job after this one passes
+    paths: [".github/workflows/rust-ubuntu.yml", "wirego_remote/rust/wirego"]
+  pull_request:
+    branches: ["main"]
+    paths: [".github/workflows/rust-ubuntu.yml", "wirego_remote/rust/wirego"]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  linux:
+    name: Build
+    runs-on: ubuntu-latest
+    env:
+      working-directory: wirego_remote/rust/wirego
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v4
+
+      - name: Build development version
+        run: cargo build --verbose
+        working-directory: ${{ env.working-directory }}
+
+      - name: Check the package and dependencies for errors
+        run: cargo check --verbose
+        working-directory: ${{ env.working-directory }}
+
+      - name: Run unit and integration tests
+        run: cargo test --verbose
+        working-directory: ${{ env.working-directory }}
+
+      - name: Build release version
+        run: cargo build --release --verbose
+        working-directory: ${{ env.working-directory }}
