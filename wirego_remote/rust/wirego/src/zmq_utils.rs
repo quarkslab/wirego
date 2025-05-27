@@ -1,6 +1,7 @@
-use zeromq::{Socket, SocketRecv, SocketSend};
-
 use crate::error::WiregoError;
+
+use log::{debug, error, info};
+use zeromq::{Socket, SocketRecv, SocketSend};
 
 pub(crate) async fn bind_zmq_socket(zmq_endpoint: &str) -> Result<zeromq::RepSocket, WiregoError> {
     if zmq_endpoint.is_empty() {
@@ -18,11 +19,11 @@ pub(crate) async fn bind_zmq_socket(zmq_endpoint: &str) -> Result<zeromq::RepSoc
     let mut zmq_socket = zeromq::RepSocket::new();
     match zmq_socket.bind(zmq_endpoint).await {
         Ok(_) => {
-            println!("Wirego bridge is ready to receive commands!");
+            info!("Wirego bridge is ready to receive commands!");
             Ok(zmq_socket)
         }
         Err(err) => {
-            eprintln!("Failed to bind to endpoint: {:?}", err);
+            error!("Failed to bind to endpoint: {:?}", err);
             Err(WiregoError::SocketBindError(err.to_string()))
         }
     }
@@ -34,7 +35,7 @@ pub(crate) async fn receive_zmq_message(
     match zmq_socket.recv().await {
         Ok(zmq_message) => Ok(zmq_message),
         Err(err) => {
-            eprintln!("Failed to receive ZMQ message: {:?}", err);
+            error!("Failed to receive ZMQ message: {:?}", err);
             Err(WiregoError::SocketReceiveError(err.to_string()))
         }
     }
@@ -44,11 +45,11 @@ pub(crate) async fn send_zmq_message(
     zmq_socket: &mut zeromq::RepSocket,
     zmq_message: zeromq::ZmqMessage,
 ) -> Result<(), WiregoError> {
-    println!("Sending ZMQ message: {:?}", zmq_message);
+    debug!("Sending ZMQ message: {:?}", zmq_message);
     match zmq_socket.send(zmq_message).await {
         Ok(_) => Ok(()),
         Err(err) => {
-            eprintln!("Failed to send ZMQ message: {:?}", err);
+            error!("Failed to send ZMQ message: {:?}", err);
             Err(WiregoError::SocketSendError(err.to_string()))
         }
     }
