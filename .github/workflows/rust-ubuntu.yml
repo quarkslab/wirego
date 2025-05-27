@@ -4,10 +4,10 @@ on:
   push:
     branches: ["main"]
     # examples could be run in the other job after this one passes
-    paths: [".github/workflows/rust-ubuntu.yml", "wirego_remote/rust/wirego"]
+    paths: [".github/workflows/rust-ubuntu.yml", "wirego_remote/rust/wirego/**"]
   pull_request:
     branches: ["main"]
-    paths: [".github/workflows/rust-ubuntu.yml", "wirego_remote/rust/wirego"]
+    paths: [".github/workflows/rust-ubuntu.yml", "wirego_remote/rust/wirego/**"]
 
 env:
   CARGO_TERM_COLOR: always
