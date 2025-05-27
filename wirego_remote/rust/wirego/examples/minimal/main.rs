@@ -1,20 +1,29 @@
+use log::{LevelFilter, error, info};
+use simple_logger::SimpleLogger;
 use tokio;
 use wirego::{Wirego, WiregoListener};
 
 #[tokio::main]
 async fn main() {
-    println!("Wirego Minimal Example");
-    println!("=========================");
-    println!("This is a minimal example of a Wirego dissector.");
+    // Instantiate a simple logger
+    SimpleLogger::new()
+        .with_level(LevelFilter::Info)
+        .with_module_level("wirego", LevelFilter::Warn)
+        .init()
+        .unwrap();
+
+    info!("Wirego Minimal Example");
+    info!("=========================");
+    info!("This is a minimal example of a Wirego dissector.");
 
     // Create our listener
     let minimal_listener = Box::new(WiregoMinimalListener);
-    println!("minimal listener name: {}", minimal_listener.get_name());
+    info!("Listener name: {}", minimal_listener.get_name());
 
     // Instantiate Wirego with the listener
     let wirego = Wirego::new("ipc:///tmp/wirego0", minimal_listener).await;
     if wirego.is_err() {
-        eprintln!("Error: {}", wirego.err().unwrap());
+        error!("Error: {}", wirego.err().unwrap());
         return;
     }
 
@@ -22,7 +31,7 @@ async fn main() {
 
     // Start listening on given ZMQ socket
     if let Err(error) = wirego.listen().await {
-        eprintln!("Error: {}", error);
+        error!("Error: {}", error);
     };
 }
 

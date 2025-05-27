@@ -3,15 +3,12 @@ pub mod types;
 mod zmq_commands;
 mod zmq_utils;
 
-use error::WiregoError;
-use zeromq::ZmqMessage;
-use zmq_commands::{
-    ResultGetFieldResp, ResultGetFieldsCountResp, ResultGetInfoResp, ResultGetProtocolResp,
-    ResultReleaseResp, ZmqCommandReq,
-};
-
+use crate::error::WiregoError;
 use crate::zmq_commands::*;
 use crate::zmq_utils::send_zmq_message;
+
+use log::{debug, error, warn};
+use zeromq::ZmqMessage;
 
 /// Wirego Major API version that is used to communicate with the Wirego Bridge.
 /// This version is hardcoded and if there is a version mismatch, the Wirego Bridge
@@ -133,7 +130,7 @@ impl Wirego {
             let received_message = zmq_utils::receive_zmq_message(&mut self.zmq_socket).await?;
             let wirego_zmq_command = ZmqCommandReq::try_from(received_message);
             if wirego_zmq_command.is_err() {
-                eprintln!(
+                error!(
                     "Failed to parse ZMQ message: {:?}",
                     wirego_zmq_command.err()
                 );
@@ -164,7 +161,7 @@ impl Wirego {
         &mut self,
         wirego_zmq_command: ZmqCommandReq,
     ) -> Result<(), WiregoError> {
-        println!("Received command: {:?}", wirego_zmq_command);
+        debug!("Received command: {:?}", wirego_zmq_command);
 
         match wirego_zmq_command {
             ZmqCommandReq::UtilityPing(_utility_ping) => {
@@ -224,7 +221,7 @@ impl Wirego {
             ZmqCommandReq::SetupGetField(setup_get_field) => {
                 let field_index = setup_get_field.index as usize;
                 if field_index >= self.plugin_fields.len() {
-                    eprintln!(
+                    warn!(
                         "Invalid field index: {}. Total fields: {}",
                         field_index,
                         self.plugin_fields.len()
@@ -248,14 +245,14 @@ impl Wirego {
                 .try_into()
                 .unwrap_or_else(|_| self.create_failure_response());
 
-                println!("Field from listener: {:?}", field);
-                println!("Response: {:?}", zmq_response);
+                debug!("Field from listener: {:?}", field);
+                debug!("Response: {:?}", zmq_response);
                 send_zmq_message(&mut self.zmq_socket, zmq_response).await
             }
             ZmqCommandReq::SetupDetectInt(setup_detect_int) => {
                 let index = setup_detect_int.index as usize;
                 if index >= self.plugin_detection_filters.len() {
-                    eprintln!(
+                    warn!(
                         "Invalid detection filter index: {}. Total detection filters count: {}",
                         index,
                         self.plugin_detection_filters.len()
@@ -284,7 +281,7 @@ impl Wirego {
                     }
                 }
 
-                eprintln!(
+                warn!(
                     "Invalid detection filter integer index: {}. Total detection filters count: {}",
                     index,
                     self.plugin_detection_filters.len()
@@ -296,7 +293,7 @@ impl Wirego {
             ZmqCommandReq::SetupDetectString(setup_detect_string) => {
                 let index = setup_detect_string.index as usize;
                 if index >= self.plugin_detection_filters.len() {
-                    eprintln!(
+                    warn!(
                         "Invalid detection filter index: {}. Total detection filters count: {}",
                         index,
                         self.plugin_detection_filters.len()
@@ -327,7 +324,7 @@ impl Wirego {
                     }
                 }
 
-                eprintln!(
+                warn!(
                     "Invalid detection filter string index: {}. Total detection filters count: {}",
                     index,
                     self.plugin_detection_filters.len()
@@ -339,7 +336,7 @@ impl Wirego {
             ZmqCommandReq::SetupDetectHeuristicParent(setup_detect_heuristic_parent) => {
                 let index = setup_detect_heuristic_parent.index as usize;
                 if index >= self.plugin_detection_heuristics_parents.len() {
-                    eprintln!(
+                    warn!(
                         "Invalid detection heuristic parent index: {}. Total detection heuristics parents count: {}",
                         index,
                         self.plugin_detection_heuristics_parents.len()
@@ -417,9 +414,9 @@ impl Wirego {
                 );
 
                 for dissected_field in &result.dissected_fields {
-                    println!("Dissected field: {:?}", dissected_field);
+                    debug!("Dissected field: {:?}", dissected_field);
                     if dissected_field.offset >= process_dissect_packet.data.len() as i64 {
-                        eprintln!(
+                        warn!(
                             "Invalid dissected field offset: {}. Packet length: {}",
                             dissected_field.offset,
                             process_dissect_packet.data.len()
@@ -431,7 +428,7 @@ impl Wirego {
                     if dissected_field.offset + dissected_field.length
                         > process_dissect_packet.data.len() as i64
                     {
-                        eprintln!(
+                        warn!(
                             "Invalid dissected field length: {}. Packet length: {}",
                             dissected_field.length,
                             process_dissect_packet.data.len()
@@ -459,7 +456,7 @@ impl Wirego {
                     process_dissect_packet.packet_number,
                     flattened_fields.clone(),
                 );
-                println!("Current cache: {:?}", self.cache);
+                debug!("Current cache: {:?}", self.cache);
 
                 let zmq_response: ZmqMessage =
                     ZmqCommandResp::ProcessDissectPacket(ProcessDissectPacketResp {
@@ -545,7 +542,7 @@ impl Wirego {
 
                 let field_index = result_get_field.index as usize;
                 if field_index >= dissected_packet.dissected_fields.len() {
-                    eprintln!(
+                    warn!(
                         "Invalid field index: {}. Total fields: {}",
                         field_index,
                         dissected_packet.dissected_fields.len()
@@ -581,7 +578,7 @@ impl Wirego {
                 send_zmq_message(&mut self.zmq_socket, zmq_response).await
             }
             ZmqCommandReq::InvalidMessage(invalid_message) => {
-                eprintln!("Invalid message: {:?}", invalid_message);
+                error!("Invalid message: {:?}", invalid_message);
                 let zmq_response: ZmqMessage = self.create_failure_response();
                 send_zmq_message(&mut self.zmq_socket, zmq_response).await
             }
