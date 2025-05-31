@@ -128,6 +128,7 @@ mod tests {
     use bytes::Bytes;
     use zeromq::ZmqMessage;
 
+    #[cfg(target_family = "unix")]
     fn get_random_tmp_path() -> String {
         let random_ptr = Box::into_raw(Box::new(454545));
         format!("/tmp/{:p}", random_ptr)
