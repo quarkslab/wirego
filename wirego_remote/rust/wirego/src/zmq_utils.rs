@@ -158,8 +158,9 @@ mod tests {
         }
     }
 
+    #[cfg(target_family = "unix")]
     #[tokio::test]
-    async fn test_bind_zmq_socket_with_valid_endpoint() {
+    async fn test_bind_zmq_socket_with_valid_ipc_endpoint() {
         let random_addr = get_random_tmp_path();
         let zmq_endpoint = format!("ipc://{}", random_addr);
         let result = bind_zmq_socket(zmq_endpoint.as_str()).await;
@@ -170,7 +171,15 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_bind_zmq_socket_fail_on_bind() {
+    async fn test_bind_zmq_socket_with_valid_tcp_endpoint() {
+        let zmq_endpoint = "tcp://127.0.0.1:54321";
+        let result = bind_zmq_socket(zmq_endpoint).await;
+        assert!(result.is_ok());
+    }
+
+    #[cfg(target_family = "unix")]
+    #[tokio::test]
+    async fn test_bind_zmq_socket_fail_on_bind_ipc() {
         let random_addr = get_random_tmp_path();
         let zmq_endpoint = format!("ipc://{}", random_addr);
         let result = bind_zmq_socket(zmq_endpoint.as_str()).await;
@@ -182,6 +191,18 @@ mod tests {
         assert!(matches!(result, Err(WiregoError::SocketBindError(_))));
 
         let _ = std::fs::remove_file(random_addr.to_owned());
+    }
+
+    #[tokio::test]
+    async fn test_bind_zmq_socket_fail_on_bind_tcp() {
+        let zmq_endpoint = "tcp://127.0.0.1:54322";
+        let result = bind_zmq_socket(zmq_endpoint).await;
+        assert!(result.is_ok());
+
+        // Attempt to bind again to the same endpoint
+        let result = bind_zmq_socket(zmq_endpoint).await;
+        assert!(result.is_err());
+        assert!(matches!(result, Err(WiregoError::SocketBindError(_))));
     }
 
     #[test]
