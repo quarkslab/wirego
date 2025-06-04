@@ -1,9 +1,8 @@
-name: Rust Wirego Remote build on Linux
+name: Rust Wirego Remote build (cross-platform)
 
 on:
   push:
     branches: ["main"]
-    # examples could be run in the other job after this one passes
     paths: [".github/workflows/rust-ubuntu.yml", "wirego_remote/rust/wirego/**"]
   pull_request:
     branches: ["main"]
@@ -14,8 +13,11 @@ env:
 
 jobs:
   linux:
-    name: Build
-    runs-on: ubuntu-latest
+    name: Rust Wirego Remote on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
     env:
       working-directory: wirego_remote/rust/wirego
     steps:
