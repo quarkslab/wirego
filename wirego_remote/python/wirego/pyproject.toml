@@ -1,0 +1,36 @@
+[project]
+name = "wirego"
+version = "0.0.1"
+description = "Wirego Python package for implementing Wireshark plugins with Wirego Bridge"
+authors = [
+    {name = "NothNoth"},
+    {name = "Tomasz Woszczynski", email = "duchowe50k@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "pyzmq==26.4.0",
+    "ruff==0.11.10"
+]
+
+[tool.poetry]
+packages = [{include = "wirego", from = "src"}]
+
+[tool.ruff]
+line-length = 100
+indent-width = 4
+
+[tool.ruff.format]
+indent-style = "space"
+quote-style = "double"
+docstring-code-format = true
+docstring-code-line-length = 100
+
+[tool.ruff.lint.extend-per-file-ignores]
+"__init__.py" = [
+    "F401", # https://www.flake8rules.com/rules/F401.html
+]
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
