@@ -58,7 +58,8 @@ jobs:
           -S ${{ github.workspace }}\wireshark
       - name: Build
         run: cmake --build ${{ github.workspace }}\build --config RelWithDebInfo --target wirego
-      - name: Export plugin
+
+        - name: Export plugin
         uses: actions/upload-artifact@v4
         with:
           name: WiregoPlugin-Windows-for-Wireshark-${{ matrix.wireshark_version }}
