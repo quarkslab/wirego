@@ -527,7 +527,7 @@ int wirego_process_heuristic(wirego_t* wirego_h, int packet_number, char* src, c
   detection_result = b;
 
   ws_noisy("process_heuristic %d", detection_result);
-  return detection_result;
+  return detection_result==1?0:-1;
 }
 
 int wirego_process_dissect_packet(wirego_t* wirego_h, int packet_number, char* src, char* dst, char* layer, const char* packet, int packet_size) {
