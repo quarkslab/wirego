@@ -31,6 +31,19 @@ In all Wirego's code and documentations we will refer to:
 - **Wirego package** : a package/class/bundle/sdk for a given language, used to make things easier on your side
 - **Wirego remote** : the application that you will develop using the **Wirego package**
 
+Languages availability:
+
+| Language | Availability       |
+| -------- | ------------------ |
+| Go       | :heavy_check_mark: | 
+| Python   | :heavy_check_mark: | 
+| Rust     | :heavy_check_mark: | 
+| C        | :white_check_mark: | 
+| C++      | :white_check_mark: | 
+| Java     | :white_check_mark: | 
+
+
+
 ## Getting started
 
 In order to setup Wirego, you will need follow 3 steps:
@@ -118,6 +131,13 @@ wg.listen()
 ```
 
 It's probably time for you to take a look at the minimal Python example found in [./wirego_remote/python/examples/minimal/](./wirego_remote/python/examples/minimal/README.md)
+
+
+### Overview in Rust
+
+A plugin in Rust is very similar to the Go or Python ones.
+Juste take a look at the minimal example in [./wirego_remote/rust/wirego/examples/minimal/](./wirego_remote/rust/wirego/examples/minimal/) and read the [documentation](./wirego_remote/rust/wirego/README.md).
+
 
 ### Running Wirego
 
