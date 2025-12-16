@@ -35,14 +35,12 @@ Languages availability:
 
 | Language | Availability       |
 | -------- | ------------------ |
-| Go       | :heavy_check_mark: | 
-| Python   | :heavy_check_mark: | 
-| Rust     | :heavy_check_mark: | 
-| C        | :white_check_mark: | 
-| C++      | :white_check_mark: | 
-| Java     | :white_check_mark: | 
-
-
+| Go       | ✅ | 
+| Python   | ✅ | 
+| Rust     | ✅ | 
+| C        | ✔️ | 
+| C++      | ✔️ | 
+| Java     | ✔️ | 
 
 ## Getting started
 
