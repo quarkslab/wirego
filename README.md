@@ -176,3 +176,8 @@ Wirego 2.1 is a simply a cosmetic update of version 2.0.
 - Moved Go examples to the wirego_remote Go subfolder
 - Added example for Python Package
 - Reviewed all documentations
+
+### Wirego latest
+
+  - FIX: DetectionHeuristic result was not properly handled
+  - Port is added to src/dst fields on DissectPacket and DetectionHeuristic when available
