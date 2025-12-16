@@ -3,7 +3,7 @@
 #include "wirego.h"
 
 //Extract src and dst addresses from packet_info structure. It can be an IPv4, IPv6 or Ethernet address
-void extract_adresses_from_packet_info(packet_info *pinfo, char *src, char *dst) {
+void extract_adresses_from_packet_info(packet_info *pinfo, char *src, char *dst, uint32_t addr_max_len) {
   //Very suboptimal, FIXME.
 
   src[0] = 0x00;
@@ -14,37 +14,55 @@ void extract_adresses_from_packet_info(packet_info *pinfo, char *src, char *dst)
 
   switch (pinfo->net_src.type) {
     case AT_IPv4:
-      ip_to_str_buf((const guint8*)pinfo->net_src.data, src, 255);
+      ip_to_str_buf((const guint8*)pinfo->net_src.data, src, addr_max_len);
     break;
     case AT_IPv6:
-      ip6_to_str_buf((const ws_in6_addr *)pinfo->net_src.data, src, 255);
+      ip6_to_str_buf((const ws_in6_addr *)pinfo->net_src.data, src, addr_max_len);
     break;
     case AT_ETHER:
-      sprintf(src, "%02x:%02x:%02x:%02x:%02x:%02x", 
-        ((const char*)pinfo->net_src.data)[0]&0xFF, 
-        ((const char*)pinfo->net_src.data)[1]&0xFF,
-        ((const char*)pinfo->net_src.data)[2]&0xFF,
-        ((const char*)pinfo->net_src.data)[3]&0xFF,
-        ((const char*)pinfo->net_src.data)[4]&0xFF,
-        ((const char*)pinfo->net_src.data)[5]&0xFF);
+      if (addr_max_len > 18) {
+        sprintf(src, "%02x:%02x:%02x:%02x:%02x:%02x", 
+          ((const char*)pinfo->net_src.data)[0]&0xFF, 
+          ((const char*)pinfo->net_src.data)[1]&0xFF,
+          ((const char*)pinfo->net_src.data)[2]&0xFF,
+          ((const char*)pinfo->net_src.data)[3]&0xFF,
+          ((const char*)pinfo->net_src.data)[4]&0xFF,
+          ((const char*)pinfo->net_src.data)[5]&0xFF);
+      }
     break;
   }
   switch (pinfo->net_dst.type) {
     case AT_IPv4:
-      ip_to_str_buf((const guint8*)pinfo->net_dst.data, dst, 255);
+      ip_to_str_buf((const guint8*)pinfo->net_dst.data, dst, addr_max_len);
       break;
     case AT_IPv6:
-      ip6_to_str_buf((const ws_in6_addr *)pinfo->net_dst.data, dst, 255);
+      ip6_to_str_buf((const ws_in6_addr *)pinfo->net_dst.data, dst, addr_max_len);
     break;
     case AT_ETHER:
-      sprintf(dst, "%02x:%02x:%02x:%02x:%02x:%02x",
-      ((const char*)pinfo->net_dst.data)[0]&0xFF, 
-      ((const char*)pinfo->net_dst.data)[1]&0xFF,
-      ((const char*)pinfo->net_dst.data)[2]&0xFF,
-      ((const char*)pinfo->net_dst.data)[3]&0xFF,
-      ((const char*)pinfo->net_dst.data)[4]&0xFF,
-      ((const char*)pinfo->net_dst.data)[5]&0xFF);
+      if (addr_max_len > 18) {
+        sprintf(dst, "%02x:%02x:%02x:%02x:%02x:%02x",
+                ((const char*)pinfo->net_dst.data)[0]&0xFF, 
+                ((const char*)pinfo->net_dst.data)[1]&0xFF,
+                ((const char*)pinfo->net_dst.data)[2]&0xFF,
+                ((const char*)pinfo->net_dst.data)[3]&0xFF,
+                ((const char*)pinfo->net_dst.data)[4]&0xFF,
+                ((const char*)pinfo->net_dst.data)[5]&0xFF);
+      }
     break;
+  }
+
+  //If we have some port set for this protocol, add it
+  if (pinfo->ptype != PT_NONE) {
+    char port[16];
+    port[15] = 0x00;
+    snprintf(port, 16, ":%d", pinfo->srcport);
+    if (strlen(port) + strlen(src) + 1 < addr_max_len) {
+      src = strcat(src, port);
+    }
+    snprintf(port, 16, ":%d", pinfo->destport);
+    if (strlen(port) + strlen(dst) + 1 < addr_max_len) {
+      dst = strcat(dst, port);
+    }
   }
 }
 

@@ -299,8 +299,8 @@ static bool wirego_heuristic_check(tvbuff_t *tvb, packet_info *pinfo, proto_tree
 #endif
 {
   int pdu_len;
-  char src[255];
-  char dst[255];
+  char src[DISPLAY_ADDR_LEN];
+  char dst[DISPLAY_ADDR_LEN];
   char * full_layer = NULL;
   int detected;
 
@@ -313,7 +313,7 @@ static bool wirego_heuristic_check(tvbuff_t *tvb, packet_info *pinfo, proto_tree
 
   src[0] = 0x00;
   dst[0] = 0x00;
-  extract_adresses_from_packet_info(pinfo, src, dst);
+  extract_adresses_from_packet_info(pinfo, src, dst, DISPLAY_ADDR_LEN);
 
 
   full_layer = compile_network_stack(pinfo);
