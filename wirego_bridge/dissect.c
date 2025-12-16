@@ -10,8 +10,8 @@ void tree_add_item(wirego_t *wirego_h, proto_item *parent_node, int dissectHandl
 int dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _U_)
 {
   int pdu_len;
-  char src[255];
-  char dst[255];
+  char src[DISPLAY_ADDR_LEN];
+  char dst[DISPLAY_ADDR_LEN];
   char * full_layer = NULL;
   int dissectHandle = -1;
 
@@ -26,7 +26,7 @@ int dissect_wirego(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *da
 
   src[0] = 0x00;
   dst[0] = 0x00;
-  extract_adresses_from_packet_info(pinfo, src, dst);
+  extract_adresses_from_packet_info(pinfo, src, dst, DISPLAY_ADDR_LEN);
 
 
   full_layer = compile_network_stack(pinfo);
